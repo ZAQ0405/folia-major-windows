@@ -1,216 +1,124 @@
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/b5d0e863-48be-497b-b0e9-4bd8d8ce9bf0" alt="Folia" width="100%" />
-</p>
+# Folia Windows · JS 音源版
 
-<div align="center">
-<a href="https://trendshift.io/repositories/71740?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-71740" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/71740" alt="chthollyphile%2Ffolia-major | Trendshift" width="250" height="55"/></a>
+这是一个以 Folia 交互界面为基础、面向 Windows 桌面使用场景改造的音乐播放器版本。
 
-# Folia
+本版本把播放、搜索和歌词能力拆成可切换的通道：用户可以登录正版平台账号来读取账号资料和歌单，也可以直接使用本地加载的 LX Music 兼容 JS 音源。账号登录与播放模式相互独立，未登录时也可以使用音源通道和本地歌单功能。
 
-Lyrics Reimagined // 辞曲新境
+## 当前版本提供的能力
 
-[![GitHub release](https://img.shields.io/github/v/release/chthollyphile/folia-major?label=release)](https://github.com/chthollyphile/folia-major/releases)
-[![License](https://img.shields.io/github/license/chthollyphile/folia-major)](https://github.com/chthollyphile/folia-major/blob/main/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/chthollyphile/folia-major?style=social)](https://github.com/chthollyphile/folia-major/stargazers)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D24-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/chthollyphile/folia-major)
-[![Discord](https://img.shields.io/discord/1541051241822687232?logo=discord&logoColor=white&label=Join%20our%20Discord)](https://discord.gg/dMDBTHxeKd)
-<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-35-orange.svg?style=flat-square)](CONTRIBUTORS.md)
-<!-- ALL-CONTRIBUTORS-BADGE:END -->
+- Windows Electron 桌面版，支持便携式运行。
+- LX Music 风格的 JS 音源加载机制：启动时读取程序目录下的 `音源` 文件夹中的 `.js` 文件。
+- 多平台搜索与分流：由音源自行提供平台搜索、歌曲详情、播放地址和歌词能力。
+- 正版通道与音源通道手动切换，账号登录不会自动改变当前播放模式。
+- QQ 音乐、网易云音乐、酷狗音乐、酷我音乐等平台账号连接，用于读取账号资料、歌单、收藏等内容。
+- 不登录账号也可使用本地“我喜欢”、本地歌单、播放队列和歌单备份。
+- Folia 内置歌词动画与 JIZURA 歌词 MV 两套独立渲染模式，二者可以在设置或播放控件中切换。
+- JIZURA 支持随机样式、固定样式、逐首歌曲定制，以及画幅自适应，歌词时间轴会跟随当前播放歌词更新。
+- 歌单、收藏、外观设置、Folia 歌词动画配置和 JIZURA 定制配置可以在“设置 → 备份与导入”中分别导出和导入。
+- 支持本地音乐、封面、LRC/TTML 等歌词数据以及播放队列管理。
 
-[获取方式](https://github.com/chthollyphile/folia-major#%E8%8E%B7%E5%8F%96%E6%96%B9%E5%BC%8F)
-·
-[Vercel 部署](https://vercel.com/new/clone?repository-url=https://github.com/chthollyphile/folia-major)
-·
-[使用指南](https://folia-site.cielaniska.top/guide/)
-·
-[技术说明](docs/technical.md)
+## 播放模式说明
 
-</div>
+播放模式由用户手动选择：
 
-## 项目简介
-
-Folia是一个以全屏沉浸式歌词播放为核心的在线音乐播放器，支持网易云、酷狗、Navidrome 和本地音乐库，通过智能歌词匹配，AI生成配色主题，以及多种全屏歌词动画为用户提供独特的听歌体验。
-
-提供基于Electron的 windows/ macOS/ Linux 桌面端版本与基于 Node.js 的 Web 版本，支持多平台部署。
-
-如果希望能够在移动设备上使用，或在浏览器上体验，可以选择[一键部署到 Vercel](https://folia-site.cielaniska.top/guide/deploy-vercel) 的 Web 版本，或自行部署到其他支持 Node.js 的平台。
-
-## 展示
-
-![visualizer](./img/visualizer.png)
-
-### 演示视频
-
-https://github.com/user-attachments/assets/af806cf1-f67f-4b88-b2e7-57db507e9e81
-
-https://github.com/user-attachments/assets/fd27f4f0-64b9-4c57-8c3b-10df767f934b
-
-https://github.com/user-attachments/assets/704f195a-2194-434b-86e8-8f36290e5cc4
-
-### 部分主题预览
-
-<table>
-  <tr>
-    <td width="50%">
-      <img src="./img/preview-fume.png" alt="Fume 主题预览" />
-    </td>
-    <td width="50%">
-      <img src="./img/preview-lumi.png" alt="Lumi 主题预览" />
-    </td>
-  </tr>
-  <tr>
-    <td align="center"><strong>浮名</strong></td>
-    <td align="center"><strong>流光</strong></td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="./img/preview-cad.png" alt="Cad 主题预览" />
-    </td>
-    <td width="50%">
-      <img src="./img/preview-pat.png" alt="Pat 主题预览" />
-    </td>
-  </tr>
-  <tr>
-    <td align="center"><strong>心象</strong></td>
-    <td align="center"><strong>云阶</strong></td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="./img/preview-cappella.jpg" alt="群唱 主题预览" />
-    </td>
-    <td width="50%">
-      <img src="./img/preview-tilt.png" alt="Tilt 主题预览" />
-    </td>
-  </tr>
-  <tr>
-    <td align="center"><strong>群唱</strong></td>
-    <td align="center"><strong>倾诉</strong></td>
-  </tr>
-    <tr>
-    <td width="50%">
-      <img src="./img/preview-diorama.png" alt="镜台 主题预览" />
-    </td>
-    <td width="50%">
-      <img src="./img/preview-pendolo.png" alt="时计 主题预览" />
-    </td>
-  </tr>
-  <tr>
-    <td align="center"><strong>镜台</strong></td>
-    <td align="center"><strong>时计</strong></td>
-  </tr>
-</table>
-
-不同的歌词动画具有不同的排版氛围和可调参数，让全屏歌词拥有如同文字PV般的丰富视觉效果，同时又能兼顾响应式布局，自动适配不同窗口尺寸。
-
-## 核心能力
-
-| 模块 | 说明 |
+| 模式 | 用途 |
 | --- | --- |
-| 在线搜索与播放 | 搜索歌曲、歌手或专辑后即可播放，并自动加载相关封面与歌词。 |
-| 本地音乐支持 | 可导入本地音频文件，在本地安全保存索引信息，不上传文件内容。详细用法见 [本地音乐库管理](docs/local-library-management.md)。 |
-| 智能歌词匹配 | 本地歌曲可自动匹配在线歌词与封面，也支持手动修正匹配结果。 |
-| 本地歌词文件识别 | 自动加载同目录同名 `.lrc`、`.vtt`、`.ttml`、`.qrc`、`.yrc`、`.krc` 歌词文件，或歌词文件内嵌 LRC 歌词。适配 LDDC 生成的增强型逐字歌词格式。 |
-| Now Playing 接入 | 支持通过本机 [Now Playing](https://github.com/Widdit/now-playing-service/) 服务接入外部播放器的歌曲、时间轴与歌词信息，并驱动 Folia 的舞台视图与全屏歌词渲染。 |
-| AI 主题生成 | 基于歌曲情绪与歌词内容生成沉浸式背景与视觉参数。 |
-| 多端体验 | 提供 Web 部署方式，同时支持桌面端打包分发。 |
+| 正版通道 | 使用已连接平台的官方账号能力和对应平台播放接口。可见内容、播放权限和音质由平台账号及平台状态决定。 |
+| 音源通道 | 使用 `音源` 文件夹中的 JS 音源搜索并获取播放资源。无需登录账号即可使用，但可用性取决于音源和外部平台接口。 |
+| 本地 | 播放电脑上的本地音频文件。 |
 
-## 获取方式
+登录 QQ、网易云、酷狗或酷我，主要是为了同步对应平台的用户信息、歌单和收藏，不是启用音源通道的前置条件。
 
-桌面版内置前后端运行环境，适合希望即装即用的用户。
+## 音源目录
 
-### 一键部署
+便携版目录结构如下：
 
-如果你希望快速上线 Web 版本，请阅读 [Vercel 一键部署指南](https://folia-site.cielaniska.top/guide/deploy-vercel) 来创建项目
+```text
+Folia/
+├─ Folia.exe
+└─ 音源/
+   ├─ *.js
+   └─ ...
+```
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/chthollyphile/folia-major) 
+启动时会自动加载 `音源/*.js`。添加或替换音源时：
 
-项目也支持一键部署到 Cloudflare，请参考 Vercel 的部署教程进行相应调整。
+1. 关闭 Folia。
+2. 将兼容 LX Music 音源接口的 `.js` 文件放入 `音源` 文件夹。
+3. 重新启动 Folia。
+4. 打开设置中的 JS 音源页面，确认音源已加载并进行可用性检测。
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/chthollyphile/folia-major)
+音源来自第三方项目或个人维护，可能因为平台接口、版权策略、登录状态和网络环境发生失效。请只使用你有权访问的内容，并遵守相关平台服务条款。
 
-Vercel 与 Cloudflare 上的 QQ 音乐不再需要额外部署一个常驻 API 实例：把 `VITE_QQ_API_BASE` 填成 `/api/qq`，再配一个 `QQ_SESSION_SECRET`（服务端密钥，**不加 `VITE_` 前缀**）即可。这种形态默认只支持微信扫码登录，且播放前必须先登录；Cloudflare 上可以再绑定一个 Durable Object，增加 QQ 扫码登录方式。完整步骤、平台差异和排错方法见 [QQ 音乐部署指南](docs/qq-music-deployment.md)。
+## 下载 Windows 便携版
 
-自托管用户可以使用 [Docker Compose 全栈部署](deploy/docker/README.md)。本地音乐目录访问依赖可信 HTTPS 安全上下文，部署文档包含 NAS 反向代理和证书要求。
+最新便携版发布在本项目的 GitHub Release：
 
-关于移动端：
+- [Windows x64 便携版下载](https://github.com/ZAQ0405/folia-major-windows/releases/latest)
+- [所有版本与更新记录](https://github.com/ZAQ0405/folia-major-windows/releases)
 
-目前推荐移动端用户部署 Web 版本/自托管版本之后，通过chrome for android / iOS Safari 创建 PWA应用（也就是将网页应用添加到桌面，Folia web版本支持安装为PWA应用）来使用。
+下载 ZIP 后解压，保持 `Folia.exe` 与 `音源` 文件夹处于同一目录，双击 `Folia.exe` 即可运行。便携版不会要求登录才能使用本地歌单和音源通道。
 
-有一定技术的用户可以使用 capacitor 将本项目的web版本打包成为可安装的安卓apk，具体方法可参考示范仓库：[chthollyphile/folia-sonnet](https://github.com/chthollyphile/folia-sonnet)
+## 本地开发
 
-### 直接下载
+环境要求：
 
-- **Windows / macOS / Linux**: 最新版本的安装包请前往 [Releases 页面](https://github.com/chthollyphile/folia-major/releases/latest) 下载。
-- **Arch Linux**: 可通过 AUR 获取 [folia-major-bin](https://aur.archlinux.org/packages/folia-major-bin)。
-- **Flatpak**: 社区提供的第三方 flatpak，详情见 [Flatpark](https://flatpark.org/apps/top.izuna.foliamajor/)。
+- Windows 10/11
+- Node.js 24 或更高版本
+- npm
 
-> [!IMPORTANT]
-> 如果国内网络从 GitHub Releases 下载较慢，可以使用 [夸克网盘](https://pan.quark.cn/s/6e4c6fa3bc6f) 或 [百度云](https://pan.baidu.com/s/1f0x3g-8PMcNCO-TJ5z1rPw?pwd=flia) 下载。网盘链接仅提供 Windows 与 Apple silicon 的正式版安装包.
+安装依赖：
 
-Linux 包、Wayland / Hyprland 遥控窗和桌面端细节见 [技术与开发说明](docs/technical.md)。
+```bash
+npm install
+```
 
-## 文档与开发
+启动 Electron 桌面开发版（支持热更新）：
 
-更完整的使用说明请访问 [Folia Guide](https://folia-site.cielaniska.top/guide/)。
+```bash
+npm run dev:electron
+```
 
-部署、环境变量、本地开发、Stage API、常用脚本和技术栈见 [技术与开发说明](docs/technical.md)。
+常用检查和构建命令：
 
-## Sync Server
+```bash
+npm run typecheck
+npm run build
+npm run build:electron:portable
+```
 
-Folia 提供了可选的官方同步服务端 `sync-server`，用于在多个设备之间同步外观设置与 AI 主题库。服务端由用户自行托管，适合希望跨设备同步配色主题的用户。
+便携版构建产物会生成在 `release-portable/`。构建脚本会将兼容音源复制到最终目录的 `音源/` 文件夹中。
 
-支持以下部署方式：
+## 项目结构
 
-- **Cloudflare Workers / D1**：免服务器运维的 Serverless 部署，推荐使用。
-  [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/chthollyphile/folia-major/tree/main/sync-server)
-- **Docker**：镜像与 Compose 入口见 [Docker 部署目录](deploy/docker/README.md)。
-- **Node.js 自托管**：使用 SQLite，适合本地或不方便使用 Docker 的环境。
+```text
+src/services/jsMusicSource/         JS 音源加载、调用、缓存和歌词适配
+src/services/onlineMusic/           正版平台与多平台搜索适配
+src/components/visualizer/folia/   Folia 内置歌词动画
+src/components/visualizer/jizura/  JIZURA 歌词 MV 引擎与定制配置
+src/services/personalPlaylist*     本地歌单、我喜欢和歌单文件导入导出
+src/services/settingsBackupService.ts 设置与歌词动画配置备份
+packaging/windows/                  Windows 便携版打包脚本
+音源/                                随程序分发的 JS 音源
+```
 
-详细的环境变量、Token 配置与部署步骤请参阅 [Sync-Server 部署指南](https://folia-site.cielaniska.top/guide/deploy-sync)。部署完成后，在 Folia 的“存储设置”中填写服务端地址和 `SYNC_TOKEN` 即可启用同步。
+## 备份与迁移
 
-## 本地音乐与匹配说明
+在“设置 → 备份与导入”中可以分别处理：
 
-Folia 会读取音频文件元数据、同目录歌词和封面，并可通过网易云、QQ 音乐或酷狗音乐补全歌曲信息。自动匹配按网易云、QQ、酷狗依次回退；匹配不准确时，可以手动选择候选、恢复首次导入的本地信息，或进一步合并、拆分艺术家与专辑实体。
+- 本地歌单和“我喜欢”歌曲数据；
+- Folia 主题与内置歌词动画配置；
+- JIZURA 歌词 MV 的随机、固定和逐首定制配置；
+- 完整配置 JSON 或配置链接。
 
-完整的导入、重扫、匹配、实体编辑、歌单、缓存和故障排查说明见 [本地音乐库管理](docs/local-library-management.md)。
+建议在更换设备或替换便携版前先导出备份。导入外部配置前请确认来源可信。
 
-## Community
+## 免责声明
 
-加入discord社群，共同交流，获得帮助
+本项目是个人学习、技术研究和非营利测试用途的软件改造项目。在线音乐、歌词、封面和账号数据的版权及相关权利归原平台和权利人所有。项目不保证第三方音源或平台接口持续可用，也不提供任何平台会员、破解或绕过授权服务。
 
-[![Discord](https://img.shields.io/discord/1541051241822687232?logo=discord&logoColor=white&label=Join%20our%20Discord)](https://discord.gg/dMDBTHxeKd)
+使用者应自行遵守所在地法律法规、相关平台服务条款和版权要求，并在条件允许时通过官方渠道支持音乐创作者。
 
-## 贡献者
+## 许可证与第三方组件
 
-感谢所有为本项目进行 Issue 提交、Bug 报告、想法建议、测试与代码编写的贡献者，均依据 all-contributors 规范进行统计
-
-由于列表过长，贡献记录请见 [贡献者名单](CONTRIBUTORS.md)。
-
-## 法律与免责声明
-
-本项目在 AI 的广泛协助下开发，因此仍可能存在细微或不易察觉的问题。若给你带来不便，敬请理解。
-
-本项目主要用于展示播放动效、界面设计与相关工程实现。应用中涉及的在线音乐流媒体、歌词、专辑封面及其他内容，其版权均归对应权利人所有。
-
-本仓库及其源代码仅供个人学习、技术交流与非营利测试使用。请勿将其用于商业盈利用途。若因对在线资源的传播、加工或再分发而引发版权纠纷或其他责任，均由使用者自行承担，项目开发者不承担相关责任。
-
-请始终尊重数字版权，并在条件允许时通过官方平台支持正版音乐。
-
-## 致谢
-
-特别感谢以下项目和资源：
-
-- [chenmozhijin/LDDC](https://github.com/chenmozhijin/LDDC)
-- [NeteaseCloudMusicApiEnhanced](https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced)
-- [chenglou/pretext](https://github.com/chenglou/pretext)
-- [MakcRe/KuGouMusicApi](https://github.com/MakcRe/KuGouMusicApi)
-- [paper-design/shaders](https://github.com/paper-design/shaders)
-- [yakult-green-tea/qq-music-api](https://github.com/yakult-green-tea/qq-music-api)
-
-本项目接入了 [Apple Music-like Lyrics TTML 逐词歌词库](https://github.com/amll-dev/amll-ttml-db) 以提供高质量的歌词文件，感谢此歌词库的作者和贡献者们。
-
-## 许可证
-
-本项目基于 `AGPL-3.0` 许可证开源。
+本项目沿用仓库中的 `AGPL-3.0` 许可证。JIZURA、音源及其他第三方组件分别遵循其原始项目附带的许可证或声明，请在分发和修改时一并保留对应文件。
