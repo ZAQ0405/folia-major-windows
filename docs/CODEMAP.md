@@ -42,6 +42,7 @@
 | 32+ | `src/services/onlineMusic/songMetadata.ts` |
 | 32+ | `src/stores/usePlaybackStore.ts` |
 | 32+ | `src/stores/useStatusMessageStore.ts` |
+| 32+ | `src/utils/lyrics/parserCore.ts` |
 | 32+ | `src/utils/lyrics/renderHints.ts` |
 
 ## 动态注册点
@@ -94,6 +95,7 @@
 - `src/components/visualizer/classic/entry.tsx`
 - `src/components/visualizer/diorama/entry.tsx`
 - `src/components/visualizer/fume/entry.tsx`
+- `src/components/visualizer/jizura/entry.tsx`
 - `src/components/visualizer/monet/entry.tsx`
 - `src/components/visualizer/partita/entry.tsx`
 - `src/components/visualizer/pendolo/entry.tsx`
@@ -135,6 +137,9 @@
 - `src/services/sync/settingsSnapshot.ts` → `src/components/visualizer/tuningRegistry.ts`
 - `src/stores/usePlaybackStore.ts` → `src/components/app/playback/createCoverUrlResolver.ts`
 - `src/stores/useSettingsModalStore.ts` → `src/components/command-palette/pinnedCommandPreferences.ts`
+- `src/stores/useVisualizerSettingsStore.ts` → `src/components/visualizer/folia/songPresets.ts`
+- `src/stores/useVisualizerSettingsStore.ts` → `src/components/visualizer/jizura/settings.ts`
+- `src/stores/useVisualizerSettingsStore.ts` → `src/components/visualizer/jizura/songPresets.ts`
 - `src/stores/visualizerSettingsPersistence.ts` → `src/components/visualizer/diorama/dioramaMoteField.ts`
 - `src/utils/themeColorMath.ts` → `src/components/visualizer/colorMix.ts`
 
