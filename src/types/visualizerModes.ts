@@ -1,5 +1,16 @@
 import type { VisualizerBackgroundMode, VisualizerMode } from '../types';
 
+export type VisualizerCategory = 'folia' | 'jizura';
+
+export type VisualizerCategoryEnabledMap = Record<VisualizerCategory, boolean>;
+
+export const VISUALIZER_CATEGORIES: readonly VisualizerCategory[] = ['folia', 'jizura'];
+
+export const DEFAULT_VISUALIZER_CATEGORY_ENABLED: VisualizerCategoryEnabledMap = {
+    folia: true,
+    jizura: true,
+};
+
 // src/types/visualizerModes.ts
 // 内建模式 id 的权威清单，以及只需要「这个字符串是不是合法模式」时该用的判定。
 //
@@ -19,6 +30,7 @@ export const BUILTIN_VISUALIZER_MODES = [
     'classic',
     'diorama',
     'fume',
+    'jizura',
     'monet',
     'partita',
     'pendolo',

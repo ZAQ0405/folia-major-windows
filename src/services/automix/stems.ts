@@ -2,7 +2,8 @@ import type { SongResult } from '../../types';
 import { getPlaybackSongKey, getPlaybackSourceRef } from '../../utils/appPlaybackGuards';
 import { onAudioCached } from '../audioCache';
 import { getCachedSongAudioBlob } from '../onlineMusic/resourceCache';
-import { getSongResourceCacheKey } from '../onlineMusic/resourceKeys';
+import { getSongPlaybackAudioCacheKey, getSongResourceCacheKey } from '../onlineMusic/resourceKeys';
+import { getPlaybackMode } from '../../stores/usePlaybackModeStore';
 import { getPlaybackAnalysisKey, getPlaybackRepresentation } from '../playbackRecovery/representationRegistry';
 import { canRunBeatThis } from './beatThis';
 import { modelCanRun, noteModelFailed } from './modelAvailability';
@@ -262,7 +263,12 @@ const parked = new Map<string, StemRequest>();
 // and the first request parks inside the first call to `ensureStems` - there is no earlier hook.
 onAudioCached((cacheKey) => {
     for (const [key, request] of [...parked]) {
-        if (getSongResourceCacheKey('audio', request.song) !== cacheKey) continue;
+        // Accept the historical key as an event alias so a cache writer from an older running
+        // renderer can still wake a parked request. The actual read below remains mode-specific.
+        if (
+            getSongPlaybackAudioCacheKey(request.song, getPlaybackMode()) !== cacheKey
+            && getSongResourceCacheKey('audio', request.song) !== cacheKey
+        ) continue;
         parked.delete(key);
         // Asked here as well as inside `ensureStems`, because this can fire long after the request
         // was parked. The check in there sits after the decode, which is tens of megabytes spent to

@@ -92,18 +92,7 @@ contextBridge.exposeInMainWorld('electron', {
     getCacheDirectory: () => ipcRenderer.invoke('get-cache-directory'),
     chooseCacheDirectory: () => ipcRenderer.invoke('choose-cache-directory'),
     resetCacheDirectory: () => ipcRenderer.invoke('reset-cache-directory'),
-    getUpdateStatus: () => ipcRenderer.invoke('updates-get-status'),
-    checkForUpdates: () => ipcRenderer.invoke('updates-check'),
-    markUpdateSeen: (version) => ipcRenderer.invoke('updates-mark-seen', version),
-    openUpdateReleasePage: (version) => ipcRenderer.invoke('updates-open-release-page', version),
     openExternalUrl: (url) => ipcRenderer.invoke('open-external-url', url),
-    downloadUpdate: () => ipcRenderer.invoke('updates-download'),
-    quitAndInstallUpdate: () => ipcRenderer.invoke('updates-quit-and-install'),
-    onUpdateStatusChanged: (callback) => {
-        const listener = (_event, status) => callback(status);
-        ipcRenderer.on('update-status-changed', listener);
-        return () => ipcRenderer.removeListener('update-status-changed', listener);
-    },
     getAudioCache: (cacheKey) => ipcRenderer.invoke('get-audio-cache', cacheKey),
     hasAudioCache: (cacheKey) => ipcRenderer.invoke('has-audio-cache', cacheKey),
     saveAudioCache: (cacheKey, data, mimeType, limitBytes) => ipcRenderer.invoke('save-audio-cache', cacheKey, data, mimeType, limitBytes),
@@ -124,6 +113,10 @@ contextBridge.exposeInMainWorld('electron', {
     generateTheme: (lyricsText, options) => ipcRenderer.invoke('generate-theme', lyricsText, options),
     segmentLyrics: (lines) => ipcRenderer.invoke('segment-lyrics', lines),
     fetchLyricProxy: (url, init) => ipcRenderer.invoke('lyric-proxy-fetch', url, init),
+    fetchJsSourceRequest: (url, init) => ipcRenderer.invoke('js-source-request', url, init),
+    getLuoxueMusicUrl: (cacheKeys) => ipcRenderer.invoke('luoxue-music-url', cacheKeys),
+    getLuoxueLyrics: (cacheKeys) => ipcRenderer.invoke('luoxue-lyrics', cacheKeys),
+    discoverLuoxueSources: () => ipcRenderer.invoke('discover-luoxue-sources'),
     getNeteasePort: () => ipcRenderer.invoke('get-netease-port'),
     getNeteaseApiStatus: () => ipcRenderer.invoke('get-netease-api-status'),
     restartNeteaseApi: () => ipcRenderer.invoke('restart-netease-api'),
@@ -134,6 +127,9 @@ contextBridge.exposeInMainWorld('electron', {
     },
     getKugouApiStatus: () => ipcRenderer.invoke('kugou-api-status'),
     kugouRequest: (operation, params) => ipcRenderer.invoke('kugou-api-request', operation, params),
+    getKuwoAccountStatus: () => ipcRenderer.invoke('kuwo-account-status'),
+    kuwoAccountLogin: (username, password) => ipcRenderer.invoke('kuwo-account-login', username, password),
+    kuwoAccountLogout: () => ipcRenderer.invoke('kuwo-account-logout'),
     getQqPort: () => ipcRenderer.invoke('get-qq-port'),
     getQqApiStatus: () => ipcRenderer.invoke('get-qq-api-status'),
     onQqApiStatusChanged: (callback) => {

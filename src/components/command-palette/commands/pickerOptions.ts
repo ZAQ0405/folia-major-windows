@@ -1,4 +1,4 @@
-import { VISUALIZER_REGISTRY } from '../../visualizer/registry';
+import { getFoliaVisualizerEntries, VISUALIZER_REGISTRY } from '../../visualizer/registry';
 import { VISUALIZER_BACKGROUND_REGISTRY } from '../../visualizer/backgrounds/registry';
 import type { VisualizerBackgroundMode, VisualizerMode } from '../../../types';
 import type { CommandPaletteCommand, CommandPaletteContext, CommandPaletteMatch } from '../types';
@@ -60,7 +60,7 @@ const readModeDescription = (
 
 const buildOptions = (kind: 'visualizer' | 'background', context: CommandPaletteContext): PickerOption[] => (
     kind === 'visualizer'
-        ? VISUALIZER_REGISTRY.map(entry => {
+        ? getFoliaVisualizerEntries().map(entry => {
             const label = context.shared.t(entry.labelKey, entry.labelFallback);
             return {
                 id: `${PICKER_ID_PREFIX.visualizer}${entry.mode}`,

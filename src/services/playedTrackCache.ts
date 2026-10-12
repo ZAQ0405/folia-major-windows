@@ -2,7 +2,8 @@ import type { SongResult } from '../types';
 import { saveAudioBlob } from './audioCache';
 import { saveToCache } from './db';
 import { hasCachedSongAudio, hasCachedSongCover } from './onlineMusic/resourceCache';
-import { getSongResourceCacheKey } from './onlineMusic/resourceKeys';
+import { getSongPlaybackAudioCacheKey, getSongResourceCacheKey } from './onlineMusic/resourceKeys';
+import { getPlaybackMode } from '../stores/usePlaybackModeStore';
 import { getProviderSongMetadata } from './onlineMusic/songMetadata';
 import { getPlaybackSourceRef } from '../utils/appPlaybackGuards';
 
@@ -38,12 +39,13 @@ export const cachePlayedTrackAssets = async (
 
     // Audio needs a source that can actually be refetched: a blob: URL is this session's own handle
     // to bytes that are either already cached or on disk, so there is nothing to fetch and store.
-    if (src && !src.startsWith('blob:') && !await hasCachedSongAudio(song)) {
+    const playbackMode = getPlaybackMode();
+    if (playbackMode === 'source' && src && !src.startsWith('blob:') && !await hasCachedSongAudio(song)) {
         console.log('[Cache] Caching fully played song:', song.name);
         try {
             const response = await fetch(src);
             const blob = await response.blob();
-            await saveAudioBlob(getSongResourceCacheKey('audio', song), blob);
+            await saveAudioBlob(getSongPlaybackAudioCacheKey(song, 'source'), blob);
             result.audio = true;
             console.log('[Cache] Audio saved');
         } catch (error) {

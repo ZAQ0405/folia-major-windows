@@ -85,3 +85,11 @@ __pycache__/
 
 # Built by build/buildPythonRuntime.mjs - binary artifacts that live on the mirrors, not in git.
 dist-runtime/
+
+# Local runtime state and generated Windows/mobile artifacts.
+.auth-state/
+release-portable/
+main.js
+main.js.map
+android/
+capacitor.config.ts

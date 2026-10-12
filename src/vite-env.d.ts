@@ -43,6 +43,35 @@ declare global {
     bodyText: string;
   }
 
+  interface ElectronJsSourceRequestResponse {
+    ok: boolean;
+    status: number;
+    statusText: string;
+    headers: Record<string, string>;
+    bodyText: string;
+    bodyBase64?: string;
+  }
+
+  interface ElectronLuoxueMusicUrlResult {
+    url: string | null;
+    cacheKey: string | null;
+  }
+
+  interface ElectronLuoxueLyricsResult {
+    cacheKey: string;
+    lyric: string;
+    tlyric: string;
+    rlyric: string;
+    lxlyric: string;
+  }
+
+  interface ElectronLuoxueSourceFile {
+    name: string;
+    path: string;
+    code: string;
+    modifiedAt: number;
+  }
+
   interface ElectronNeteaseApiStatus {
     status: 'starting' | 'running' | 'error';
     port: number | null;
@@ -62,6 +91,17 @@ declare global {
     available: boolean;
     authenticated: boolean;
     error: string | null;
+  }
+
+  interface ElectronKuwoAccountStatus {
+    available: boolean;
+    authenticated: boolean;
+    user: {
+      id: string;
+      nickname: string;
+      avatarUrl?: string;
+      vipType?: number;
+    } | null;
   }
 
   interface ElectronTaskbarControlState {
@@ -213,41 +253,6 @@ declare global {
     error: string | null;
     applicationId: string | null;
     updatedAt: number;
-  }
-
-  type ElectronUpdateStatusValue =
-    | 'disabled'
-    | 'idle'
-    | 'checking'
-    | 'available'
-    | 'latest'
-    | 'error'
-    | 'downloading'
-    | 'downloaded'
-    | 'unsupported';
-
-  interface ElectronUpdateStatus {
-    status: ElectronUpdateStatusValue;
-    supported: boolean;
-    updateCheckSupported: boolean;
-    updateCheckSupportReason?: 'system' | 'channel' | null;
-    platform?: string;
-    updateCheckEnabled: boolean;
-    autoUpdateEnabled: boolean;
-    autoUpdateSupported: boolean;
-    autoUpdateSupportReason?: 'system' | 'channel' | null;
-    currentVersion: string;
-    availableVersion: string | null;
-    updateUrl: string | null;
-    error: string | null;
-    lastCheckedAt: number | null;
-    lastSeenVersion: string | null;
-    updateSeen: boolean;
-    downloadProgress?: {
-      percent: number;
-      transferred?: number;
-      total?: number;
-    } | null;
   }
 
   type StageActiveEntryKind = 'lyrics' | 'media';
@@ -672,14 +677,7 @@ declare global {
       getCacheDirectory: () => Promise<ElectronCacheDirectoryResult>;
       chooseCacheDirectory: () => Promise<ElectronCacheDirectoryResult>;
       resetCacheDirectory: () => Promise<ElectronCacheDirectoryResult>;
-      getUpdateStatus: () => Promise<ElectronUpdateStatus>;
-      checkForUpdates: () => Promise<ElectronUpdateStatus>;
-      markUpdateSeen: (version?: string | null) => Promise<ElectronUpdateStatus>;
-      openUpdateReleasePage: (version?: string | null) => Promise<boolean>;
       openExternalUrl: (url: string) => Promise<boolean>;
-      downloadUpdate: () => Promise<ElectronUpdateStatus>;
-      quitAndInstallUpdate: () => Promise<boolean>;
-      onUpdateStatusChanged: (callback: (status: ElectronUpdateStatus) => void) => () => void;
       getAudioCache: (cacheKey: string) => Promise<ElectronAudioCacheEntry>;
       hasAudioCache: (cacheKey: string) => Promise<boolean>;
       /** `limitBytes` is the cache ceiling to prune down to afterwards; 0 means no ceiling. */
@@ -709,6 +707,19 @@ declare global {
           body?: string;
         },
       ) => Promise<ElectronLyricProxyResponse>;
+      fetchJsSourceRequest: (
+        url: string,
+        init?: {
+          method?: string;
+          headers?: Record<string, string>;
+          body?: string;
+          timeout?: number;
+          responseType?: 'arraybuffer' | 'buffer';
+        },
+      ) => Promise<ElectronJsSourceRequestResponse>;
+      getLuoxueMusicUrl: (cacheKeys: string[]) => Promise<ElectronLuoxueMusicUrlResult>;
+      getLuoxueLyrics: (cacheKeys: string[]) => Promise<ElectronLuoxueLyricsResult | null>;
+      discoverLuoxueSources?: () => Promise<ElectronLuoxueSourceFile[]>;
       getNeteasePort: () => Promise<number>;
       getNeteaseApiStatus: () => Promise<ElectronNeteaseApiStatus>;
       restartNeteaseApi: () => Promise<ElectronNeteaseApiStatus>;
@@ -718,6 +729,9 @@ declare global {
         operation: ElectronKugouOperation,
         params?: Record<string, string | number | boolean | undefined>,
       ) => Promise<unknown>;
+      getKuwoAccountStatus: () => Promise<ElectronKuwoAccountStatus>;
+      kuwoAccountLogin: (username: string, password: string) => Promise<ElectronKuwoAccountStatus>;
+      kuwoAccountLogout: () => Promise<ElectronKuwoAccountStatus>;
       getQqPort: () => Promise<number | null>;
       getQqApiStatus: () => Promise<ElectronQqApiStatus>;
       onQqApiStatusChanged: (callback: (status: ElectronQqApiStatus) => void) => () => void;

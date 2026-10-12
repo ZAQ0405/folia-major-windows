@@ -24,6 +24,8 @@ import {
 } from '../../types';
 import type { VisualizerTuningBundle } from './tuningRegistry';
 import type { VisualizerBackgroundConfig } from './backgrounds/definition';
+import type { VisualizerCategory } from '../../types/visualizerModes';
+import type { JizuraSettings } from './jizura/settings';
 
 // src/components/visualizer/definition.ts
 // Shared contracts for discoverable visualizer modes.
@@ -66,6 +68,16 @@ export interface VisualizerSharedProps {
     showSubtitleTranslation?: boolean;
     subtitleContentMode?: SubtitleContentMode;
     paused?: boolean;
+    /** JIZURA is an independent lyric-MV renderer. It does not replace the saved Folia mode. */
+    jizuraEnabled?: boolean;
+    /** Selected JIZURA style direction; the embedded engine still randomizes its expression packs. */
+    jizuraStyle?: string;
+    /** JIZURA-only project switches. These never affect Folia's built-in visualizers. */
+    jizuraSettings?: JizuraSettings;
+    /** Changes only when JIZURA should roll a new MV proposal; Folia geometry keeps using seed. */
+    jizuraSeed?: string | number;
+    /** The display-track duration in seconds, used to keep the MV alive after the final lyric line. */
+    duration?: number;
     onBack?: () => void;
     isPanelOpen?: boolean;
     alwaysShowBackButton?: boolean;
@@ -165,6 +177,8 @@ export interface VisualizerSettingsResetProps {
 
 export interface VisualizerRegistryEntry {
     mode: VisualizerMode;
+    /** Style family shown in the visualizer picker and category switches. */
+    category?: VisualizerCategory;
     order: number;
     labelKey: string;
     labelFallback: string;

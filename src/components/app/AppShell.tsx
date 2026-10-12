@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Lock, LockOpen } from 'lucide-react';
 import TitlebarDragZone from '../TitlebarDragZone';
 import WindowControls from '../WindowControls';
+import { isAndroidCapacitor } from '../../utils/runtimePlatform';
 
 // Shared shell for the app container, Electron titlebar, and mounted audio node.
 type AppShellProps = {
@@ -73,6 +74,13 @@ const AppShell: React.FC<AppShellProps> = ({
     }, [useCustomWindowRadius]);
 
     const shouldApplyWindowRadius = useCustomWindowRadius && !isWindowMaximized;
+    const androidLandscapeStage = isAndroidCapacitor ? (
+        <div className="folia-android-stage-viewport" aria-label="Folia Android landscape viewport">
+            <div className="folia-android-stage">
+                {children}
+            </div>
+        </div>
+    ) : children;
     const areTitlebarControlsVisible = isTitlebarRevealed || alwaysShowMainWindowTitlebar;
     const shouldRenderTitlebarBackdrop = !isPlayerView || (useCustomWindowRadius && !isMainWindowClickThroughEnabled);
     const titlebarBackdropClassName = `absolute inset-0 backdrop-blur-sm ${
@@ -87,7 +95,7 @@ const AppShell: React.FC<AppShellProps> = ({
 
     return (
         <div
-            className="fixed inset-0 w-full h-full flex flex-col overflow-hidden font-sans transition-colors duration-500"
+            className={`fixed inset-0 w-full h-full flex flex-col overflow-hidden font-sans transition-colors duration-500 ${isAndroidCapacitor ? 'folia-android-shell' : ''}`}
             style={{
                 ...appStyle,
                 borderRadius: shouldApplyWindowRadius ? '18px' : undefined,
@@ -146,7 +154,7 @@ const AppShell: React.FC<AppShellProps> = ({
             )}
 
             {audioElement}
-            {children}
+            {androidLandscapeStage}
         </div>
     );
 };

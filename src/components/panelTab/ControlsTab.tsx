@@ -6,6 +6,7 @@ import { Theme, ThemeMode, VisualizerMode } from '../../types';
 import type { ThemeSourceModel } from '../../hooks/themeControllerState';
 import { useThemeQuickEditorStore } from '../../stores/useThemeQuickEditorStore';
 import { useThemeSyncAction } from '../../hooks/useThemeSyncAction';
+import { useVisualizerSettingsStore } from '../../stores/useVisualizerSettingsStore';
 import AudioEqualizerDialog from './AudioEqualizerDialog';
 import AppearanceSection from './controls/AppearanceSection';
 import SongActionRow from './controls/SongActionRow';
@@ -81,6 +82,7 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
     const { t } = useTranslation();
     const openThemeQuickEditor = useThemeQuickEditorStore(state => state.openEditor);
     const { themeSyncState, runThemeSync } = useThemeSyncAction();
+    const jizuraEnabled = useVisualizerSettingsStore(state => state.jizuraEnabled);
 
     const formatThemeDisplayName = (name: string) => {
         if (themeSourceModel.activeSource !== 'default') {
@@ -152,66 +154,68 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
                     />
                 </div>
 
-                <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={onToggleDaylight}
-                            className={`rounded-md p-1 transition-all ${isDaylight ? 'text-amber-500' : 'text-blue-300'}`}
-                            title={isDaylight ? t('theme.switchToDark') : t('theme.switchToLight')}
-                            aria-label={isDaylight ? t('theme.switchToDark') : t('theme.switchToLight')}
-                        >
-                            {isDaylight ? <Sun size={14} /> : <Moon size={14} />}
-                        </button>
-                        {currentEditableSource ? (
+                {!jizuraEnabled && (
+                    <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
                             <button
                                 type="button"
-                                onClick={openCurrentThemeQuickEditor}
-                                className={`max-w-[120px] truncate rounded-md px-1.5 py-1 text-left text-xs font-bold transition-colors ${isDaylight ? 'hover:bg-black/10' : 'hover:bg-white/10'}`}
-                                title={currentEditableSource === 'custom'
-                                    ? (t('options.customThemeQuickEditTitle') || 'Edit Custom Theme')
-                                    : (t('options.aiThemeQuickEditTitle') || 'Edit AI Theme')}
+                                onClick={onToggleDaylight}
+                                className={`rounded-md p-1 transition-all ${isDaylight ? 'text-amber-500' : 'text-blue-300'}`}
+                                title={isDaylight ? t('theme.switchToDark') : t('theme.switchToLight')}
+                                aria-label={isDaylight ? t('theme.switchToDark') : t('theme.switchToLight')}
                             >
-                                {themeDisplayName}
+                                {isDaylight ? <Sun size={14} /> : <Moon size={14} />}
                             </button>
-                        ) : (
-                            <span className="text-xs font-bold truncate max-w-[120px]">
-                                {themeDisplayName}
-                            </span>
-                        )}
-                        {themeSourceModel.activeSource !== 'default' && (
-                            <button
-                                onClick={() => void runThemeSync()}
-                                disabled={themeSyncState === 'syncing'}
-                                className={`p-1 rounded-full ${isDaylight ? 'hover:bg-black/10' : 'hover:bg-white/10'} transition-colors disabled:cursor-wait`}
-                                title={themeSyncState === 'syncing'
-                                    ? t('options.syncing')
-                                    : themeSyncState === 'complete'
-                                        ? t('ui.synced')
-                                        : t('commandPalette.commands.sync-now.title')}
-                            >
-                                <AnimatePresence mode="wait" initial={false}>
-                                    <motion.span
-                                        key={themeSyncState}
-                                        initial={{ opacity: 0, scale: 0.55, rotate: -35 }}
-                                        animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                                        exit={{ opacity: 0, scale: 0.55, rotate: 35 }}
-                                        transition={{ duration: 0.16, ease: 'easeOut' }}
-                                        className="block"
-                                    >
-                                        {themeSyncState === 'syncing' ? (
-                                            <RefreshCw size={12} className="animate-spin" />
-                                        ) : themeSyncState === 'complete' ? (
-                                            <Check size={12} className="text-green-500" strokeWidth={3} />
-                                        ) : (
-                                            <ArrowUpDown size={12} />
-                                        )}
-                                    </motion.span>
-                                </AnimatePresence>
-                            </button>
-                        )}
+                            {currentEditableSource ? (
+                                <button
+                                    type="button"
+                                    onClick={openCurrentThemeQuickEditor}
+                                    className={`max-w-[120px] truncate rounded-md px-1.5 py-1 text-left text-xs font-bold transition-colors ${isDaylight ? 'hover:bg-black/10' : 'hover:bg-white/10'}`}
+                                    title={currentEditableSource === 'custom'
+                                        ? (t('options.customThemeQuickEditTitle') || 'Edit Custom Theme')
+                                        : (t('options.aiThemeQuickEditTitle') || 'Edit AI Theme')}
+                                >
+                                    {themeDisplayName}
+                                </button>
+                            ) : (
+                                <span className="text-xs font-bold truncate max-w-[120px]">
+                                    {themeDisplayName}
+                                </span>
+                            )}
+                            {themeSourceModel.activeSource !== 'default' && (
+                                <button
+                                    onClick={() => void runThemeSync()}
+                                    disabled={themeSyncState === 'syncing'}
+                                    className={`p-1 rounded-full ${isDaylight ? 'hover:bg-black/10' : 'hover:bg-white/10'} transition-colors disabled:cursor-wait`}
+                                    title={themeSyncState === 'syncing'
+                                        ? t('options.syncing')
+                                        : themeSyncState === 'complete'
+                                            ? t('ui.synced')
+                                            : t('commandPalette.commands.sync-now.title')}
+                                >
+                                    <AnimatePresence mode="wait" initial={false}>
+                                        <motion.span
+                                            key={themeSyncState}
+                                            initial={{ opacity: 0, scale: 0.55, rotate: -35 }}
+                                            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                                            exit={{ opacity: 0, scale: 0.55, rotate: 35 }}
+                                            transition={{ duration: 0.16, ease: 'easeOut' }}
+                                            className="block"
+                                        >
+                                            {themeSyncState === 'syncing' ? (
+                                                <RefreshCw size={12} className="animate-spin" />
+                                            ) : themeSyncState === 'complete' ? (
+                                                <Check size={12} className="text-green-500" strokeWidth={3} />
+                                            ) : (
+                                                <ArrowUpDown size={12} />
+                                            )}
+                                        </motion.span>
+                                    </AnimatePresence>
+                                </button>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
             </div>
 

@@ -1,6 +1,7 @@
 import { NeteaseUser, NeteasePlaylist, NoCopyrightRecommendation, SongPrivilege, SongResult } from "../types";
 import { readProviderSessionValue, removeProviderSessionValue, writeProviderSessionValue } from './onlineMusic/providerStorage';
 import type { PersonalFmRequestOptions } from '../types/onlineMusic';
+import { resolveAndroidTransportBase } from './onlineMusic/androidTransport';
 
 type UnavailableSongReplacement = {
   replacementSong: SongResult;
@@ -34,6 +35,13 @@ const getConfiguredApiBase = () => {
   }
 
   return null;
+};
+
+export const getNeteaseTransportAvailability = () => {
+  if (isElectronRuntime()) return { configured: true } as const;
+  return getConfiguredApiBase()
+    ? { configured: true } as const
+    : { configured: false, reason: 'not-configured' as const };
 };
 
 // Thrown when the Electron backend is not listening. The QR login modal keys its "restart backend"
@@ -81,7 +89,7 @@ const getApiBase = async () => {
 
   if (API_BASE) return API_BASE;
 
-  const configuredApiBase = getConfiguredApiBase();
+  const configuredApiBase = resolveAndroidTransportBase(getConfiguredApiBase());
   if (configuredApiBase) {
     API_BASE = configuredApiBase;
     return API_BASE;

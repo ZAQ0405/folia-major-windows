@@ -151,6 +151,7 @@ const createContext = (overrides: CommandPaletteContextOverrides = {}): CommandP
         },
         visualizer: {
             visualizerMode: 'classic',
+            enabledVisualizerCategories: { folia: true, jizura: true },
             visualizerBackgroundMode: 'latent',
             setVisualizerMode: vi.fn(),
             toggleRandomVisualizerModePerSong: vi.fn(),

@@ -40,6 +40,11 @@ export const useWallPointerPan = ({
     } | null>(null);
     // Read by the poster click handler so a drag that ends on a card does not open it.
     const didDragRef = useRef(false);
+    // Pointer events can arrive several times between paints on high-refresh touchpads and
+    // touch screens. Keep the gesture bookkeeping immediate, but apply the camera once per
+    // animation frame so a burst cannot make the renderer repaint the whole wall repeatedly.
+    const dragFrameRef = useRef<number | null>(null);
+    const pendingDragPositionRef = useRef<{ x: number; y: number } | null>(null);
 
     // Republishing bounds is what triggers a re-cull, so only do it near the edge of what is culled.
     const updateCamera = useCallback((x: number, y: number) => {
@@ -53,6 +58,26 @@ export const useWallPointerPan = ({
             || visible.bottom > culled.bottom + padding;
         applyCamera(next, nearCullEdge);
     }, [applyCamera, cameraRef, getWorldBounds, overscan, viewportRef]);
+
+    const flushDragCamera = useCallback(() => {
+        if (dragFrameRef.current !== null) cancelAnimationFrame(dragFrameRef.current);
+        dragFrameRef.current = null;
+        const pending = pendingDragPositionRef.current;
+        pendingDragPositionRef.current = null;
+        if (pending) updateCamera(pending.x, pending.y);
+    }, [updateCamera]);
+
+    const scheduleDragCamera = useCallback((x: number, y: number) => {
+        pendingDragPositionRef.current = { x, y };
+        if (dragFrameRef.current !== null) return;
+        dragFrameRef.current = requestAnimationFrame(flushDragCamera);
+    }, [flushDragCamera]);
+
+    const cancelScheduledDragCamera = useCallback(() => {
+        if (dragFrameRef.current !== null) cancelAnimationFrame(dragFrameRef.current);
+        dragFrameRef.current = null;
+        pendingDragPositionRef.current = null;
+    }, []);
 
     const interrupt = useCallback(() => {
         stopPan();
@@ -91,14 +116,18 @@ export const useWallPointerPan = ({
             pointer.vy = (event.clientY - pointer.last.y) / elapsed * 1000;
         }
         pointer.last = { x: event.clientX, y: event.clientY, time: event.timeStamp };
-        if (pointer.dragged) updateCamera(pointer.camera.x + dx, pointer.camera.y + dy);
-    }, [updateCamera]);
+        if (pointer.dragged) scheduleDragCamera(pointer.camera.x + dx, pointer.camera.y + dy);
+    }, [scheduleDragCamera]);
 
     // Continue along the release velocity; stale samples and cancelled gestures never coast.
     const onPointerUp = useCallback((event: PointerEvent<HTMLDivElement>) => {
         const pointer = pointerRef.current;
         if (!pointer || pointer.id !== event.pointerId) return;
         pointerRef.current = null;
+        // Commit the final drag position before calculating the inertia origin. Without this,
+        // the last coalesced pointer sample could be lost when the button is released between
+        // animation frames.
+        flushDragCamera();
         if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
         if (!pointer.dragged || reducedMotion || event.timeStamp - pointer.last.time > 80) return;
         const speed = Math.hypot(pointer.vx, pointer.vy);
@@ -109,13 +138,14 @@ export const useWallPointerPan = ({
             restDelta: 0.5,
             onUpdate: distance => updateCamera(from.x + distance * pointer.vx / speed, from.y + distance * pointer.vy / speed),
         });
-    }, [animationRef, cameraRef, reducedMotion, updateCamera]);
+    }, [animationRef, cameraRef, flushDragCamera, reducedMotion, updateCamera]);
 
     const onPointerCancel = useCallback((event: PointerEvent<HTMLDivElement>) => {
         if (pointerRef.current?.id !== event.pointerId) return;
         pointerRef.current = null;
+        cancelScheduledDragCamera();
         interrupt();
-    }, [interrupt]);
+    }, [cancelScheduledDragCamera, interrupt]);
 
     const onClickCapture = useCallback((event: MouseEvent<HTMLDivElement>) => {
         if (!didDragRef.current || event.detail === 0) return;
@@ -139,7 +169,11 @@ export const useWallPointerPan = ({
             // Apply each trackpad/wheel delta immediately; no smoothing or synthetic tail.
             updateCamera(from.x - dx, from.y - dy);
         };
-        const cancel = () => { pointerRef.current = null; interrupt(); };
+        const cancel = () => {
+            pointerRef.current = null;
+            cancelScheduledDragCamera();
+            interrupt();
+        };
         const endOutside = (event: globalThis.PointerEvent) => {
             if (pointerRef.current?.id === event.pointerId) cancel();
         };
@@ -156,7 +190,9 @@ export const useWallPointerPan = ({
             window.removeEventListener('pointercancel', endOutside);
             cancel();
         };
-    }, [animationRef, cameraRef, containerRef, interrupt, reducedMotion, stopPan, updateCamera, viewportRef]);
+    }, [animationRef, cameraRef, cancelScheduledDragCamera, containerRef, interrupt, reducedMotion, stopPan, updateCamera, viewportRef]);
+
+    useEffect(() => () => cancelScheduledDragCamera(), [cancelScheduledDragCamera]);
 
     return { didDragRef, onPointerDown, onPointerMove, onPointerUp, onPointerCancel, onClickCapture };
 };

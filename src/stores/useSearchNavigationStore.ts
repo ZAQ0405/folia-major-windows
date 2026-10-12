@@ -12,7 +12,7 @@ import { isLocalPlaybackSong, isNavidromePlaybackSong } from '../utils/appPlayba
 
 const LAST_HOME_VIEW_TAB_KEY = 'last_home_view_tab';
 const DEFAULT_SEARCH_LIMIT = 30;
-export type SearchSource = OnlineProviderId | 'local' | 'navidrome';
+export type SearchSource = OnlineProviderId | 'all' | 'local' | 'navidrome';
 export type SearchReturnView = 'home' | 'player';
 
 type SearchExecutorDeps = {
@@ -143,7 +143,16 @@ const searchOnlineProviderSongs = async (
     limit: number,
     offset: number,
 ): Promise<SearchExecutionResult> => {
-    const page = await omni.searchProviderSongs(providerId, query, { limit, offset });
+    const page = await omni.searchLuoxueChannel(providerId, query, { limit, offset });
+    return { results: page.items, hasMore: page.hasMore, nextOffset: page.nextOffset };
+};
+
+const searchAllOnlineProviderSongs = async (
+    query: string,
+    limit: number,
+    offset: number,
+): Promise<SearchExecutionResult> => {
+    const page = await omni.searchLuoxueSongs(query, { limit, offset });
     return { results: page.items, hasMore: page.hasMore, nextOffset: page.nextOffset };
 };
 
@@ -162,6 +171,10 @@ const executeSearch = async (
         return searchNavidromeSongs(query);
     }
 
+    if (sourceTab === 'all') {
+        return searchAllOnlineProviderSongs(query, limit, offset);
+    }
+
     return searchOnlineProviderSongs(sourceTab, query, limit, offset);
 };
 
@@ -178,7 +191,7 @@ const getInitialHomeViewTab = (): HomeViewTab => {
 export const useSearchNavigationStore = create<SearchNavigationState>((set, get) => ({
     homeViewTab: getInitialHomeViewTab(),
     searchQuery: '',
-    searchSourceTab: 'netease',
+    searchSourceTab: 'all',
     searchResults: null,
     searchReturnView: 'home',
     isSearchOpen: false,

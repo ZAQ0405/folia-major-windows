@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, ChevronDown, ChevronUp } from 'lucide-react';
 import { MotionValue } from 'framer-motion';
 import ProgressBar from './ProgressBar';
 import { PlayerState, LyricData, Theme } from '../types';
@@ -15,6 +15,7 @@ import { usePlayerBottomBarLayoutStore } from '../stores/usePlayerBottomBarLayou
 import { usePlayerChromeSettingsStore } from '../stores/usePlayerChromeSettingsStore';
 import { PLAYER_BOTTOM_BAR_BASE_OFFSET_PX, clampPlayerBottomBarOffset, resolvePlayerBottomBarMaxOffset } from '../utils/playerBottomBarLayout';
 import type { PlayerControlSlotActionId, PlayerControlSlotContext } from './floating-player/playerControlSlotActions';
+import { isAndroidCapacitor } from '../utils/runtimePlatform';
 
 export interface TrackNavigation {
     /** 当前曲目的稳定身份，用于识别「确实换歌了」；相邻两首同名时标题字符串不变，不能拿标题判断 */
@@ -126,6 +127,7 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
     const iconBtnClass = isDaylight ? 'hover:bg-black/5 text-black/60' : 'hover:bg-white/10 opacity-40 hover:opacity-100';
 
     const [isHovered, setIsHovered] = useState(false);
+    const [isAndroidCompactExpanded, setIsAndroidCompactExpanded] = useState(false);
     const [isTimelineOpen, setIsTimelineOpen] = useState(false);
     const expandTimeoutRef = useRef<number | null>(null);
     const collapseTimeoutRef = useRef<number | null>(null);
@@ -144,7 +146,12 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
 
     const canAutoExpand = canTogglePlay && duration > 0;
     // 定位模式强制展开：用户要看到的是最终形态的胶囊，而不是一条细进度条。
-    const showExpanded = isPositioning || isHovered || (canAutoExpand && playerState !== PlayerState.PLAYING && currentView !== 'home');
+    const showExpanded = isPositioning || !isAndroidCapacitor && isHovered || isAndroidCapacitor && isAndroidCompactExpanded
+        || (canAutoExpand && playerState !== PlayerState.PLAYING && currentView !== 'home');
+    // Keep the home dock anchored to the same screen edge in both states. If it
+    // jumps from the corner to the center when expanded, the collapse affordance
+    // moves under the user's finger and the surrounding content appears to jump.
+    const isAndroidCompactHome = isAndroidCapacitor && currentView === 'home';
 
     // 上限依赖视口高度，窗口变矮时要跟着收，否则虚线框会画到屏幕外。
     useEffect(() => {
@@ -302,6 +309,9 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
         if (isPositioning) {
             return;
         }
+        if (isAndroidCapacitor) {
+            setIsAndroidCompactExpanded(false);
+        }
         if (currentView !== 'lattice') {
             onNavigateToPlayer();
         } else {
@@ -323,7 +333,8 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
                 所以挂在这一层不会干扰居中。
             */}
             <motion.div
-                className={`absolute left-1/2 -translate-x-1/2 z-60 w-full flex justify-center pointer-events-none
+                className={`folia-floating-player-controls absolute z-60 w-full flex justify-center pointer-events-none
+                    ${isAndroidCompactHome ? 'right-3 folia-player-home-anchor' : 'left-1/2 -translate-x-1/2'}
                     ${currentView === 'home' ? 'max-w-[calc(100vw-120px)] md:max-w-lg' : 'max-w-lg px-4'}`}
                 style={{ bottom: bottomBarBottomPx }}
             >
@@ -362,10 +373,25 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
                         onPointerUp={handlePositionDragEnd}
                         onPointerCancel={handlePositionDragEnd}
                         style={{ touchAction: isPositioning ? 'none' : undefined }}
-                        className={`backdrop-blur-xl shadow-2xl overflow-hidden rounded-full relative transition-colors duration-300
+                        className={`folia-floating-player-card backdrop-blur-xl shadow-2xl overflow-hidden rounded-full relative transition-colors duration-300
                             ${isPositioning ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
                             ${showExpanded ? `p-3 ${glassBgExpanded} w-full` : `px-4 py-2 ${glassBgCollapsed} w-[80%] md:w-[60%]`}`}
+                        data-expanded={showExpanded ? 'true' : 'false'}
                     >
+                        {isAndroidCapacitor && showExpanded && currentView === 'home' && !isPositioning && (
+                            <button
+                                type="button"
+                                aria-label="收起播放条"
+                                title="收起播放条"
+                                onClick={(event) => {
+                                    event.stopPropagation();
+                                    setIsAndroidCompactExpanded(false);
+                                }}
+                                className="folia-player-collapse-toggle absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full"
+                            >
+                                <ChevronDown size={16} />
+                            </button>
+                        )}
                         <motion.div
                             layout
                             transition={{ layout: CONTROL_LAYOUT_SPRING }}
@@ -395,9 +421,14 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
                                 />
                             ) : (
                                 <CollapsedView
+                                    currentSong={currentSong}
+                                    playerState={playerState}
                                     currentTime={currentTime}
                                     duration={duration}
                                     onSeek={onSeek}
+                                    onTogglePlay={onTogglePlay}
+                                    onToggleCompact={() => setIsAndroidCompactExpanded(true)}
+                                    canTogglePlay={canTogglePlay}
                                     primaryColor={primaryColor}
                                     secondaryColor={secondaryColor}
                                     trackColor={trackColor}
@@ -571,9 +602,14 @@ const ExpandedView: React.FC<ExpandedViewProps> = ({
 
 // 折叠视图组件
 interface CollapsedViewProps {
+    currentSong: { name: string } | null;
+    playerState: PlayerState;
     currentTime: MotionValue<number>;
     duration: number;
     onSeek: (time: number) => void;
+    onTogglePlay: () => void;
+    onToggleCompact: () => void;
+    canTogglePlay: boolean;
     primaryColor: string;
     secondaryColor: string;
     trackColor?: string;
@@ -581,25 +617,64 @@ interface CollapsedViewProps {
 }
 
 const CollapsedView: React.FC<CollapsedViewProps> = ({
+    currentSong,
+    playerState,
     currentTime,
     duration,
     onSeek,
+    onTogglePlay,
+    onToggleCompact,
+    canTogglePlay,
     primaryColor,
     secondaryColor,
     trackColor,
     controlsDisabled = false,
 }) => {
     return (
-        <div className="flex items-center w-full justify-center h-8 px-4">
-            <ProgressBar
-                currentTime={currentTime}
-                duration={duration}
-                onSeek={onSeek}
-                primaryColor={primaryColor}
-                secondaryColor={secondaryColor}
-                trackColor={trackColor}
-                disabled={controlsDisabled}
-            />
+        <div className="folia-player-collapsed-view flex h-8 w-full items-center justify-center px-4">
+            <div className="folia-player-collapsed-meta flex min-w-0 items-center gap-2.5">
+                <button
+                    type="button"
+                    aria-label={playerState === PlayerState.PLAYING ? '暂停' : '播放'}
+                    disabled={!canTogglePlay || controlsDisabled}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onTogglePlay();
+                    }}
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-sm disabled:opacity-50"
+                    style={{ backgroundColor: primaryColor, color: 'var(--bg-color)' }}
+                >
+                    {playerState === PlayerState.PLAYING
+                        ? <Pause size={14} fill="currentColor" />
+                        : <Play size={14} fill="currentColor" className="ml-0.5" />}
+                </button>
+                <div className="min-w-0 flex-1 truncate text-left text-xs font-semibold" style={{ color: primaryColor }}>
+                    {currentSong?.name || 'Folia'}
+                </div>
+                <button
+                    type="button"
+                    aria-label="展开播放条"
+                    title="展开播放条"
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onToggleCompact();
+                    }}
+                    className="folia-player-expand-toggle flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
+                >
+                    <ChevronUp size={16} />
+                </button>
+            </div>
+            <div className="folia-player-mini-progress">
+                <ProgressBar
+                    currentTime={currentTime}
+                    duration={duration}
+                    onSeek={onSeek}
+                    primaryColor={primaryColor}
+                    secondaryColor={secondaryColor}
+                    trackColor={trackColor}
+                    disabled={controlsDisabled}
+                />
+            </div>
         </div>
     );
 };

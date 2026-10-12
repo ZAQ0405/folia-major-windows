@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { resolveSearchSource, useSearchNavigationStore } from '../stores/useSearchNavigationStore';
 import type { LocalLibraryCatalogSnapshot } from '../hooks/useLocalLibraryCatalog';
 import { useShallow } from 'zustand/react/shallow';
-import { SongResult, LocalSong, LocalPlaylist, LocalLibraryGroup, Theme, PlayerState, type StatusMessage } from '../types';
+import { SongResult, LocalSong, LocalPlaylist, PersonalPlaylist, LocalLibraryGroup, Theme, PlayerState, type StatusMessage } from '../types';
 import { getNavidromeConfig, navidromeApi } from '../services/navidromeService';
 import LocalGrid3DView from './app/home/LocalGrid3DView';
 import NavidromeGrid3DView from './app/home/NavidromeGrid3DView';
@@ -43,6 +43,7 @@ import { countRender } from '../dev/renderCount';
 const LOGIN_COPY_BY_PROVIDER: Record<string, { title: string; note: string }> = {
     kugou: { title: 'home.loginTitleKugou', note: 'home.loginNoteKugou' },
     qq: { title: 'home.loginTitleQq', note: 'home.loginNoteQq' },
+    kuwo: { title: 'home.loginTitleKuwo', note: 'home.loginNoteKuwo' },
 };
 const NETEASE_LOGIN_COPY = { title: 'home.loginTitle', note: 'home.loginNote' };
 
@@ -64,6 +65,7 @@ interface Grid3DProps {
     localSongs: LocalSong[];
     localLibraryCatalog: LocalLibraryCatalogSnapshot;
     localPlaylists: LocalPlaylist[];
+    personalPlaylists: PersonalPlaylist[];
     onRefreshLocalSongs: () => Promise<void> | void;
     localMusicState: {
         activeRow: 0 | 1 | 2 | 3;
@@ -117,6 +119,7 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
         localSongs,
         localLibraryCatalog,
         localPlaylists,
+        personalPlaylists,
         onRefreshLocalSongs,
         localMusicState,
         setLocalMusicState,
@@ -229,41 +232,6 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
         ? Math.min(100, Math.round((scanProgress.completedSongs / scanProgress.totalSongs) * 100))
         : 0;
 
-    const [updateStatus, setUpdateStatus] = useState<any>(null);
-
-    useEffect(() => {
-        if (!window.electron?.getUpdateStatus) {
-            return;
-        }
-
-        let disposed = false;
-
-        window.electron.getUpdateStatus().then((status) => {
-            if (!disposed) {
-                setUpdateStatus(status);
-            }
-        }).catch(() => {
-            if (!disposed) {
-                setUpdateStatus(null);
-            }
-        });
-
-        const unsubscribe = window.electron.onUpdateStatusChanged?.((status) => {
-            setUpdateStatus(status);
-        });
-
-        return () => {
-            disposed = true;
-            unsubscribe?.();
-        };
-    }, []);
-
-    const showUpdateIndicator = Boolean(
-        updateStatus?.updateCheckEnabled &&
-        updateStatus.availableVersion &&
-        !updateStatus.updateSeen
-    );
-
     // Reset focused index when switching tabs.
     useEffect(() => {
         setFocusedIndex(0);
@@ -321,6 +289,10 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
         setLoginMethodOptions(methods);
         setShowLoginModal(true);
         setSelectedLoginMethodId(null);
+        if (omni.supportsCredentialLogin(providerId)) {
+            stopQrLogin();
+            return;
+        }
         // 有多种登录方式时先停在步骤一，选定之前不向后端要二维码。
         if (methods.length > 0) return;
         await startQrLogin(providerId);
@@ -355,7 +327,14 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
     const [loadingRadio, setLoadingRadio] = useState(false);
 
     const isLoading =
-        (homeViewTab === 'playlist' && canUseOnlinePlaylists && activeCollections.length === 0 && activeUser !== null) ||
+        // A provider may legitimately have no remaining collections after its built-in liked
+        // playlist is removed. Do not turn that valid empty state into five dark skeleton cards;
+        // the local Folia playlist must remain visible while the provider is empty/loading.
+        (homeViewTab === 'playlist'
+            && canUseOnlinePlaylists
+            && activeCollections.length === 0
+            && personalPlaylists.length === 0
+            && activeUser !== null) ||
         (homeViewTab === 'albums' && canUseOnlineAlbums && loadingAlbums) ||
         (homeViewTab === 'radio' && canUseOnlineRadio && loadingRadio);
 
@@ -465,7 +444,7 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
 
     // Filter cloud and local playlists
     const playlistCards = useMemo(() => {
-        return activeCollections.map(p => ({
+        const providerCards = activeCollections.map(p => ({
             id: p.id,
             name: p.name,
             coverUrl: p.coverUrl,
@@ -475,7 +454,18 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
             type: p.type,
             raw: p
         }));
-    }, [activeCollections, t]);
+        const personalCards = personalPlaylists.map(playlist => ({
+            id: playlist.id,
+            name: playlist.name,
+            coverUrl: playlist.songs[0] ? getSongCoverUrl(playlist.songs[0]) : undefined,
+            trackCount: playlist.songs.length,
+            description: 'Folia',
+            summary: '本地保存 · 无需登录',
+            type: 'playlist' as const,
+            raw: { ...playlist, source: 'personal' as const, type: 'playlist' as const },
+        }));
+        return [...personalCards, ...providerCards];
+    }, [activeCollections, personalPlaylists, t]);
 
     const albumCards = useMemo(() => {
         return favoriteAlbums.map(a => ({
@@ -530,6 +520,19 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
             } catch (e) {
                 console.error('[Grid3D] Failed to fetch and play Personal FM:', e);
             }
+            return;
+        }
+
+        if (card.raw?.source === 'personal') {
+            onOpenGridView?.({
+                source: 'personal',
+                id: String(card.raw.id),
+                name: card.raw.name,
+                type: 'playlist',
+                coverUrl: card.raw.songs[0] ? getSongCoverUrl(card.raw.songs[0]) : undefined,
+                trackCount: card.raw.songs.length,
+                playlistId: String(card.raw.id),
+            });
             return;
         }
 
@@ -620,7 +623,7 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
         const query = searchQuery.trim();
         if (!query) return;
 
-        const searchSource = isOnlineTab ? activeProviderId : resolveSearchSource(homeViewTab);
+        const searchSource = isOnlineTab ? 'all' : resolveSearchSource(homeViewTab);
         const didSearch = await submitSearch({
             query,
             sourceTab: searchSource,
@@ -656,30 +659,22 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
     };
 
     return (
-        <div ref={gridRootRef} className={`relative w-full h-full flex flex-col font-sans overflow-hidden ${mainBg} pointer-events-auto backdrop-blur-sm ${bottomPadding}`}>
+        <div ref={gridRootRef} className={`folia-home-root relative w-full h-full flex flex-col font-sans overflow-hidden ${mainBg} pointer-events-auto backdrop-blur-sm ${bottomPadding}`}>
 
             {/* Main Header Container (Fades out when sliding/interacting) */}
-            <div className="transition-opacity duration-300 ease-in-out z-20 opacity-100 select-none">
-                <div className="grid grid-cols-2 md:grid-cols-3 items-center w-full max-w-7xl mx-auto p-4 md:p-8 gap-y-4 md:gap-y-0">
+            <div className="folia-home-header transition-opacity duration-300 ease-in-out z-20 opacity-100 select-none">
+                <div className="folia-home-header-row grid grid-cols-2 md:grid-cols-3 items-center w-full max-w-7xl mx-auto p-4 md:p-8 gap-y-4 md:gap-y-0">
                     {/* Left title and settings */}
-                    <div className="flex items-center justify-start order-1 md:order-none">
+                    <div className="folia-home-header-left flex items-center justify-start order-1 md:order-none">
                         <h1 className="text-2xl font-bold tracking-tight opacity-90 flex items-center gap-3">
                             Folia
                         </h1>
                         <button
                             onClick={() => onOpenSettings?.('help')}
-                            className={`relative flex items-center gap-1.5 p-2 rounded-full hover:bg-white/10 transition-all ml-4 ${showUpdateIndicator
-                                    ? 'opacity-90 hover:opacity-100'
-                                    : 'opacity-40 hover:opacity-100'
-                                }`}
+                            className="relative flex items-center gap-1.5 p-2 rounded-full hover:bg-white/10 transition-all ml-4 opacity-40 hover:opacity-100"
                             title={t('ui.options')}
                         >
                             <Settings size={20} style={{ color: 'var(--text-primary)' }} />
-                            {showUpdateIndicator && (
-                                <span className="text-[10px] font-medium text-zinc-800 dark:text-zinc-200 opacity-80 whitespace-nowrap bg-zinc-200/50 dark:bg-white/10 px-2 py-0.5 rounded-md">
-                                    {t('options.updateAvailable')}
-                                </span>
-                            )}
                         </button>
                         {scanProgress?.active && (
                             <div
@@ -741,7 +736,7 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                     </div>
 
                     {/* Center Tab Switcher */}
-                    <div className="flex justify-center order-3 md:order-none col-span-2 md:col-span-1">
+                    <div className="folia-home-header-tabs flex justify-center order-3 md:order-none col-span-2 md:col-span-1">
                         <div className={`relative ${navPillBg} backdrop-blur-md p-1 rounded-full scale-90 md:scale-100 origin-center`}>
                             <div className="inline-flex items-center gap-0">
                                 {[
@@ -822,7 +817,7 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                     </div>
 
                     {/* Right Search Bar */}
-                    <div className="flex justify-end order-2 md:order-none">
+                    <div className="folia-home-header-search flex justify-end order-2 md:order-none">
                         <form onSubmit={handleSearch} className="relative w-full md:w-56 transition-all focus-within:md:w-72">
                             {isSearchingActive ? (
                                 <Loader2 className="absolute left-3 top-1/2 w-4 h-4 animate-spin opacity-40 -mt-2" />
@@ -846,12 +841,13 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
             </div>
 
             {/* Desktop Canvas Surface */}
-            <div className="flex-1 min-h-0 flex flex-col items-center justify-center relative">
+            <div className="folia-home-canvas flex-1 min-h-0 flex flex-col items-center justify-center relative">
                 {isOnlineTab && activeAccountView === 'resolving' ? (
                     <div className="flex flex-1 w-full items-center justify-center" aria-busy="true">
                         <Loader2 className="animate-spin opacity-30" size={28} />
                     </div>
-                ) : isOnlineTab && activeAccountView === 'guest' ? (
+                ) : isOnlineTab && activeAccountView === 'guest'
+                    && !(homeViewTab === 'playlist' && personalPlaylists.length > 0) ? (
                     <OnlineProviderConnectPanel
                         providers={onlineProviderPlatform?.providers || omni.getProviderSummaries()}
                         isDaylight={isDaylight}
@@ -864,6 +860,8 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                         getActionLabel={provider => provider.status === 'authenticated'
                             ? t('home.switchToProvider', { provider: provider.shortName || provider.displayName })
                             : t('home.connectProviderAccount', { provider: provider.shortName || provider.displayName })}
+                        channelHealth={onlineProviderPlatform?.channelHealth || {}}
+                        onCheckChannel={providerId => void onlineProviderPlatform?.checkProviderChannel(providerId)}
                         onSelect={provider => {
                             if (provider.status === 'authenticated') {
                                 void onlineProviderPlatform?.switchProvider(provider.providerId);
@@ -893,6 +891,7 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                         isDaylight={isDaylight}
                         isInteractive={isInteractive}
                         hasFloatingPlayer={Boolean(currentTrack)}
+                        fitAllOnAndroid={homeViewTab === 'albums' || homeViewTab === 'radio'}
                         playlistVisibilityScope={`online:${activeProviderId}`}
                     />
                 ) : homeViewTab === 'local' ? (
@@ -957,7 +956,25 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                         state={qrState}
                         retryLabel={t('home.retryQr')}
                         closeLabel={t('home.closeLogin')}
-                        loginMethods={loginMethodOptions.length > 0
+                        credentialLogin={loginProviderId === 'kuwo' && omni.supportsCredentialLogin('kuwo')
+                            ? {
+                                accountLabel: t('home.kuwoAccountLabel'),
+                                passwordLabel: t('home.kuwoPasswordLabel'),
+                                accountPlaceholder: t('home.kuwoAccountPlaceholder'),
+                                passwordPlaceholder: t('home.kuwoPasswordPlaceholder'),
+                                submitLabel: t('home.kuwoLoginSubmit'),
+                                submittingLabel: t('home.kuwoLoginSubmitting'),
+                                onSubmit: async (account, password) => {
+                                    await omni.loginWithCredentials('kuwo', account, password);
+                                    const completed = onlineProviderPlatform
+                                        ? await onlineProviderPlatform.completeLogin('kuwo')
+                                        : true;
+                                    if (!completed) throw new Error(t('home.loginError'));
+                                    setShowLoginModal(false);
+                                },
+                            }
+                            : undefined}
+                        loginMethods={!omni.supportsCredentialLogin(loginProviderId) && loginMethodOptions.length > 0
                             ? {
                                 title: t('home.qqLoginMethodTitle'),
                                 hint: t('home.qqLoginMethodHint'),
@@ -1012,6 +1029,8 @@ export const Grid3D: React.FC<Grid3DProps> = (props) => {
                     onLogout={provider => {
                         void onlineProviderPlatform.logoutProvider(provider.providerId);
                     }}
+                    channelHealth={onlineProviderPlatform.channelHealth}
+                    onCheckChannel={providerId => void onlineProviderPlatform.checkProviderChannel(providerId)}
                 />
             )}
 

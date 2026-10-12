@@ -18,6 +18,7 @@
     "dev": "vite",
     "dev:probe": "vite --open /dev-probe.html",
     "build": "npm run build:vercel-api && vite build",
+    "build:capacitor": "cross-env FOLIA_BUILD_TARGET=capacitor npm run build",
     "build:vercel-api": "tsc -p api-ts/tsconfig.json",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
@@ -39,14 +40,20 @@
     "manual:visualizer-memory": "node test/manual/visualizer-memory-probe.mjs",
     "manual:lattice-cover-memory": "node test/manual/lattice-cover-memory.mjs",
     "stage:client": "vite --open /stage-client.html",
+    "cap:sync:android": "npm run build:capacitor && cap sync android",
+    "cap:open:android": "cap open android",
+    "cap:run:android": "npm run build:capacitor && cap run android",
+    "dev:android": "cross-env FOLIA_CAPACITOR_DEV=true concurrently -k \"vite --host 0.0.0.0\" \"wait-on tcp:3000 && cap copy android && cap run android --no-sync\"",
+    "build:android:debug": "npm run cap:sync:android && cd android && gradlew.bat assembleDebug",
+    "build:android:bundle": "npm run cap:sync:android && cd android && gradlew.bat bundleRelease",
     "dev:electron": "cross-env ELECTRON_DEV=true FOLIA_WINDOWTOLAYER_PATH=build/windowtolayer FOLIA_WALLPAPER_HELPER_PATH=build/folia-wallpaper-helper.exe concurrently -k \"vite\" \"wait-on tcp:3000 && electron .\"",
-    "dev:electron:update-preview": "cross-env ELECTRON_DEV=true FOLIA_DEV_UPDATE_PREVIEW=true FOLIA_WINDOWTOLAYER_PATH=build/windowtolayer FOLIA_WALLPAPER_HELPER_PATH=build/folia-wallpaper-helper.exe concurrently -k \"vite\" \"wait-on tcp:3000 && electron .\"",
     "dev:electron:wallpaper": "npm run build:windowtolayer && npm run dev:electron",
     "dev:electron:dist": "cross-env ELECTRON_DEV=false ELECTRON=true ELECTRON_LINUX_PACKAGED_GRAPHICS=true FOLIA_WINDOWTOLAYER_PATH=build/windowtolayer vite build && electron .",
     "dev:electron:dist:sourcemap": "cross-env-shell ELECTRON_DEV=false ELECTRON=true NODE_OPTIONS=--enable-source-maps FOLIA_WINDOWTOLAYER_PATH=build/windowtolayer \"vite build --sourcemap && electron .\"",
     "dev:electron:dist:swiftshader": "cross-env ELECTRON_DEV=false ELECTRON=true ELECTRON_LINUX_PACKAGED_GRAPHICS=true FOLIA_LINUX_GRAPHICS_MODE=swiftshader FOLIA_WINDOWTOLAYER_PATH=build/windowtolayer vite build && electron .",
     "dev:electron:dist:software": "cross-env ELECTRON_DEV=false ELECTRON=true ELECTRON_LINUX_PACKAGED_GRAPHICS=true FOLIA_LINUX_GRAPHICS_MODE=software FOLIA_WINDOWTOLAYER_PATH=build/windowtolayer vite build && electron .",
     "build:electron:dir": "cross-env ELECTRON_DEV=false ELECTRON=true vite build && npm run build:windowtolayer && npm run build:wallpaper-helper && electron-builder --linux dir",
+    "build:electron:portable": "cross-env ELECTRON_DEV=false ELECTRON=true vite build && npm run build:wallpaper-helper && node packaging/windows/build-portable-folder.mjs",
     "build:electron": "cross-env ELECTRON_DEV=false ELECTRON=true vite build && npm run build:windowtolayer && npm run build:wallpaper-helper && electron-builder",
     "build:windowtolayer": "node packaging/linux/build-windowtolayer.mjs",
     "build:wallpaper-helper": "node packaging/windows/build-wallpaper-helper.mjs",
@@ -66,17 +73,9 @@
       "zh-CN",
       "id"
     ],
-    "generateUpdatesFilesForAllChannels": true,
     "directories": {
       "output": "release"
     },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "chthollyphile",
-        "repo": "folia-major"
-      }
-    ],
     "files": [
       "dist/**/*",
       "electron/**/*",
@@ -84,6 +83,15 @@
       "package.json",
       "build/miao.png",
       "build/thumbar/*.png"
+    ],
+    "extraFiles": [
+      {
+        "from": "音源",
+        "to": "音源",
+        "filter": [
+          "**/*.js"
+        ]
+      }
     ],
     "asarUnpack": [
       "electron/analysis/htdemucs_runner.py",
@@ -180,16 +188,17 @@
         "deb",
         "rpm"
       ],
-      "publish": {
-        "provider": "github",
-        "publishAutoUpdate": false
-      },
       "icon": "build/icon.png",
       "category": "AudioVideo",
       "executableName": "folia-major"
     }
   },
   "dependencies": {
+    "@capacitor/android": "8.4.2",
+    "@capacitor/browser": "8.0.4",
+    "@capacitor/core": "8.4.2",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/status-bar": "8.0.3",
     "@google/genai": "^2.16.0",
     "@neteasecloudmusicapienhanced/api": "^4.40.1",
     "@xhayper/discord-rpc": "^1.3.4",
@@ -197,7 +206,6 @@
     "axios": "^1.18.1",
     "busboy": "^1.6.0",
     "electron-store": "^11.0.2",
-    "electron-updater": "^6.8.9",
     "fflate": "^0.8.3",
     "koffi": "^3.2.0",
     "kugoumusicapi": "https://github.com/MakcRe/KuGouMusicApi/archive/refs/tags/v1.6.0.tar.gz",
@@ -207,6 +215,7 @@
   },
   "devDependencies": {
     "@applemusic-like-lyrics/ttml": "^1.0.1",
+    "@capacitor/cli": "8.4.2",
     "@chenglou/pretext": "^0.0.8",
     "@emnapi/core": "1.11.3",
     "@emnapi/runtime": "1.11.3",
@@ -251,7 +260,7 @@
     "tailwindcss": "^4.3.3",
     "three": "^0.185.1",
     "twgl.js": "^7.0.0",
-    "typescript": "~7.0.2",
+    "typescript": "6.0.2",
     "vite": "^8.2.1",
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^4.1.10",

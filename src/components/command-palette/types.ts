@@ -20,6 +20,7 @@ import type { CommandPlatform } from './availability';
 import type { CommandPaletteSurface } from './surfaces/types';
 import type { CommandSyntaxSpec } from './syntax/types';
 import type { PlaybackEntryView } from '../../stores/usePlaybackEntryViewStore';
+import type { VisualizerCategoryEnabledMap } from '../../types/visualizerModes';
 
 // src/components/command-palette/types.ts
 // Shared command palette contracts used by the registry, hook, and UI shell.
@@ -306,6 +307,7 @@ export type CommandPaletteLyricSegmentationContext = {
 export type CommandPaletteVisualizerContext = {
     /** The pickers state the current mode in their header, the way volume states its percent. */
     visualizerMode: VisualizerMode;
+    enabledVisualizerCategories: VisualizerCategoryEnabledMap;
     /** Null means "no stored choice"; the picker resolves it against the registry default. */
     visualizerBackgroundMode: VisualizerBackgroundMode | null;
     setVisualizerMode: (mode: VisualizerMode) => void;

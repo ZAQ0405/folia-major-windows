@@ -119,7 +119,7 @@ export const createOnlineRecoveryController = ({
             }
 
             try {
-                const audioResult = await loadOnlineSongAudioSource(song, audioQuality, null);
+                const audioResult = await loadOnlineSongAudioSource(song, audioQuality, null, { forceRefresh: true });
                 if (currentSongRef.current !== getPlaybackSongKey(song) || !audioRef.current) {
                     return false;
                 }

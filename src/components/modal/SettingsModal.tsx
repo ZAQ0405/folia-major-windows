@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { MotionValue } from 'framer-motion';
-import { X, Command, Keyboard, Loader2, Check, AlertCircle, ChevronLeft, Download, ExternalLink, CircleHelp } from 'lucide-react';
+import { X, Command, Keyboard, ChevronLeft, CircleHelp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { getCacheUsageByCategory, clearCacheByCategory, clearAllData } from '../../services/db';
 import { DualTheme, StageStatus, StageSource, Theme, ThemeMode, type CadenzaTuning, type CappellaEmojiImage, type CappellaTuning, type FumeTuning, type NowPlayingConnectionStatus, type PartitaTuning, type ReplayGainMode, type TiltTuning, type StoredCustomLyricsFont, type VisualizerMode } from '../../types';
@@ -60,9 +60,9 @@ import { useSettingsModalStore } from '../../stores/useSettingsModalStore';
 import { selectAudioSettingsSnapshot, useAudioSettingsStore } from '../../stores/useAudioSettingsStore';
 import { selectHomeLayoutSettingsSnapshot, useHomeLayoutSettingsStore } from '../../stores/useHomeLayoutSettingsStore';
 import { setNavidromeEnabledState, useLibraryStore } from '../../stores/useLibraryStore';
+import { isAndroidCapacitor } from '../../utils/runtimePlatform';
 
 const DEFAULT_OPENAI_TEMPERATURE = '0.7';
-const AUR_PACKAGE_URL = 'https://aur.archlinux.org/packages/folia-major-bin';
 const VERSION_INFO = __DOCKER_STACK_VERSION__
     ? `${__APP_VERSION_LABEL__} v${__APP_VERSION__} · Stack ${__DOCKER_STACK_VERSION__} · ${__COMMIT_HASH__}`
     : `${__APP_VERSION_LABEL__} v${__APP_VERSION__} - ${__GIT_BRANCH__} - ${__COMMIT_HASH__}`;
@@ -118,16 +118,6 @@ interface SettingsModalProps {
     aiTheme?: DualTheme | null;
     customTheme?: DualTheme | null;
 }
-
-const QUARK_DOWNLOAD_URL = 'https://pan.quark.cn/s/6e4c6fa3bc6f';
-const BAIDU_DOWNLOAD_URL = 'https://pan.baidu.com/s/1f0x3g-8PMcNCO-TJ5z1rPw?pwd=flia';
-const DEFAULT_UPDATE_CHANNEL: 'realeco' | 'limo' | 'cielo' | 'internal' = __APP_RELEASE_CHANNEL__ === 'limo'
-    ? 'limo'
-    : __APP_RELEASE_CHANNEL__ === 'cielo'
-        ? 'cielo'
-        : __APP_RELEASE_CHANNEL__ === 'internal'
-            ? 'internal'
-            : 'realeco';
 
 const SettingsModal: React.FC<SettingsModalProps> = ({
     onClose,
@@ -387,7 +377,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     const [activeSettingsSection, setActiveSettingsSection] = useState<SettingsSectionId>('appearance');
     const contentScrollRef = useRef<HTMLDivElement>(null);
     // Matches the md:flex-row split below; the two sidebars are different enough to render separately.
-    const isWideSettingsLayout = useMediaQuery('(min-width: 768px)');
+    // Android runs inside the adaptive landscape stage. Use the desktop settings
+    // navigation there even when the physical WebView viewport is narrow.
+    const isWideSettingsLayout = isAndroidCapacitor || useMediaQuery('(min-width: 768px)');
     const settingsAnchorStore = useSettingsAnchorStore();
     const settingsAnchors = useSettingsAnchorList(settingsAnchorStore);
 
@@ -451,9 +443,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         OPENAI_API_TEMPERATURE: DEFAULT_OPENAI_TEMPERATURE,
         AI_PROVIDER: 'gemini',
         USE_SYSTEM_PROXY_FOR_AI: false,
-        ENABLE_UPDATE_CHECK: true,
-        ENABLE_AUTO_UPDATE: false,
-        UPDATE_CHANNEL: DEFAULT_UPDATE_CHANNEL,
         STAGE_MODE_SOURCE: 'stage-api',
         DISCORD_RICH_PRESENCE_ENABLED: false,
     });
@@ -464,7 +453,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         OPENAI_API_KEY: '',
     });
     const [electronSaveStatus, setElectronSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-    const [updateStatus, setUpdateStatus] = useState<ElectronUpdateStatus | null>(null);
     const [discordPresenceStatus, setDiscordPresenceStatus] = useState<ElectronDiscordPresenceStatus | null>(null);
     const [cacheDirectory, setCacheDirectory] = useState<string>('');
     const [cacheDirectoryIsDefault, setCacheDirectoryIsDefault] = useState(true);
@@ -483,8 +471,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             : savedAiApiKey.trim()
                 ? 'configured'
                 : 'missing';
-    const showQuarkDownload = electronSettings.UPDATE_CHANNEL === 'realeco';
-
     useEffect(() => {
         if (aiApiKeyStatus === 'missing' && themeGenerationSource === 'ai') {
             onChangeThemeGenerationSource('cover');
@@ -514,23 +500,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                     setCacheDirectoryIsDefault(result.isDefault);
                 }
             });
-            (window as any).electron.getUpdateStatus?.().then((status: ElectronUpdateStatus) => {
-                setUpdateStatus(status);
-            });
             (window as any).electron.getDiscordPresenceStatus?.().then((status: ElectronDiscordPresenceStatus) => {
                 setDiscordPresenceStatus(status);
             });
         }
-    }, []);
-
-    useEffect(() => {
-        if (!window.electron?.onUpdateStatusChanged) {
-            return;
-        }
-
-        return window.electron.onUpdateStatusChanged((status) => {
-            setUpdateStatus(status);
-        });
     }, []);
 
     useEffect(() => {
@@ -542,16 +515,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             setDiscordPresenceStatus(status);
         });
     }, []);
-
-    useEffect(() => {
-        if (!updateStatus?.availableVersion || updateStatus.updateSeen || !window.electron?.markUpdateSeen) {
-            return;
-        }
-
-        window.electron.markUpdateSeen(updateStatus.availableVersion).then(setUpdateStatus).catch(() => {
-            // Seeing the settings panel should never fail the panel itself.
-        });
-    }, [updateStatus?.availableVersion, updateStatus?.updateSeen]);
 
     const copyText = async (text: string) => {
         if (navigator.clipboard?.writeText && window.isSecureContext) {
@@ -618,9 +581,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             await (window as any).electron.saveSettings('OPENAI_API_TEMPERATURE', temperature);
             await (window as any).electron.saveSettings('AI_PROVIDER', electronSettings.AI_PROVIDER);
             await (window as any).electron.saveSettings('USE_SYSTEM_PROXY_FOR_AI', electronSettings.USE_SYSTEM_PROXY_FOR_AI);
-            await (window as any).electron.saveSettings('ENABLE_UPDATE_CHECK', electronSettings.ENABLE_UPDATE_CHECK);
-            await (window as any).electron.saveSettings('ENABLE_AUTO_UPDATE', electronSettings.ENABLE_AUTO_UPDATE);
-            await (window as any).electron.saveSettings('UPDATE_CHANNEL', electronSettings.UPDATE_CHANNEL);
             await (window as any).electron.saveSettings('DISCORD_RICH_PRESENCE_ENABLED', electronSettings.DISCORD_RICH_PRESENCE_ENABLED);
             setSavedElectronAiCredentials({
                 AI_PROVIDER: electronSettings.AI_PROVIDER === 'openai' ? 'openai' : 'gemini',
@@ -644,96 +604,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             setDiscordPresenceStatus(status);
         }
     };
-
-    const handleToggleUpdateCheck = async () => {
-        if (!window.electron?.saveSettings) {
-            return;
-        }
-
-        const nextEnabled = !electronSettings.ENABLE_UPDATE_CHECK;
-        const nextSettings = {
-            ...electronSettings,
-            ENABLE_UPDATE_CHECK: nextEnabled,
-            ENABLE_AUTO_UPDATE: nextEnabled ? electronSettings.ENABLE_AUTO_UPDATE : false,
-        };
-
-        setElectronSettings(nextSettings);
-        await window.electron.saveSettings('ENABLE_UPDATE_CHECK', nextSettings.ENABLE_UPDATE_CHECK);
-        if (!nextSettings.ENABLE_AUTO_UPDATE) {
-            await window.electron.saveSettings('ENABLE_AUTO_UPDATE', false);
-        }
-
-        const status = await window.electron.getUpdateStatus?.();
-        if (status) {
-            setUpdateStatus(status);
-        }
-    };
-
-    const handleToggleAutoUpdate = async () => {
-        if (!window.electron?.saveSettings || !electronSettings.ENABLE_UPDATE_CHECK || !updateStatus?.autoUpdateSupported) {
-            return;
-        }
-
-        const nextEnabled = !electronSettings.ENABLE_AUTO_UPDATE;
-        setElectronSettings({ ...electronSettings, ENABLE_AUTO_UPDATE: nextEnabled });
-        await window.electron.saveSettings('ENABLE_AUTO_UPDATE', nextEnabled);
-
-        const status = await window.electron.getUpdateStatus?.();
-        if (status) {
-            setUpdateStatus(status);
-        }
-    };
-
-    const handleUpdateChannelChange = async (channel: 'realeco' | 'limo' | 'cielo') => {
-        if (!window.electron?.saveSettings) {
-            return;
-        }
-
-        setElectronSettings((current) => ({ ...current, UPDATE_CHANNEL: channel }));
-        await window.electron.saveSettings('UPDATE_CHANNEL', channel);
-
-        const status = await window.electron.getUpdateStatus?.();
-        if (status) {
-            setUpdateStatus(status);
-        }
-    };
-
-    const isWin = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('win');
-
-
-    const handleCheckForUpdates = async () => {
-        if (!window.electron?.checkForUpdates) {
-            return;
-        }
-
-        const status = await window.electron.checkForUpdates();
-        setUpdateStatus(status);
-    };
-
-    const handleDownloadUpdate = async () => {
-        if (!window.electron?.downloadUpdate) {
-            return;
-        }
-
-        const status = await window.electron.downloadUpdate();
-        setUpdateStatus(status);
-    };
-
-    const handleInstallUpdate = async () => {
-        await window.electron?.quitAndInstallUpdate?.();
-    };
-
-    const handleOpenDownloadUrl = async (url: string) => {
-        if (window.electron?.openExternalUrl) {
-            await window.electron.openExternalUrl(url);
-            return;
-        }
-
-        window.open(url, '_blank', 'noopener,noreferrer');
-    };
-
-    const handleOpenChinaDownload = () => handleOpenDownloadUrl(QUARK_DOWNLOAD_URL);
-    const handleOpenBaiduDownload = () => handleOpenDownloadUrl(BAIDU_DOWNLOAD_URL);
 
     // Navidrome Settings State
     // One truth: this used to be a second copy kept in step with App.tsx's by hand.
@@ -890,7 +760,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             case 'error':
                 return t('status.disconnected');
             default:
-                return t('options.updateCheckDisabled');
+                return t('status.disconnected');
         }
     })();
     const stageEnabled = Boolean(stageStatus?.modeEnabled);
@@ -1132,7 +1002,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         onClick={(event) => event.stopPropagation()}
                     >
                         {/* Decorative background blobs */}
-                        <div className="absolute inset-0 pointer-events-none z-0">
+                        <div className="folia-settings-modal__decoration absolute inset-0 pointer-events-none z-0">
                             <div
                                 className={`absolute -top-24 -right-24 w-64 h-64 rounded-full blur-[80px] ${isDaylight ? 'opacity-20' : 'opacity-10'}`}
                                 style={{ backgroundColor: theme?.accentColor || (isDaylight ? '#60a5fa' : '#3b82f6') }}
@@ -1181,51 +1051,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
         closeSubview();
     };
-    const updateBadgeLabel = (() => {
-        if (!electronSettings.ENABLE_UPDATE_CHECK || updateStatus?.status === 'disabled') {
-            return t('options.updateCheckDisabled') || 'Disabled';
-        }
-
-        if (updateStatus?.status === 'checking') {
-            return t('options.updateChecking') || 'Checking...';
-        }
-
-        if (updateStatus?.availableVersion) {
-            return `${t('options.updateAvailable') || 'Found'} v${updateStatus.availableVersion}`;
-        }
-
-        if (updateStatus?.status === 'latest') {
-            return t('options.updateLatest') || 'Up to date';
-        }
-
-        if (updateStatus?.status === 'error') {
-            return t('options.updateCheckFailed') || 'Check failed';
-        }
-
-        if (updateStatus?.status === 'unsupported') {
-            return t('options.updateUnsupported') || 'Unavailable';
-        }
-
-        return t('options.updateLatest') || 'Up to date';
-    })();
-    const updateBadgeIcon = updateStatus?.status === 'checking'
-        ? <Loader2 size={13} className="animate-spin" />
-        : updateStatus?.availableVersion
-            ? updateStatus.autoUpdateSupported
-                ? <Download size={13} />
-                : <ExternalLink size={13} />
-            : updateStatus?.status === 'error'
-                ? <AlertCircle size={13} />
-                : <Check size={13} />;
-    const canDownloadUpdate = Boolean(
-        electronSettings.ENABLE_UPDATE_CHECK &&
-        updateStatus?.autoUpdateSupported &&
-        updateStatus?.availableVersion &&
-        updateStatus.status !== 'downloading' &&
-        updateStatus.status !== 'downloaded'
-    );
-    const canEnableAutoUpdate = Boolean(electronSettings.ENABLE_UPDATE_CHECK && updateStatus?.autoUpdateSupported);
-
     const settingsNavGroups = useMemo(
         () => buildSettingsNavGroups(t, { isElectron }),
         [t, isElectron],
@@ -1261,7 +1086,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             exit={{ opacity: 0 }}
             transition={shellTransition}
             data-folia-keyboard-window="true"
-            className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-8 sm:px-5 sm:py-12"
+            className="folia-settings-modal fixed inset-0 z-[100] flex items-end justify-center px-0 py-0 sm:items-center sm:px-5 sm:py-12"
             style={{ backgroundColor: overlayBackground }}
             onMouseDown={handleOverlayMouseDown}
             onClick={(event) => handleBackdropClose(event, onClose)}
@@ -1269,11 +1094,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             <motion.div
                 {...panelMotion}
                 transition={shellTransition}
-                className={`${glassBg} border ${borderColor} p-6 md:p-8 rounded-3xl ${activeTab === 'options' ? 'w-full md:max-w-4xl md:w-[900px] h-[90vh] md:h-[85vh]' : 'w-full md:max-w-lg'} relative shadow-2xl overflow-hidden flex flex-col max-h-[90vh] transition-all duration-300`}
+                className={`folia-settings-modal__panel ${glassBg} border ${borderColor} p-4 pt-[max(1rem,env(safe-area-inset-top))] sm:p-6 md:p-8 rounded-t-[24px] sm:rounded-3xl ${activeTab === 'options' ? 'w-full md:max-w-4xl md:w-[900px] h-[100dvh] md:h-[85vh]' : 'w-full md:max-w-lg max-h-[100dvh] sm:max-h-[90vh]'} relative shadow-2xl overflow-hidden flex flex-col transition-[height,max-height,border-radius] duration-200`}
                 onClick={(event) => event.stopPropagation()}
             >
                 {/* Decorative background blobs */}
-                <div className="absolute inset-0 pointer-events-none z-0">
+                <div className="folia-settings-modal__decoration absolute inset-0 pointer-events-none z-0">
                     <div
                         className={`absolute -top-24 -right-24 w-64 h-64 rounded-full blur-[80px] ${isDaylight ? 'opacity-20' : 'opacity-10'}`}
                         style={{ backgroundColor: theme?.accentColor || (isDaylight ? '#60a5fa' : '#3b82f6') }}
@@ -1294,10 +1119,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 {/* Header / Tabs */}
                 <div className="relative shrink-0 z-10 mb-6 select-none">
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-5 sm:gap-6">
                         <button
                             onClick={() => handleTabChange('help')}
-                            className={`relative text-2xl font-bold transition-colors pb-2 ${activeTab === 'help' ? 'opacity-100' : 'opacity-40 hover:opacity-80'}`}
+                            className={`relative text-xl sm:text-2xl font-bold transition-colors pb-2 ${activeTab === 'help' ? 'opacity-100' : 'opacity-40 hover:opacity-80'}`}
                             style={{ color: 'var(--text-primary)' }}
                         >
                             {t('help.title') || "Help"}
@@ -1313,7 +1138,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                         </button>
                         <button
                             onClick={() => handleTabChange('options')}
-                            className={`relative text-2xl font-bold transition-colors pb-2 ${activeTab === 'options' ? 'opacity-100' : 'opacity-40 hover:opacity-80'}`}
+                            className={`relative text-xl sm:text-2xl font-bold transition-colors pb-2 ${activeTab === 'options' ? 'opacity-100' : 'opacity-40 hover:opacity-80'}`}
                             style={{ color: 'var(--text-primary)' }}
                         >
                             {t('ui.options') || "Options"}
@@ -1474,114 +1299,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 : VERSION_INFO}
                                         </button>
 
-                                        {/* 第二行：版本状态与安装操作 */}
-                                        {updateStatus?.availableVersion && (
-                                            <>
-                                                <div className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1 mt-0.5">
-                                                    <span className="text-amber-500 font-semibold">
-                                                        {t('options.newVersionFound', { version: updateStatus.availableVersion })}
-                                                    </span>
-
-                                                    {updateStatus.autoUpdateSupported && updateStatus.status === 'downloaded' ? (
-                                                        <button
-                                                            type="button"
-                                                            onClick={handleInstallUpdate}
-                                                            className="text-green-400 font-bold hover:underline"
-                                                        >
-                                                            {t('options.restartToInstallUpdate')}
-                                                        </button>
-                                                    ) : updateStatus.autoUpdateSupported && updateStatus.status === 'downloading' ? (
-                                                        <span className="text-zinc-300 opacity-80">
-                                                            {t('options.downloadingProgress', { percent: Math.round(updateStatus.downloadProgress?.percent || 0) })}
-                                                        </span>
-                                                    ) : (
-                                                        updateStatus.autoUpdateSupported && !electronSettings.ENABLE_AUTO_UPDATE && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={handleDownloadUpdate}
-                                                                disabled={!canDownloadUpdate}
-                                                                className="text-zinc-100 hover:text-white font-bold inline-flex items-center gap-1 transition-colors disabled:opacity-40"
-                                                            >
-                                                                <Download size={12} />
-                                                                {t('options.downloadUpdate')}
-                                                            </button>
-                                                        )
-                                                    )}
-                                                </div>
-
-                                                {/* 下载入口独立成可换行的小组，避免与版本状态挤在同一行。 */}
-                                                <div
-                                                    className="mt-1 flex max-w-full flex-wrap items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1"
-                                                    aria-label={t('options.downloadSources')}
-                                                >
-                                                    <span className="px-1.5 opacity-45" style={{ color: 'var(--text-secondary)' }}>
-                                                        {t('options.downloadSources')}
-                                                    </span>
-                                                    {showQuarkDownload && updateStatus.platform !== 'linux' && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={handleOpenChinaDownload}
-                                                            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 opacity-65 transition-colors hover:bg-white/10 hover:opacity-100"
-                                                            style={{ color: 'var(--text-secondary)' }}
-                                                        >
-                                                            <ExternalLink size={11} />
-                                                            {t('options.quarkDrive')}
-                                                        </button>
-                                                    )}
-                                                    {showQuarkDownload && updateStatus.platform !== 'linux' && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleOpenDownloadUrl(BAIDU_DOWNLOAD_URL)}
-                                                            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 opacity-65 transition-colors hover:bg-white/10 hover:opacity-100"
-                                                            style={{ color: 'var(--text-secondary)' }}
-                                                        >
-                                                            <ExternalLink size={11} />
-                                                            {t('options.baiduDrive')}
-                                                        </button>
-                                                    )}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => window.electron?.openUpdateReleasePage(updateStatus.availableVersion)}
-                                                        className="inline-flex items-center gap-1 rounded-lg px-2 py-1 opacity-65 transition-colors hover:bg-white/10 hover:opacity-100"
-                                                        style={{ color: 'var(--text-secondary)' }}
-                                                    >
-                                                        <ExternalLink size={11} />
-                                                        {updateStatus.autoUpdateSupported
-                                                            ? t('options.githubRelease')
-                                                            : t('options.fullInstallerGithub')}
-                                                    </button>
-                                                    {updateStatus.platform === 'linux' && electronSettings.UPDATE_CHANNEL === 'realeco' && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleOpenDownloadUrl(AUR_PACKAGE_URL)}
-                                                            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 opacity-65 transition-colors hover:bg-white/10 hover:opacity-100"
-                                                            style={{ color: 'var(--text-secondary)' }}
-                                                        >
-                                                            <ExternalLink size={11} />
-                                                            {t('options.aurPackage')}
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </>
-                                        )}
-
-                                        {/* 第三行：多平台网络与手动下载提醒小字 */}
-                                        {updateStatus?.availableVersion && (
-                                            <div className="text-xs opacity-60 mt-0.5 space-y-0.5" style={{ color: 'var(--text-secondary)' }}>
-                                                {!updateStatus.autoUpdateSupported && (
-                                                    <div>
-                                                        {updateStatus.platform === 'darwin'
-                                                            ? t('options.macManualUpdateNotice')
-                                                            : updateStatus.platform === 'linux'
-                                                            ? t('options.linuxManualUpdateNotice')
-                                                            : t('options.manualUpdateNotice')}
-                                                    </div>
-                                                )}
-                                                {showQuarkDownload && updateStatus.platform !== 'linux' && (
-                                                    <div>{t('options.chinaDownloadHint')}</div>
-                                                )}
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             </motion.div>
@@ -1594,7 +1311,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                 animate="center"
                                 exit="exit"
                                 transition={shellTransition}
-                                className="flex flex-col md:flex-row gap-4 md:gap-6 h-full"
+                                className="folia-settings-modal__options flex min-h-0 flex-col gap-0 md:flex-row md:gap-6 h-full"
                             >
                                 <SettingsAnchorProvider store={settingsAnchorStore}>
                                 {isWideSettingsLayout ? (
@@ -1621,7 +1338,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                         isDaylight={isDaylight}
                                     />
                                 )}
-                                <div ref={contentScrollRef} className="flex-1 overflow-y-auto custom-scrollbar pl-1 md:pl-2 pr-2 md:pr-4 relative pb-4">
+                                <div ref={contentScrollRef} className="folia-settings-modal__content min-h-0 flex-1 overflow-y-auto overscroll-contain custom-scrollbar pl-0 md:pl-2 pr-0 md:pr-4 relative pb-[max(1rem,env(safe-area-inset-bottom))]">
                                     <SettingsSectionHeader
                                         title={activeSettingsNavItem?.label ?? ''}
                                         description={activeSettingsNavItem?.description ?? ''}
@@ -1799,23 +1516,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                                     toggleOffBackgroundClass,
                                                 }}
                                                 model={{
-                                                    canDownloadUpdate,
-                                                    canEnableAutoUpdate,
                                                     electronSaveStatus,
                                                     electronSettings,
-                                                    onCheckForUpdates: handleCheckForUpdates,
-                                                    onDownloadUpdate: handleDownloadUpdate,
-                                                    onInstallUpdate: handleInstallUpdate,
-                                                    onOpenBaiduDownload: handleOpenBaiduDownload,
-                                                    onOpenChinaDownload: handleOpenChinaDownload,
-                                                    onUpdateChannelChange: handleUpdateChannelChange,
                                                     onSaveElectronSettings: saveElectronSettings,
-                                                    onToggleAutoUpdate: handleToggleAutoUpdate,
-                                                    onToggleUpdateCheck: handleToggleUpdateCheck,
                                                     setElectronSettings,
-                                                    updateBadgeIcon,
-                                                    updateBadgeLabel,
-                                                    updateStatus,
                                                 }}
                                                 preferences={{
                                                     hideTaskbarIcon,

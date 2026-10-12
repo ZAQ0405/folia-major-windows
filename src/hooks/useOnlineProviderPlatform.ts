@@ -1,8 +1,13 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { omni } from '../services/onlineMusic/omni';
 import { useOnlineProviderAccountStore } from '../stores/useOnlineProviderAccountStore';
-import type { OnlineProviderId, ProviderAccountSummary } from '../types/onlineMusic';
+import type {
+    OnlineProviderId,
+    ProviderAccountSummary,
+    ProviderChannelHealth,
+    ProviderChannelHealthMap,
+} from '../types/onlineMusic';
 import { useStableCallbacks } from './useStableCallbacks';
 
 // src/hooks/useOnlineProviderPlatform.ts
@@ -15,6 +20,9 @@ export type OnlineProviderPlatformState = {
     refreshProvider: (providerId: OnlineProviderId) => Promise<unknown>;
     logoutProvider: (providerId: OnlineProviderId) => Promise<void>;
     completeLogin: (providerId: OnlineProviderId) => Promise<boolean>;
+    channelHealth: ProviderChannelHealthMap;
+    checkProviderChannel: (providerId: OnlineProviderId) => Promise<ProviderChannelHealth>;
+    checkAllProviderChannels: () => Promise<void>;
 };
 
 type ProviderSwitchTransaction = {
@@ -71,6 +79,7 @@ export const useOnlineProviderPlatform = (
         activeProviderId: state.activeProviderId,
         setActiveProviderId: state.setActiveProviderId,
     })));
+    const [channelHealth, setChannelHealth] = useState<ProviderChannelHealthMap>({});
 
     const providers = useMemo<ProviderAccountSummary[]>(() => omni.getProviderSummaries(), [accounts]);
     const refreshProvider = useCallback(async (providerId: OnlineProviderId) => {
@@ -98,13 +107,46 @@ export const useOnlineProviderPlatform = (
         }),
     }), [activeProviderId, prepareSwitch, refreshers, setActiveProviderId]);
 
+    const checkProviderChannel = useCallback(async (providerId: OnlineProviderId) => {
+        setChannelHealth(previous => ({
+            ...previous,
+            [providerId]: { status: 'checking' },
+        }));
+        const result = await omni.checkProviderChannel(providerId);
+        setChannelHealth(previous => ({ ...previous, [providerId]: result }));
+        return result;
+    }, []);
+    const checkAllProviderChannels = useCallback(async () => {
+        // Account-only providers (currently Kuwo) are not search channels, but they still need a
+        // real health check so the provider switcher does not leave them stuck at "checking".
+        const providerIds = omni.getProviderSummaries()
+            .filter(provider => {
+                if (!provider.availability.configured) return false;
+                const capabilities = omni.getProviderCapabilities(provider.providerId);
+                return capabilities.search || capabilities.auth;
+            })
+            .map(provider => provider.providerId);
+        await Promise.all(providerIds.map(providerId => checkProviderChannel(providerId)));
+    }, [checkProviderChannel]);
+
+    useEffect(() => {
+        void checkAllProviderChannels();
+    }, [checkAllProviderChannels]);
+
     const activeProvider = providers.find(provider => provider.providerId === activeProviderId) || providers[0];
     // The whole object is a dependency of buildHomeModel, so unlike the other hooks here it is not
     // enough to stabilise the callbacks - the object itself has to keep its identity while nothing
     // in it changed. The callbacks get a permanent identity first so they cannot invalidate it.
-    const actions = useStableCallbacks({ switchProvider, refreshProvider, logoutProvider, completeLogin });
+    const actions = useStableCallbacks({
+        switchProvider,
+        refreshProvider,
+        logoutProvider,
+        completeLogin,
+        checkProviderChannel,
+        checkAllProviderChannels,
+    });
     return useMemo(
-        () => ({ providers, activeProviderId, activeProvider, ...actions }),
-        [providers, activeProviderId, activeProvider, actions],
+        () => ({ providers, activeProviderId, activeProvider, channelHealth, ...actions }),
+        [providers, activeProviderId, activeProvider, channelHealth, actions],
     );
 };

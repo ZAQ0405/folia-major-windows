@@ -541,11 +541,19 @@ export function usePlaybackQueueController({
             if (preloadedOnlineAudioResult.kind === 'unavailable') {
                 const nextSong = getNextPlayableQueueSong(queueContext, song);
                 const canSkip = Boolean(nextSong) && skipCount < MAX_UNAVAILABLE_AUTO_SKIP_COUNT;
+                // A provider returning no URL is not proof that the song was removed. QQ's
+                // official endpoint also uses an empty play link for entitlement, region, and
+                // temporary upstream failures. Only use the "removed" copy when the provider
+                // explicitly marked this song unavailable; otherwise report a generic playback
+                // failure so the user can switch the manually selected channel.
+                const unavailableMessageKey = isSongUnavailable(song)
+                    ? 'status.songUnavailablePrompt'
+                    : 'status.playbackErrorPrompt';
 
                 setIsLyricsLoading(false);
 
                 if (canSkip && nextSong) {
-                    showTimedSkipPrompt('status.songUnavailablePrompt', () => {
+                    showTimedSkipPrompt(unavailableMessageKey, () => {
                         if (playbackRequestIdRef.current !== playbackRequestId) return;
                         void playSong(nextSong, newQueue, isFmCall, {
                             ...options,
@@ -553,7 +561,10 @@ export function usePlaybackQueueController({
                         });
                     });
                 } else {
-                    setStatusMsg({ type: 'error', text: t('status.songUnavailable') });
+                    setStatusMsg({
+                        type: 'error',
+                        text: isSongUnavailable(song) ? t('status.songUnavailable') : t('status.playbackError'),
+                    });
                 }
                 return;
             }

@@ -7,6 +7,7 @@ const requestMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/services/onlineMusic/qqTransport', () => ({
     getQqTransportAvailability: () => ({ configured: true }),
+    isEmbeddedQqTransport: () => false,
     hasQqSession: () => true,
     clearQqSession: vi.fn(),
     requestQq: requestMock,

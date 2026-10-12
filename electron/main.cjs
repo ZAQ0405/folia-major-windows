@@ -5,6 +5,12 @@ const path = require('path');
 const { spawn } = require('child_process');
 const Store = require('electron-store').default || require('electron-store');
 const crypto = require('crypto');
+let DatabaseSync = null;
+try {
+  ({ DatabaseSync } = require('node:sqlite'));
+} catch (error) {
+  console.warn('[LuoxueCache] node:sqlite is unavailable; Luoxue URL cache integration is disabled', error?.message || error);
+}
 const { createStageApi } = require('./stageApi.cjs');
 const { createModSystem } = require('./modSystem/modSystem.cjs');
 const { MOD_PROTOCOL_PRIVILEGED_SCHEME } = require('./modSystem/modProtocol.cjs');
@@ -15,20 +21,13 @@ const { createWindowsWallpaperTargetResolver } = require('./windowsWallpaperTarg
 const { createWindowsWallpaperMouseInjector } = require('./windowsWallpaperMouse.cjs');
 const macWallpaperModule = require('./macWallpaperController.cjs');
 const { createKugouApiBridge } = require('./kugouApiBridge.cjs');
+const { createKuwoAccountBridge } = require('./kuwoAccountBridge.cjs');
 const { createQqAuthSessionRepository } = require('./qqAuthSessionRepository.cjs');
 const { DEFAULT_DISCORD_APPLICATION_ID, createDiscordPresenceController } = require('./discordPresence.cjs');
 const { createVoiceInputPauseMonitor } = require('./voiceInputPause.cjs');
 const { createDisplaySleepBlocker } = require('./displaySleepBlocker.cjs');
 const { createLyricApi } = require('./lyricApi.cjs');
 const { createLocalCoverAssetStore, getLocalCoverAssetDirectory } = require('./localCoverAssets.cjs');
-const {
-  compareVersions,
-  getReleaseUrl,
-  getUpdateDiscoveryConfig,
-  getUpdateProviderConfig,
-  parseUpdateMetadataVersion,
-  resolveReleaseChannel,
-} = require('./updateChannels.cjs');
 const { resolveCacheLimit, selectEvictions } = require('./audioCachePrune.cjs');
 const { createAnalysisHost } = require('./analysis/host.cjs');
 const { createDebugHost, runtimeLine } = require('./debug/debugHost.cjs');
@@ -187,6 +186,7 @@ const transcodeService = createTranscodeService({
 // KuGou credentials stay inside the main process and are encrypted lazily after Electron is ready.
 // The bridge refuses Linux's plaintext `basic_text` fallback and degrades to an in-memory session.
 const kugouApiBridge = createKugouApiBridge({ store, safeStorage });
+const kuwoAccountBridge = createKuwoAccountBridge({ store, safeStorage });
 const qqAuthSessionRepository = createQqAuthSessionRepository({ store, safeStorage });
 
 // --- Desktop wallpaper mode (Wayland layer-shell via windowtolayer / X11 desktop window) ---
@@ -1736,7 +1736,6 @@ let mainWindowClickThroughUnlockHover = false;
 let mainWindowClickThroughUnlockHoverTimer = null;
 let mainWindowSkipTaskbarEnabled = false;
 let videoExportWindowRestoreState = null;
-let autoUpdater = null;
 // Backed by the settings store so a handoff survives a full process relaunch (wallpaper mode)
 const windowPlaybackHandoffStore = createWindowPlaybackHandoffStore({
   storage: store,
@@ -1762,10 +1761,6 @@ const DEFAULT_WINDOW_BOUNDS = {
 const WINDOW_STATE_SAVE_DEBOUNCE_MS = 300;
 const CACHE_DIRECTORY_SETTING_KEY = 'CACHE_DIRECTORY';
 const MODELS_DIRECTORY_SETTING_KEY = 'MODELS_DIRECTORY';
-const ENABLE_UPDATE_CHECK_SETTING_KEY = 'ENABLE_UPDATE_CHECK';
-const ENABLE_AUTO_UPDATE_SETTING_KEY = 'ENABLE_AUTO_UPDATE';
-const UPDATE_CHANNEL_SETTING_KEY = 'UPDATE_CHANNEL';
-const LAST_SEEN_UPDATE_VERSION_SETTING_KEY = 'LAST_SEEN_UPDATE_VERSION';
 const STAGE_MODE_ENABLED_SETTING_KEY = 'STAGE_MODE_ENABLED';
 const STAGE_MODE_SOURCE_SETTING_KEY = 'STAGE_MODE_SOURCE';
 const STAGE_API_TOKEN_SETTING_KEY = 'STAGE_API_TOKEN';
@@ -1791,11 +1786,6 @@ const MOD_SYSTEM_ENABLED_SETTING_KEY = 'MOD_SYSTEM_ENABLED';
 const DEFAULT_STAGE_API_PORT = 32107;
 const DEFAULT_OBS_BROWSER_SOURCE_PORT = 32108;
 const DEFAULT_LYRIC_API_PORT = 32109;
-const FOLIA_RELEASES_URL = 'https://github.com/chthollyphile/folia-major/releases';
-const FOLIA_GITHUB_REPOSITORY = {
-  owner: 'chthollyphile',
-  repo: 'folia-major',
-};
 const WINDOWS_APP_USER_MODEL_ID = 'top.izuna.foliamajor';
 const REMOTE_CONTROL_WINDOW_TITLE = 'Folia Remote';
 const WINDOW_PLAYBACK_HANDOFF_REQUEST_TIMEOUT_MS = 800;
@@ -1906,7 +1896,6 @@ function getPublicSettings() {
     [VOICE_INPUT_PAUSE_ENABLED_SETTING_KEY]: readStoredBoolean(VOICE_INPUT_PAUSE_ENABLED_SETTING_KEY, false),
     [PREVENT_DISPLAY_SLEEP_DURING_PLAYBACK_SETTING_KEY]: readStoredBoolean(PREVENT_DISPLAY_SLEEP_DURING_PLAYBACK_SETTING_KEY, false),
     [MOD_SYSTEM_ENABLED_SETTING_KEY]: readStoredBoolean(MOD_SYSTEM_ENABLED_SETTING_KEY, false),
-    [UPDATE_CHANNEL_SETTING_KEY]: getCurrentReleaseChannel().id,
     'enable_player_page_native_blur': store.get('enable_player_page_native_blur') === true,
     'wallpaper_attach_mode': process.platform === 'win32' ? wallpaperWindowsAttachMode : null,
     [WALLPAPER_MODE_SETTING_KEY]: isWallpaperModeEnabled(),
@@ -2824,6 +2813,231 @@ function removeCorsResponseHeaders(responseHeaders) {
   }
 }
 
+function isPrivateJsSourceIpv4(address) {
+  const parts = address.split('.').map(Number);
+  if (parts.length !== 4 || parts.some(part => !Number.isInteger(part) || part < 0 || part > 255)) return true;
+  return parts[0] === 10 || parts[0] === 127 ||
+    (parts[0] === 169 && parts[1] === 254) ||
+    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) ||
+    (parts[0] === 192 && parts[1] === 168) ||
+    (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) ||
+    parts[0] === 0;
+}
+
+function isPrivateJsSourceIpv6(address) {
+  const normalized = address.toLowerCase();
+  return normalized === '::1' || normalized === '::' ||
+    normalized.startsWith('fc') || normalized.startsWith('fd') ||
+    normalized.startsWith('fe8') || normalized.startsWith('fe9') ||
+    normalized.startsWith('fea') || normalized.startsWith('feb');
+}
+
+async function assertPublicJsSourceTarget(targetUrl) {
+  if (!['http:', 'https:'].includes(targetUrl.protocol)) {
+    throw new Error('Only HTTP(S) targets are supported');
+  }
+  if (targetUrl.username || targetUrl.password) {
+    throw new Error('Target credentials are not allowed');
+  }
+
+  const hostname = targetUrl.hostname.toLowerCase();
+  if (hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local') || hostname === 'metadata.google.internal') {
+    throw new Error('Private target is not allowed');
+  }
+  if (net.isIP(hostname) === 4 && isPrivateJsSourceIpv4(hostname)) throw new Error('Private target is not allowed');
+  if (net.isIP(hostname) === 6 && isPrivateJsSourceIpv6(hostname)) throw new Error('Private target is not allowed');
+  if (net.isIP(hostname)) return;
+
+  const records = await dns.lookup(hostname, { all: true, verbatim: true });
+  if (!records.length || records.some(record => net.isIP(record.address) === 4
+    ? isPrivateJsSourceIpv4(record.address)
+    : isPrivateJsSourceIpv6(record.address))) {
+    throw new Error('Target resolves to a private address');
+  }
+}
+
+async function proxyJsSourceRequest(targetUrlStr, init = {}) {
+  const targetUrl = new URL(targetUrlStr);
+  await assertPublicJsSourceTarget(targetUrl);
+
+  const headers = new Headers(init?.headers || {});
+  headers.delete('host');
+  headers.delete('connection');
+  headers.delete('content-length');
+
+  const timeoutMs = typeof init?.timeout === 'number' && init.timeout > 0
+    ? Math.min(init.timeout, 60_000)
+    : 20_000;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(targetUrl.toString(), {
+      method: typeof init?.method === 'string' ? init.method.toUpperCase() : 'GET',
+      headers,
+      body: typeof init?.body === 'string' ? init.body : undefined,
+      signal: controller.signal,
+    });
+    const normalizedHeaders = {};
+    for (const [key, value] of response.headers.entries()) normalizedHeaders[key] = value;
+    if (init?.responseType === 'arraybuffer' || init?.responseType === 'buffer') {
+      return {
+        ok: response.ok,
+        status: response.status,
+        statusText: response.statusText,
+        headers: normalizedHeaders,
+        bodyText: '',
+        bodyBase64: Buffer.from(await response.arrayBuffer()).toString('base64'),
+      };
+    }
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      headers: normalizedHeaders,
+      bodyText: await response.text(),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function getLuoxueCacheDatabaseCandidates() {
+  let appData;
+  try {
+    appData = app.getPath('appData');
+  } catch {
+    appData = null;
+  }
+  if (!appData) return [];
+  return [
+    path.join(appData, 'lx-music-desktop', 'LxDatas', 'lx.data.db'),
+  ].filter(candidate => fs.existsSync(candidate));
+}
+
+function readLuoxueMusicUrl(cacheKeys) {
+  if (!DatabaseSync || !Array.isArray(cacheKeys) || cacheKeys.length === 0) {
+    return { url: null, cacheKey: null };
+  }
+
+  const safeKeys = cacheKeys
+    .filter(key => typeof key === 'string' && /^[a-z0-9]+_[^\s]{1,256}_[a-z0-9]+$/i.test(key))
+    .slice(0, 12);
+  if (safeKeys.length === 0) return { url: null, cacheKey: null };
+
+  for (const databasePath of getLuoxueCacheDatabaseCandidates()) {
+    let database;
+    try {
+      database = new DatabaseSync(databasePath, { readOnly: true });
+      const placeholders = safeKeys.map(() => '?').join(',');
+      const row = database
+        .prepare(`SELECT id, url FROM music_url WHERE id IN (${placeholders}) LIMIT 1`)
+        .get(...safeKeys);
+      if (row && typeof row.url === 'string') {
+        const url = new URL(row.url);
+        if (url.protocol === 'http:' || url.protocol === 'https:') {
+          console.info(`[LuoxueCache] Hit ${row.id}`);
+          return { url: url.toString(), cacheKey: row.id };
+        }
+      }
+    } catch (error) {
+      console.warn(`[LuoxueCache] Failed to read ${databasePath}`, error?.message || error);
+    } finally {
+      try { database?.close(); } catch { /* best effort */ }
+    }
+  }
+  return { url: null, cacheKey: null };
+}
+
+function readLuoxueLyrics(cacheKeys) {
+  if (!DatabaseSync || !Array.isArray(cacheKeys) || cacheKeys.length === 0) return null;
+  const safeKeys = cacheKeys
+    .filter(key => typeof key === 'string' && /^[a-z0-9]+_[^\s]{1,256}$/i.test(key))
+    .slice(0, 8);
+  if (safeKeys.length === 0) return null;
+
+  for (const databasePath of getLuoxueCacheDatabaseCandidates()) {
+    let database;
+    try {
+      database = new DatabaseSync(databasePath, { readOnly: true });
+      const placeholders = safeKeys.map(() => '?').join(',');
+      const rows = database
+        .prepare(`SELECT id, type, text FROM lyric WHERE id IN (${placeholders}) AND source = 'raw'`)
+        .all(...safeKeys);
+      if (!rows.length) continue;
+
+      const result = { cacheKey: rows[0].id, lyric: '', tlyric: '', rlyric: '', lxlyric: '' };
+      for (const row of rows) {
+        if (!Object.prototype.hasOwnProperty.call(result, row.type)) continue;
+        try {
+          result[row.type] = Buffer.from(String(row.text || ''), 'base64').toString('utf8');
+        } catch {
+          result[row.type] = '';
+        }
+      }
+      if (result.lyric || result.lxlyric) {
+        console.info(`[LuoxueCache] Lyric hit ${result.cacheKey}`);
+        return result;
+      }
+    } catch (error) {
+      console.warn(`[LuoxueCache] Failed to read lyrics from ${databasePath}`, error?.message || error);
+    } finally {
+      try { database?.close(); } catch { /* best effort */ }
+    }
+  }
+  return null;
+}
+
+async function discoverLuoxueSources() {
+  const roots = new Set();
+  const addRoot = value => {
+    if (typeof value === 'string' && value.trim()) roots.add(path.resolve(value));
+  };
+  try {
+    addRoot(path.join(app.getPath('downloads'), '音乐源'));
+    addRoot(path.join(app.getPath('documents'), '音乐源'));
+    addRoot(path.join(app.getPath('userData'), '洛雪音乐源'));
+    addRoot(path.join(app.getPath('appData'), 'lx-music-desktop', '洛雪音乐源'));
+    // Portable builds keep trusted, shareable JS sources beside the executable so the whole
+    // folder can be copied to another machine without touching userData or requiring login.
+    addRoot(path.join(path.dirname(process.execPath), '音源'));
+    addRoot(path.join(process.resourcesPath, '音源'));
+    addRoot(path.join(app.getAppPath(), '音源'));
+  } catch {
+    // The explicit paths below are still useful in portable installs where Electron paths differ.
+  }
+  // These are the source folders supplied with the user's Luoxue installation and downloads.
+  addRoot('D:\\下载\\音乐源');
+  addRoot('D:\\mCloudDownload\\落雪64位(音源已在文件中)\\落雪64位\\洛雪音乐源');
+
+  const files = [];
+  const seen = new Set();
+  for (const root of roots) {
+    let entries;
+    try {
+      entries = await fsp.readdir(root, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.toLowerCase().endsWith('.js')) continue;
+      const filePath = path.join(root, entry.name);
+      if (seen.has(filePath)) continue;
+      seen.add(filePath);
+      try {
+        const stat = await fsp.stat(filePath);
+        if (stat.size <= 0 || stat.size > 2 * 1024 * 1024) continue;
+        const code = await fsp.readFile(filePath, 'utf8');
+        // A Luoxue music source is an event-driven script, not an arbitrary JS file.
+        if (!/EVENT_NAMES|globalThis\.lx/.test(code)) continue;
+        files.push({ name: entry.name, path: filePath, code, modifiedAt: stat.mtimeMs });
+      } catch (error) {
+        console.warn(`[LuoxueSources] Failed to read ${filePath}`, error?.message || error);
+      }
+    }
+  }
+  return files;
+}
+
 function isAllowedLyricProxyHost(hostname) {
   return (
     hostname === 'qq.com' ||
@@ -2994,409 +3208,6 @@ async function fetchWithOptionalSystemProxy(url, options, useSystemProxy) {
   return ses.fetch(url, options);
 }
 
-function getUpdateCheckEnabled() {
-  const configured = store.get(ENABLE_UPDATE_CHECK_SETTING_KEY);
-  return configured === undefined ? true : Boolean(configured);
-}
-
-function getAutoUpdateEnabled() {
-  return Boolean(store.get(ENABLE_AUTO_UPDATE_SETTING_KEY));
-}
-
-function normalizeVersion(value) {
-  return typeof value === 'string' ? value.trim().replace(/^v/i, '') : '';
-}
-
-function getPackagedReleaseChannel() {
-  try {
-    const packageJsonPath = path.join(app.getAppPath(), 'package.json');
-    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-    return packageJson.foliaReleaseChannel;
-  } catch {
-    return null;
-  }
-}
-
-function getCurrentReleaseChannel() {
-  return resolveReleaseChannel(
-    app.getVersion(),
-    store.get(UPDATE_CHANNEL_SETTING_KEY) || getPackagedReleaseChannel(),
-  );
-}
-
-function normalizeUpdateChannelSelection(value) {
-  const channel = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  return channel === 'realeco' || channel === 'limo' || channel === 'cielo' ? channel : null;
-}
-
-function getUpdateCheckSupportReason() {
-  return getCurrentReleaseChannel().updateEnabled ? null : 'channel';
-}
-
-function isUpdateCheckSupported() {
-  return getUpdateCheckSupportReason() === null;
-}
-
-function isDevUpdatePreviewEnabled() {
-  return process.env.ELECTRON_DEV === 'true' && process.env.FOLIA_DEV_UPDATE_PREVIEW === 'true';
-}
-
-// Builds a believable next patch version so the preview stays aligned with package metadata.
-function getDevUpdatePreviewVersion() {
-  const currentVersion = normalizeVersion(app.getVersion());
-  const match = /^(\d+)\.(\d+)\.(\d+)/.exec(currentVersion);
-
-  if (!match) {
-    return '999.0.0';
-  }
-
-  return `${match[1]}.${match[2]}.${Number(match[3]) + 1}`;
-}
-
-function isAutoUpdaterSupported() {
-  return (
-    process.platform === 'win32' &&
-    isUpdateCheckSupported() &&
-    app.isPackaged &&
-    process.env.ELECTRON_DEV !== 'true' &&
-    process.env.NODE_ENV !== 'development'
-  );
-}
-
-function getAutoUpdateSupportReason() {
-  if (!getCurrentReleaseChannel().updateEnabled) {
-    return 'channel';
-  }
-  return process.platform === 'win32' ? null : 'system';
-}
-
-function isPackagedUpdateRuntime() {
-  return app.isPackaged && process.env.ELECTRON_DEV !== 'true' && process.env.NODE_ENV !== 'development';
-}
-
-const updateState = {
-  status: 'idle',
-  currentVersion: normalizeVersion(app.getVersion()),
-  availableVersion: null,
-  updateUrl: FOLIA_RELEASES_URL,
-  error: null,
-  lastCheckedAt: null,
-  downloadProgress: null,
-};
-
-function getUpdateStatus() {
-  const availableVersion = updateState.availableVersion;
-  const isDevPreview = isDevUpdatePreviewEnabled();
-
-  return {
-    ...updateState,
-    supported: isDevPreview || isAutoUpdaterSupported(),
-    updateCheckSupported: isDevPreview || isUpdateCheckSupported(),
-    updateCheckSupportReason: isDevPreview ? null : getUpdateCheckSupportReason(),
-    platform: process.platform,
-    updateCheckEnabled: getUpdateCheckEnabled(),
-    autoUpdateEnabled: getAutoUpdateEnabled(),
-    autoUpdateSupported: isDevPreview || isAutoUpdaterSupported(),
-    autoUpdateSupportReason: isDevPreview ? null : getAutoUpdateSupportReason(),
-    lastSeenVersion: store.get(LAST_SEEN_UPDATE_VERSION_SETTING_KEY) || null,
-    updateSeen: Boolean(
-      availableVersion &&
-      store.get(LAST_SEEN_UPDATE_VERSION_SETTING_KEY) === availableVersion
-    ),
-  };
-}
-
-function publishUpdateStatus() {
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    return;
-  }
-
-  mainWindow.webContents.send('update-status-changed', getUpdateStatus());
-}
-
-function setUpdateState(patch) {
-  Object.assign(updateState, patch);
-  publishUpdateStatus();
-}
-
-// Load electron-updater lazily so updater failures don't block the main window.
-function ensureAutoUpdater() {
-  if (autoUpdater !== null) {
-    return autoUpdater;
-  }
-
-  try {
-    ({ autoUpdater } = require('electron-updater'));
-  } catch (error) {
-    console.error('[Updater] Failed to load electron-updater', error);
-    autoUpdater = false;
-  }
-
-  return autoUpdater || null;
-}
-
-function setupAutoUpdater() {
-  const updater = ensureAutoUpdater();
-  if (!updater) {
-    setUpdateState({
-      status: isAutoUpdaterSupported() ? 'error' : 'idle',
-      error: isAutoUpdaterSupported() ? 'Failed to initialize auto updater.' : null,
-      downloadProgress: null,
-    });
-    return;
-  }
-
-  updater.autoDownload = false;
-  if (getCurrentReleaseChannel().updateEnabled) {
-    configureAutoUpdaterChannel(updater);
-  }
-  updater.autoInstallOnAppQuit = false;
-
-  updater.on('checking-for-update', () => {
-    setUpdateState({ status: 'checking', error: null, downloadProgress: null });
-  });
-
-  updater.on('update-available', (info) => {
-    const version = normalizeVersion(info?.version);
-    setUpdateState({
-      status: 'available',
-      availableVersion: version || null,
-      updateUrl: getReleaseUrl(getCurrentReleaseChannel().id, version, FOLIA_RELEASES_URL),
-      error: null,
-      lastCheckedAt: Date.now(),
-      downloadProgress: null,
-    });
-  });
-
-  updater.on('update-not-available', () => {
-    setUpdateState({
-      status: 'latest',
-      availableVersion: null,
-      updateUrl: FOLIA_RELEASES_URL,
-      error: null,
-      lastCheckedAt: Date.now(),
-      downloadProgress: null,
-    });
-  });
-
-  updater.on('download-progress', (progress) => {
-    setUpdateState({
-      status: 'downloading',
-      error: null,
-      downloadProgress: {
-        percent: typeof progress.percent === 'number' ? progress.percent : 0,
-        transferred: progress.transferred,
-        total: progress.total,
-      },
-    });
-  });
-
-  updater.on('update-downloaded', (info) => {
-    setUpdateState({
-      status: 'downloaded',
-      availableVersion: normalizeVersion(info?.version) || updateState.availableVersion,
-      error: null,
-      downloadProgress: null,
-    });
-  });
-
-  updater.on('error', (error) => {
-    setUpdateState({
-      status: 'error',
-      error: error instanceof Error ? error.message : String(error),
-      downloadProgress: null,
-    });
-  });
-}
-
-function configureAutoUpdaterChannel(updater) {
-  const releaseChannel = getCurrentReleaseChannel();
-  updater.channel = releaseChannel.updaterChannel;
-  updater.allowPrerelease = releaseChannel.allowPrerelease;
-
-  const providerConfig = getUpdateProviderConfig(releaseChannel, FOLIA_GITHUB_REPOSITORY);
-  if (providerConfig) {
-    updater.setFeedURL(providerConfig);
-  }
-}
-
-async function downloadAvailableUpdate() {
-  if (isDevUpdatePreviewEnabled()) {
-    setUpdateState({ status: 'downloaded', error: null, downloadProgress: null });
-    return getUpdateStatus();
-  }
-
-  if (!isAutoUpdaterSupported()) {
-    setUpdateState({ status: 'unsupported', error: null });
-    return getUpdateStatus();
-  }
-
-  const updater = ensureAutoUpdater();
-  if (!updater) {
-    setUpdateState({
-      status: 'error',
-      error: 'Failed to initialize auto updater.',
-      downloadProgress: null,
-    });
-    return getUpdateStatus();
-  }
-
-  if (!updateState.availableVersion) {
-    await checkForUpdates({ manual: true });
-  }
-
-  if (!updateState.availableVersion) {
-    return getUpdateStatus();
-  }
-
-  try {
-    setUpdateState({ status: 'downloading', error: null, downloadProgress: null });
-    await updater.downloadUpdate();
-  } catch (error) {
-    setUpdateState({
-      status: 'error',
-      error: error instanceof Error ? error.message : String(error),
-      downloadProgress: null,
-    });
-  }
-
-  return getUpdateStatus();
-}
-
-async function checkForUpdates({ manual = false } = {}) {
-  if (isDevUpdatePreviewEnabled()) {
-    const availableVersion = getDevUpdatePreviewVersion();
-    setUpdateState({
-      status: 'available',
-      availableVersion,
-      updateUrl: getReleaseUrl(getCurrentReleaseChannel().id, availableVersion, FOLIA_RELEASES_URL),
-      error: null,
-      lastCheckedAt: Date.now(),
-      downloadProgress: null,
-    });
-    return getUpdateStatus();
-  }
-
-  if (!getUpdateCheckEnabled() && !manual) {
-    setUpdateState({ status: 'disabled', error: null, downloadProgress: null });
-    return getUpdateStatus();
-  }
-
-  if (!isUpdateCheckSupported()) {
-    setUpdateState({ status: 'unsupported', error: null, downloadProgress: null });
-    return getUpdateStatus();
-  }
-
-  if (!isPackagedUpdateRuntime()) {
-    setUpdateState({ status: 'idle', error: null, downloadProgress: null });
-    return getUpdateStatus();
-  }
-
-  if (!isAutoUpdaterSupported()) {
-    return checkForManualUpdateAvailability();
-  }
-
-  try {
-    const updater = ensureAutoUpdater();
-    if (!updater) {
-      throw new Error('Failed to initialize auto updater.');
-    }
-
-    updater.autoDownload = getAutoUpdateEnabled();
-    await updater.checkForUpdates();
-  } catch (error) {
-    setUpdateState({
-      status: 'error',
-      error: error instanceof Error ? error.message : String(error),
-      lastCheckedAt: Date.now(),
-      downloadProgress: null,
-    });
-  }
-
-  return getUpdateStatus();
-}
-
-async function checkForManualUpdateAvailability() {
-  const releaseChannel = getCurrentReleaseChannel();
-  const discovery = getUpdateDiscoveryConfig(releaseChannel, FOLIA_GITHUB_REPOSITORY);
-  if (!discovery) {
-    setUpdateState({ status: 'unsupported', error: null, availableVersion: null, downloadProgress: null });
-    return getUpdateStatus();
-  }
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
-  setUpdateState({ status: 'checking', error: null, downloadProgress: null });
-
-  try {
-    // Keep the startup check off the app's default session so refreshing proxy state cannot
-    // interrupt playback, provider requests, or other live connections.
-    const ses = session.fromPartition('folia-update-check');
-    await ses.setProxy({ mode: 'system' });
-    await ses.forceReloadProxyConfig();
-    const response = await ses.fetch(discovery.url, {
-      headers: {
-        Accept: 'text/yaml, text/plain',
-        'User-Agent': `Folia/${app.getVersion()}`,
-      },
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      throw new Error(`Update metadata request failed: ${response.status} ${response.statusText}`);
-    }
-
-    const metadata = await response.text();
-    const latestVersion = parseUpdateMetadataVersion(metadata);
-    if (!latestVersion) {
-      throw new Error('Update metadata did not include a version.');
-    }
-
-    const hasUpdate = compareVersions(latestVersion, app.getVersion()) > 0;
-    setUpdateState({
-      status: hasUpdate ? 'available' : 'latest',
-      availableVersion: hasUpdate ? latestVersion : null,
-      updateUrl: hasUpdate
-        ? getReleaseUrl(releaseChannel.id, latestVersion, FOLIA_RELEASES_URL)
-        : FOLIA_RELEASES_URL,
-      error: null,
-      lastCheckedAt: Date.now(),
-      downloadProgress: null,
-    });
-  } catch (error) {
-    setUpdateState({
-      status: 'error',
-      error: error instanceof Error ? error.message : String(error),
-      lastCheckedAt: Date.now(),
-      downloadProgress: null,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
-
-  return getUpdateStatus();
-}
-
-function markUpdateSeen(version) {
-  const normalizedVersion = normalizeVersion(version || updateState.availableVersion);
-
-  if (normalizedVersion) {
-    store.set(LAST_SEEN_UPDATE_VERSION_SETTING_KEY, normalizedVersion);
-  }
-
-  publishUpdateStatus();
-  return getUpdateStatus();
-}
-
-async function openUpdateReleasePage(version) {
-  const normalizedVersion = normalizeVersion(version || updateState.availableVersion);
-  const url = normalizedVersion
-    ? getReleaseUrl(getCurrentReleaseChannel().id, normalizedVersion, FOLIA_RELEASES_URL)
-    : updateState.updateUrl || FOLIA_RELEASES_URL;
-
-  await shell.openExternal(url);
-  return true;
-}
-
 async function openExternalUrl(url) {
   if (typeof url !== 'string' || !url.trim()) {
     return false;
@@ -3404,37 +3215,6 @@ async function openExternalUrl(url) {
 
   await shell.openExternal(url.trim());
   return true;
-}
-
-function scheduleStartupUpdateCheck() {
-  if (isDevUpdatePreviewEnabled()) {
-    void checkForUpdates({ manual: true });
-    return;
-  }
-
-  if (!getUpdateCheckEnabled()) {
-    setUpdateState({ status: 'disabled', error: null });
-    return;
-  }
-
-  if (!isUpdateCheckSupported()) {
-    setUpdateState({ status: 'unsupported', error: null });
-    return;
-  }
-
-  if (!isPackagedUpdateRuntime()) {
-    setUpdateState({ status: 'idle', error: null });
-    return;
-  }
-
-  setTimeout(() => {
-    checkForUpdates().catch((error) => {
-      setUpdateState({
-        status: 'error',
-        error: error instanceof Error ? error.message : String(error),
-      });
-    });
-  }, 4500);
 }
 
 function getGeminiResponseSchema() {
@@ -3979,6 +3759,7 @@ const {
 } = require('./qqApiStartup.cjs');
 
 const net = require('net');
+const dns = require('dns').promises;
 // null until serveNcmApi is actually listening. A numeric fallback used to be handed to the
 // renderer on failure, which turned "backend never started" into an opaque fetch error.
 let assignedPort = null;
@@ -4944,6 +4725,50 @@ function createWindow(options = {}) {
     x11WallpaperWindows.add(win);
   }
 
+  let devLoadRetryCount = 0;
+
+  win.webContents.on('did-finish-load', () => {
+    devLoadRetryCount = 0;
+    console.info('[Electron] Folia renderer finished loading:', win.webContents.getURL());
+    setTimeout(() => {
+      if (win.isDestroyed()) return;
+      win.webContents.executeJavaScript(`(() => ({
+        readyState: document.readyState,
+        rootChildren: document.getElementById('root')?.childElementCount ?? 0,
+        rootText: (document.getElementById('root')?.innerText || '').slice(0, 160),
+        splashPresent: Boolean(document.getElementById('app-splash')),
+        bodyChildren: document.body?.childElementCount ?? 0,
+        moduleScripts: Array.from(document.querySelectorAll('script[type="module"]')).map((script) => script.src),
+        loadedStartupResources: performance.getEntriesByType('resource')
+          .map((entry) => entry.name)
+          .filter((name) => name.includes('/src/index.tsx') || name.includes('/src/bootstrap.tsx')),
+      }))()`, true)
+        .then((snapshot) => console.info('[Electron] Folia renderer DOM snapshot:', snapshot))
+        .catch((error) => console.warn('[Electron] Folia renderer DOM snapshot failed:', error));
+    }, 10000);
+  });
+
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    if (!isMainFrame) return;
+    console.error('[Electron] Folia renderer failed to load', {
+      errorCode,
+      errorDescription,
+      validatedURL,
+    });
+    if (isElectronDevRuntime() && devLoadRetryCount < 3 && !win.isDestroyed()) {
+      devLoadRetryCount += 1;
+      setTimeout(() => {
+        if (!win.isDestroyed()) loadAppEntry(win, (useTransparentWindow || useWallpaperGeometry) ? { splash: '0' } : {});
+      }, 500 * devLoadRetryCount);
+    }
+  });
+
+  win.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    if (level >= 2) {
+      console.warn('[Electron renderer]', { level, message, line, sourceId });
+    }
+  });
+
   // Watchdog trigger point 1: a crashed renderer breaks the wallpaper connection.
   win.webContents.on('render-process-gone', (_event, details) => {
     wallpaperWatchdog.handleRendererGone(details);
@@ -4957,7 +4782,7 @@ function createWindow(options = {}) {
     // wallpaper_mode through the usual settings sync.
     const crashed = details?.reason === 'crashed' && !win.isDestroyed();
     const macWallpaperCrash = process.platform === 'darwin' && isMacWallpaperMode();
-    if ((useWindowsWallpaper || macWallpaperCrash) && crashed) {
+    if ((useWindowsWallpaper || macWallpaperCrash || isElectronDevRuntime()) && crashed) {
       win.webContents.reload();
     }
   });
@@ -5218,7 +5043,6 @@ app.whenReady().then(async () => {
     callback('deny');
   });
 
-  setupAutoUpdater();
   // Not awaited: this performs network round trips (xeapi key, anonymous token) that used to keep
   // the window from appearing at all on a slow or blocked route. Status reaches the renderer over
   // NETEASE_API_STATUS_CHANNEL, and get-netease-port reports null until the server is listening.
@@ -5347,7 +5171,6 @@ app.whenReady().then(async () => {
     screen.on('display-removed', scheduleMacWallpaperFrameReassert);
     screen.on('display-metrics-changed', scheduleMacWallpaperFrameReassert);
   }
-  scheduleStartupUpdateCheck();
   voiceInputPauseMonitor.syncState();
 
   try {
@@ -5500,13 +5323,6 @@ ipcMain.handle('save-settings', (event, key, value) => {
   }
 
   let nextValue = value;
-  if (key === UPDATE_CHANNEL_SETTING_KEY) {
-    const channel = normalizeUpdateChannelSelection(value);
-    if (!channel) {
-      return getPublicSettings();
-    }
-    nextValue = channel;
-  }
   if (
     key === MINIMIZE_TO_TRAY_SETTING_KEY ||
     key === HIDE_TASKBAR_ICON_SETTING_KEY ||
@@ -5615,55 +5431,6 @@ ipcMain.handle('save-settings', (event, key, value) => {
           mainWindow.setBackgroundMaterial(enableNativeBlur ? 'acrylic' : 'none');
         }
       }
-    }
-  }
-
-  if (key === ENABLE_UPDATE_CHECK_SETTING_KEY) {
-    if (Boolean(nextValue)) {
-      checkForUpdates().catch((error) => {
-        setUpdateState({
-          status: 'error',
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
-    } else {
-      setUpdateState({ status: 'disabled', error: null, availableVersion: null, downloadProgress: null });
-    }
-  }
-
-  if (key === ENABLE_AUTO_UPDATE_SETTING_KEY) {
-    publishUpdateStatus();
-    if (Boolean(nextValue) && updateState.availableVersion) {
-      downloadAvailableUpdate().catch((error) => {
-        setUpdateState({
-          status: 'error',
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
-    }
-  }
-
-  if (key === UPDATE_CHANNEL_SETTING_KEY) {
-    const updater = ensureAutoUpdater();
-    if (updater) {
-      configureAutoUpdaterChannel(updater);
-    }
-
-    setUpdateState({
-      status: getUpdateCheckEnabled() && isUpdateCheckSupported() ? 'idle' : 'unsupported',
-      availableVersion: null,
-      updateUrl: FOLIA_RELEASES_URL,
-      error: null,
-      downloadProgress: null,
-    });
-
-    if (getUpdateCheckEnabled() && isPackagedUpdateRuntime() && isUpdateCheckSupported()) {
-      checkForUpdates().catch((error) => {
-        setUpdateState({
-          status: 'error',
-          error: error instanceof Error ? error.message : String(error),
-        });
-      });
     }
   }
 
@@ -5807,46 +5574,11 @@ function scanHintDirectories() {
     .filter(Boolean);
 }
 
-ipcMain.handle('updates-get-status', () => {
-  return getUpdateStatus();
-});
-
-ipcMain.handle('updates-check', () => {
-  return checkForUpdates({ manual: true });
-});
-
-ipcMain.handle('updates-mark-seen', (event, version) => {
-  return markUpdateSeen(version);
-});
-
-ipcMain.handle('updates-open-release-page', (event, version) => {
-  return openUpdateReleasePage(version);
-});
-
 ipcMain.handle('open-external-url', (event, url) => {
   return openExternalUrl(url);
 });
 
-ipcMain.handle('updates-download', () => {
-  return downloadAvailableUpdate();
-});
-
-ipcMain.handle('updates-quit-and-install', () => {
-  const updater = ensureAutoUpdater();
-  if (!isAutoUpdaterSupported() || !updater || updateState.status !== 'downloaded') {
-    return false;
-  }
-
-  // Wallpaper mode is process-wide state: quitAndInstall relaunches the app without letting us
-  // clear env, and a wrapped session's WAYLAND_SOCKET is a dead fd after restart. Drop the mode
-  // first so the updated app comes back as a normal window.
-  if (isWallpaperModeEnabled()) {
-    store.set(WALLPAPER_MODE_SETTING_KEY, false);
-  }
-
-  updater.quitAndInstall(false, true);
-  return true;
-});
+ipcMain.handle('luoxue-music-url', (_event, cacheKeys) => readLuoxueMusicUrl(cacheKeys));
 
 ipcMain.handle('get-audio-cache', async (event, cacheKey) => {
   return readAudioCacheEntry(cacheKey);
@@ -5940,6 +5672,9 @@ ipcMain.handle('get-qq-api-status', () => qqApiStatus);
 
 ipcMain.handle('kugou-api-status', () => kugouApiBridge.getStatus());
 ipcMain.handle('kugou-api-request', (_event, operation, params) => kugouApiBridge.request(operation, params));
+ipcMain.handle('kuwo-account-status', () => kuwoAccountBridge.getStatus());
+ipcMain.handle('kuwo-account-login', (_event, username, password) => kuwoAccountBridge.login(username, password));
+ipcMain.handle('kuwo-account-logout', () => kuwoAccountBridge.logout());
 
 ipcMain.handle('window-minimize', () => {
   if (!mainWindow || mainWindow.isDestroyed()) {
@@ -6559,6 +6294,30 @@ ipcMain.handle('lyric-proxy-fetch', async (event, url, init) => {
   }
 
   return proxyLyricRequest(url, init);
+});
+
+ipcMain.handle('js-source-request', async (event, url, init) => {
+  if (!isTrustedMainWindowContents(event.sender)) {
+    throw new Error('Untrusted renderer attempted to fetch JS source data.');
+  }
+  if (typeof url !== 'string' || !url) {
+    throw new Error('Missing JS source request url.');
+  }
+  return proxyJsSourceRequest(url, init);
+});
+
+ipcMain.handle('luoxue-lyrics', async (event, cacheKeys) => {
+  if (!isTrustedMainWindowContents(event.sender)) {
+    throw new Error('Untrusted renderer attempted to read Luoxue lyric cache.');
+  }
+  return readLuoxueLyrics(cacheKeys);
+});
+
+ipcMain.handle('discover-luoxue-sources', async (event) => {
+  if (!isTrustedMainWindowContents(event.sender)) {
+    throw new Error('Untrusted renderer attempted to discover Luoxue sources.');
+  }
+  return discoverLuoxueSources();
 });
 
 // Integrate AI logic locally into Electron

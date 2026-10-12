@@ -129,6 +129,7 @@ import { audioBands, audioPower, bass, currentTime, lowMid, lyricCurrentTime, mi
 import { useAppChromeStore } from './stores/useAppChromeStore';
 import { useAppViewStore } from './stores/useAppViewStore';
 import { selectDisplayCoverUrl, selectDisplayDuration, selectDisplayLyrics, selectDisplayPlayerState, selectDisplaySong, selectIsShowingTail, usePlaybackStore } from './stores/usePlaybackStore';
+import { usePlaybackModeStore } from './stores/usePlaybackModeStore';
 import { useLibraryStore } from './stores/useLibraryStore';
 import { countRender } from './dev/renderCount';
 import { resolveSongLiked } from './utils/resolveSongLiked';
@@ -369,6 +370,23 @@ export default function App() {
     // const lastBufferedPercentLogRef = useRef<number | null>(null);
     const [isLyricsLoading, setIsLyricsLoading] = useState(false);
     const isNowPlayingControlDisabledRef = useRef(false);
+    const playbackMode = usePlaybackModeStore(state => state.playbackMode);
+    const playbackModeRef = useRef(playbackMode);
+    const currentOnlineAccountFingerprint = useOnlineProviderAccountStore(state => {
+        const source = currentSong?.sourceRef;
+        if (source?.kind !== 'online') return 'none';
+        const account = state.accounts[source.providerId];
+        return [
+            source.providerId,
+            account?.status || 'unknown',
+            String(account?.user?.id ?? ''),
+            String(account?.user?.vipType ?? ''),
+        ].join(':');
+    });
+    const previousOnlineAccountRef = useRef<{ songKey: string | null; fingerprint: string }>({
+        songKey: null,
+        fingerprint: currentOnlineAccountFingerprint,
+    });
 
 
     // Navigation persistence state shared by the Grid home surfaces.
@@ -739,16 +757,47 @@ export default function App() {
         refresh: refreshQqLibrary,
         logout: logoutQqLibrary,
     } = useQqLibrary();
+    const refreshKuwoAccount = useCallback(async () => {
+        try {
+            const user = await omni.getLoginStatus('kuwo');
+            useOnlineProviderAccountStore.getState().updateAccount('kuwo', {
+                status: user ? 'authenticated' : 'anonymous',
+                user,
+                hydration: 'ready',
+                freshness: 'fresh',
+                error: undefined,
+            });
+            return true;
+        } catch (error) {
+            useOnlineProviderAccountStore.getState().updateAccount('kuwo', {
+                status: 'error',
+                hydration: 'ready',
+                freshness: 'error',
+                error: error instanceof Error ? error.message : 'kuwo_login_status_failed',
+            });
+            return false;
+        }
+    }, []);
+    const logoutKuwoAccount = useCallback(async () => {
+        await omni.logout('kuwo');
+        useOnlineProviderAccountStore.getState().clearAccount('kuwo');
+    }, []);
     const onlineProviderRefreshers = useMemo(() => ({
         netease: refreshUserData,
         kugou: refreshKugouLibrary,
         qq: refreshQqLibrary,
-    }), [refreshKugouLibrary, refreshQqLibrary, refreshUserData]);
+        kuwo: refreshKuwoAccount,
+    }), [refreshKugouLibrary, refreshKuwoAccount, refreshQqLibrary, refreshUserData]);
     const onlineProviderLogouts = useMemo(() => ({
         netease: handleLogout,
         kugou: logoutKugouLibrary,
         qq: logoutQqLibrary,
-    }), [handleLogout, logoutKugouLibrary, logoutQqLibrary]);
+        kuwo: logoutKuwoAccount,
+    }), [handleLogout, logoutKugouLibrary, logoutKuwoAccount, logoutQqLibrary]);
+
+    useEffect(() => {
+        void refreshKuwoAccount();
+    }, [refreshKuwoAccount]);
 
     const prepareOnlineProviderSwitch = useCallback((_currentProviderId: OnlineProviderId, nextProviderId: OnlineProviderId): Promise<boolean> => {
         return new Promise<boolean>((resolve) => {
@@ -933,6 +982,7 @@ export default function App() {
     const {
         localSongs,
         localPlaylists,
+        personalPlaylists,
         showLyricMatchModal,
         setShowLyricMatchModal,
         showNaviLyricMatchModal,
@@ -941,11 +991,15 @@ export default function App() {
         setShowOnlineLyricMatchModal,
         loadLocalSongs,
         loadLocalPlaylists,
+        loadPersonalPlaylists,
         onRefreshLocalSongs,
         isLocalSongLiked,
+        isPersonalSongLiked,
         saveCurrentQueueAsLocalPlaylist,
         addCurrentSongToLocalPlaylist,
         createCurrentLocalPlaylist,
+        addCurrentSongToPersonalPlaylist,
+        createCurrentPersonalPlaylist,
         addCurrentSongToOnlinePlaylist,
         addCurrentSongToNavidromePlaylist,
         createCurrentNavidromePlaylist,
@@ -966,11 +1020,9 @@ export default function App() {
         handleAutoMatchBestLyricForCurrentSong,
         handleLike,
     } = useLibraryPlaybackController({
-        likedSongIds,
         userId: user?.id,
         setLyrics,
         setIsLyricsLoading,
-        setLikedSongIds,
         navigateToPlaybackView,
         persistLastPlaybackCache,
         restoreCachedThemeForSong,
@@ -1094,6 +1146,88 @@ export default function App() {
         getDisplaySong,
         endHeldTransition,
     });
+
+    // Changing the manual channel must affect the song that is already on screen as well as the
+    // next queue item. Clearing only the setting left the <audio> element holding the old URL, and
+    // the old prefetch/cache layers could then make an official selection continue playing LX bytes
+    // (or the reverse) until a later track change.
+    useEffect(() => {
+        if (playbackModeRef.current === playbackMode) return;
+        playbackModeRef.current = playbackMode;
+
+        clearPrefetchRuntime();
+        clearTrackProfileRuntime();
+        automixRef.current?.abortTransition();
+
+        const song = usePlaybackStore.getState().currentSong;
+        if (!song || isLocalPlaybackSong(song) || isNavidromePlaybackSong(song) || isStagePlaybackSong(song)) {
+            return;
+        }
+
+        const audio = audioRef.current;
+        audio?.pause();
+        audio?.removeAttribute('src');
+        audio?.load();
+        if (audioSrc?.startsWith('blob:')) URL.revokeObjectURL(audioSrc);
+
+        setAudioSrc(null);
+        setCachedCoverUrl(null);
+        setLyrics(null);
+        setDuration(0);
+        setPlayerState(PlayerState.IDLE);
+        currentOnlineAudioUrlFetchedAtRef.current = null;
+
+        const state = usePlaybackStore.getState();
+        void playSong(song, state.playQueue, state.isFmMode, { shouldNavigateToPlayer: false });
+    }, [audioRef, audioSrc, currentOnlineAudioUrlFetchedAtRef, playbackMode, playSong, setAudioSrc, setCachedCoverUrl, setDuration, setLyrics, setPlayerState]);
+
+    // Account hydration can finish after a song has already started. Official playback URLs are
+    // entitlement-dependent, so a login/VIP transition for the same song must replace the active
+    // preview immediately instead of waiting for the next track or a manual retry.
+    useEffect(() => {
+        const songKey = currentSong && !isLocalPlaybackSong(currentSong)
+            && !isNavidromePlaybackSong(currentSong)
+            && !isStagePlaybackSong(currentSong)
+            ? getPlaybackSongKey(currentSong)
+            : null;
+        const previous = previousOnlineAccountRef.current;
+        previousOnlineAccountRef.current = {
+            songKey,
+            fingerprint: currentOnlineAccountFingerprint,
+        };
+
+        if (
+            playbackMode !== 'official'
+            || !songKey
+            || previous.songKey !== songKey
+            || previous.fingerprint === currentOnlineAccountFingerprint
+        ) return;
+
+        clearPrefetchRuntime();
+        clearTrackProfileRuntime();
+        automixRef.current?.abortTransition();
+        audioRef.current?.pause();
+        audioRef.current?.load();
+        if (audioSrc?.startsWith('blob:')) URL.revokeObjectURL(audioSrc);
+        setAudioSrc(null);
+        setCachedCoverUrl(null);
+        setLyrics(null);
+        setDuration(0);
+        setPlayerState(PlayerState.IDLE);
+        currentOnlineAudioUrlFetchedAtRef.current = null;
+
+        if (!currentSong) return;
+        const state = usePlaybackStore.getState();
+        void playSong(currentSong, state.playQueue, state.isFmMode, { shouldNavigateToPlayer: false });
+    }, [audioRef, audioSrc, currentOnlineAccountFingerprint, currentOnlineAudioUrlFetchedAtRef, currentSong, playbackMode, playSong, setAudioSrc, setCachedCoverUrl, setDuration, setLyrics, setPlayerState]);
+
+    const playAllInLattice = useCallback((songs: SongResult[]) => {
+        if (songs.length === 0) return;
+        // This is an explicit playlist action. It must not change the normal "Play All" entry
+        // preference; only the dedicated Queue Collage button chooses this surface.
+        navigateToLattice();
+        playOnlineQueueFromStart(songs);
+    }, [navigateToLattice, playOnlineQueueFromStart]);
     const handleSearchResultArtistOpen = useCallback(async (
         track: UnifiedSong,
         artistName: string,
@@ -1517,7 +1651,7 @@ export default function App() {
         isTrackTransitionAudible: automix.isTransitionAudible,
         // Keyed on the displayed track, so the like state matches the song the remote is showing
         // while a blend is held rather than the one arriving underneath it.
-        isLiked: resolveSongLiked(displaySong, { isLocalSongLiked, starredNavidromeSongIds, likedSongIds }),
+        isLiked: resolveSongLiked(displaySong, { isLocalSongLiked, isPersonalSongLiked, starredNavidromeSongIds, likedSongIds }),
         onLike: handleLike,
     });
 
@@ -1773,7 +1907,7 @@ export default function App() {
         setPersonalFmSelection,
         runAutoMatchBestLyric: handleAutoMatchBestLyricForCurrentSong,
         toggleSongLike: handleLike,
-        isSongLiked: resolveSongLiked(displaySong, { isLocalSongLiked, starredNavidromeSongIds, likedSongIds }),
+        isSongLiked: resolveSongLiked(displaySong, { isLocalSongLiked, isPersonalSongLiked, starredNavidromeSongIds, likedSongIds }),
 
         navigateToHome,
         navigateToPlayer,
@@ -2143,7 +2277,9 @@ export default function App() {
         localSongs,
         localLibraryCatalog,
         localPlaylists,
+        personalPlaylists,
         onRefreshLocalSongs,
+        onRefreshPersonalPlaylists: loadPersonalPlaylists,
         onAddLocalSongToQueue: handleLocalQueueAdd,
         localMusicState,
         setLocalMusicState,
@@ -2156,6 +2292,7 @@ export default function App() {
         openStagePlayer,
         theme,
         playAll: playOnlineQueueFromStart,
+        playAllInLattice,
         addAllToQueue: addOnlineSongsToQueue,
         addSongToQueue: addOnlineSongToQueue,
         onStatusMessage: setStatusMsg,
@@ -2184,6 +2321,7 @@ export default function App() {
         navigateToLattice,
         handleDirectHomeFromPanel,
         currentSong: playerDisplayCurrentSong,
+        isPersonalSongLiked,
         handleAlbumSelect: handlePlayerPanelAlbumSelect,
         handleArtistSelect: handlePlayerPanelArtistSelect,
         effectiveLoopMode,
@@ -2739,9 +2877,12 @@ export default function App() {
             <AddToPlaylistHost
                 isDaylight={isDaylight}
                 localPlaylists={localPlaylists}
+                personalPlaylists={personalPlaylists}
                 onlinePlaylists={onlinePlaylists}
                 onAddCurrentSongToLocalPlaylist={addCurrentSongToLocalPlaylist}
                 onCreateCurrentLocalPlaylist={createCurrentLocalPlaylist}
+                onAddCurrentSongToPersonalPlaylist={addCurrentSongToPersonalPlaylist}
+                onCreateCurrentPersonalPlaylist={createCurrentPersonalPlaylist}
                 onAddCurrentSongToOnlinePlaylist={addCurrentSongToOnlinePlaylist}
                 onAddCurrentSongToNavidromePlaylist={addCurrentSongToNavidromePlaylist}
                 onCreateCurrentNavidromePlaylist={createCurrentNavidromePlaylist}

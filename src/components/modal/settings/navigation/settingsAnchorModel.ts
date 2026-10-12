@@ -27,11 +27,13 @@ export const SETTINGS_ANCHOR_DEFINITIONS = {
 
     // PlaybackSettingsSubview (TransitionSettingsSection renders inside it)
     queueSettings: { section: 'playback', labelKey: 'options.queueSettings' },
+    playbackModeSettings: { section: 'playback', labelKey: 'options.playbackModeSettings' },
     scrobbleSettings: { section: 'playback', labelKey: 'options.scrobbleSettings' },
     transitionSettings: { section: 'playback', labelKey: 'options.transitionSettings' },
     replayGainSettings: { section: 'playback', labelKey: 'options.replayGainSettings' },
     lyrics: { section: 'playback', labelKey: 'options.lyrics' },
     audioOutputSettings: { section: 'playback', labelKey: 'options.audioOutputSettings' },
+    jsMusicSources: { section: 'playback', labelKey: 'options.jsMusicSources' },
 
     // InteractionSettingsSubview
     gridActionButton: { section: 'interaction', labelKey: 'options.gridActionButton' },
@@ -55,7 +57,6 @@ export const SETTINGS_ANCHOR_DEFINITIONS = {
     // DesktopSettingsSubview
     desktopTrayBehavior: { section: 'desktop', labelKey: 'options.desktopTrayBehavior', electronOnly: true },
     wallpaperMode: { section: 'desktop', labelKey: 'options.wallpaperMode', electronOnly: true },
-    updateCheck: { section: 'desktop', labelKey: 'options.updateCheck', electronOnly: true },
     electronSettings: { section: 'desktop', labelKey: 'options.electronSettings', electronOnly: true },
 
     // LabSettingsModal

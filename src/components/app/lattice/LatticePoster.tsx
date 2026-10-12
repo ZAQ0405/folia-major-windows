@@ -11,6 +11,7 @@ import { useLatticeExpansionSettled } from './useLatticeExpansionSettled';
 import { prewarmLatticeLyrics } from './lyrics/prewarmLatticeLyrics';
 import { prewarmLatticePosterArtwork, useLatticePosterArtwork } from './useLatticePosterArtwork';
 import { countRender } from '../../../dev/renderCount';
+import { isAndroidCapacitor } from '../../../utils/runtimePlatform';
 
 // Renders one poster and its expanded Player Chrome controls.
 const LatticeLyrics = lazy(() => import('./lyrics/LatticeLyrics'));
@@ -131,7 +132,7 @@ function LatticePoster({
     const coverUrl = useLatticePosterArtwork(tile.coverUrl, Math.max(rect.width, rect.height) * pixelScale);
     // Hover and press are the last moments before the open: warming here keeps the lyric chunk,
     // the Pixi module and the first shader compile off the click path.
-    const warmLyrics = () => { if (isCurrent) prewarmLatticeLyrics(); };
+    const warmLyrics = () => { if (isCurrent && !isAndroidCapacitor) prewarmLatticeLyrics(); };
     // Deliberately not on hover: a pointer sweeping the wall would pull a full-size cover per card,
     // which costs more than the swap it saves. A press is already an open in all but name.
     const warmExpandedArtwork = () => prewarmLatticePosterArtwork(tile.coverUrl, expandedSize * pixelScale);
@@ -145,7 +146,12 @@ function LatticePoster({
             didDragRef.current = false;
             return;
         }
-        if (!expanded) onExpand(instanceId);
+        if (!expanded) {
+            // Android panning starts on a poster just as often as a tap does. Do not
+            // decode the expanded cover until the click survives the drag guard.
+            if (isAndroidCapacitor) warmExpandedArtwork();
+            onExpand(instanceId);
+        }
         else chrome.toggleTouch();
     };
 
@@ -173,19 +179,19 @@ function LatticePoster({
             ref={chrome.articleRef}
             onPointerEnter={(event: PointerEvent<HTMLElement>) => { warmLyrics(); chrome.onPointerEnter(event); }}
             onPointerLeave={chrome.onPointerLeave}
-            onPointerDownCapture={(event: PointerEvent<HTMLElement>) => { warmLyrics(); warmExpandedArtwork(); chrome.onPointerDownCapture(event); }}
+            onPointerDownCapture={(event: PointerEvent<HTMLElement>) => {
+                warmLyrics();
+                if (!isAndroidCapacitor) warmExpandedArtwork();
+                chrome.onPointerDownCapture(event);
+            }}
             onFocusCapture={chrome.onFocusCapture}
             onBlurCapture={chrome.onBlurCapture}
             key={instanceId}
             className={`lattice-poster ${expanded ? 'is-expanded' : ''} ${isFocused ? 'is-focused' : ''} ${isCurrent ? 'is-current' : ''}`}
             data-instance-id={instanceId}
-            initial={reducedMotion
+            initial={reducedMotion || landing === null
                 ? false
-                : landing === null
-                    // Outside the opening wave a poster still fades up in place, so posters
-                    // revealed by a pan or a queue change never pop in fully drawn.
-                    ? { ...rect, opacity: 0, scale: 0.94 }
-                    : { ...rect, y: rect.y - ENTRANCE_LIFT, opacity: 0, scale: 0.88 }}
+                : { ...rect, y: rect.y - ENTRANCE_LIFT, opacity: 0, scale: 0.88 }}
             animate={{
                 x: rect.x,
                 y: rect.y,
@@ -216,7 +222,12 @@ function LatticePoster({
                         opacity: { duration: 0.24, delay: landing },
                     }}
             style={{
-                backgroundImage: coverUrl ? `url("${coverUrl}")` : fallbackBackground(tile.id),
+                // Android WebView can fail to composite the promoted <img> layer when
+                // a poster grows into the large queue-card slot. Paint the same cover
+                // as the poster surface there; desktop keeps the decoded <img> layer.
+                backgroundImage: coverUrl && isAndroidCapacitor
+                    ? `url("${coverUrl}")`
+                    : coverUrl ? undefined : fallbackBackground(tile.id),
                 zIndex: expanded ? 20 : undefined,
             }}
             onAnimationComplete={onExpansionComplete}
@@ -227,6 +238,15 @@ function LatticePoster({
             aria-expanded={expanded ? undefined : false}
             aria-label={`${tile.title} · ${tile.artist}`}
         >
+            {coverUrl && (
+                <img
+                    className="lattice-poster-artwork"
+                    src={coverUrl}
+                    alt=""
+                    aria-hidden="true"
+                    draggable={false}
+                />
+            )}
             <span className="lattice-poster-shade" />
             <span className="lattice-poster-lights-out" />
             <span className="lattice-poster-tint" />

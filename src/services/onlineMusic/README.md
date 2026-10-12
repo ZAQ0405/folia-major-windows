@@ -19,6 +19,8 @@ UI / hooks / stores / app services
 
 当前 registry 注册 `netease`、`kugou` 和 `qq`。Navidrome 是独立的 Subsonic 服务，入口是 `src/services/navidromeService.ts`，不属于 Omni provider。
 
+可导入的 LX Music 风格 JS 音源不注册为 Omni provider：`src/services/jsMusicSource/jsSourceManager.ts` 优先直接复用洛雪桌面端 `music_url` 完整地址，未命中时才解析 JS 音源，由 `omni.getAudioSource` 作为启用 JS 音源时的播放核心调用；声明 `lyric` action 的音源和洛雪 `lyric` 缓存也通过 `omni.getLyrics` 进入 Folia 歌词解析链。搜索由 `src/services/onlineMusic/luoxueSearch.ts` 复用洛雪 `musicSdk` 的搜索层：网易、QQ、酷狗复用现有 provider transport，酷我使用 LX 对应的搜索协议；各通道并行查询、合并、去重、相关度排序，并保留平台 identity。JS 音源本身不参与搜索、账号或歌单路由。Folia 不保留旧 provider/预取 URL，JS 音源启用后不会静默回退到原生 provider 的试听地址。
+
 ## Public contract
 
 调用前先看 `omni.ts` 的方法和 `src/types/onlineMusic.ts` 的类型。常用入口按能力分组：
@@ -27,7 +29,7 @@ UI / hooks / stores / app services
 | --- | --- | --- |
 | provider 状态 | `getProviderSummaries`、`getActiveProviderSummary`、`getProviderCapabilities`、`getProviderAvailability` | `useOnlineProviderAccountStore` 提供 active provider 与账号快照 |
 | 账号/二维码 | `getLoginStatus`、`logout`、`createQrLogin`、`checkQrLogin` | provider auth adapter；不要在 UI 直接保留 raw session |
-| 搜索 | `searchSongs`、`searchProviderSongs` | 普通搜索按 active provider；显式 provider 或跨 provider 用第二个方法 |
+| 搜索 | `searchSongs`、`searchProviderSongs`、`searchAllProviderSongs`、`searchLuoxueChannel`、`searchLuoxueSongs` | `searchLuoxueChannel` 按 LX 平台通道分流，`searchLuoxueSongs` 复用 LX 内置 musicSdk 搜索五个平台；每条结果保留 provider identity |
 | 用户库 | `getUserPlaylists`、`getProviderUserPlaylists`、`getUserAlbums`、`getLikedSongIds`、`getCloudCollection` | 统一 `OmniCollection` / page 类型，账号快照可先展示再静默刷新 |
 | 推荐 | `getHomeFeed`、`getPersonalFm`、`getDailySongs`、`getRecommendationHistory*`、`dislikeSong` | 首页推荐与历史推荐仍由 Omni 路由 |
 | 播放/歌词 | `getSongDetail`、`canPlaySong`、`getAudioSource`、`getLyrics`、`getChorusRanges` | 输出 `OmniAudioSource` / `OmniLyricsResult`；Navidrome 歌词走独立 service |
@@ -78,7 +80,7 @@ await omni.getCollectionTracks(collection, { limit: 50, offset: 0 });
 
 ### Explicit cross-provider flow
 
-歌词匹配、本地元数据匹配、联邦搜索、fallback、比较和迁移才是跨 provider。使用 `searchProviderSongs(providerId, ...)` 等显式方法，并保留每条结果的 `sourceRef.providerId`。不要为了“当前有两个 provider”就直接并发调用 raw adapter。
+歌词匹配、本地元数据匹配、联邦搜索、fallback、比较和迁移才是跨 provider。搜索页使用 `searchLuoxueSongs(...)`；平台筛选使用 `searchLuoxueChannel(...)`，会把 `netease/qq/kugou/kuwo` 分别映射到 LX 的 `wy/tx/kg/kw`。所有结果必须保留 `sourceRef.providerId`，不要为了“当前有两个 provider”就直接并发调用 raw adapter。
 
 ### Identity
 

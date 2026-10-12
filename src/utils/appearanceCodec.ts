@@ -458,6 +458,11 @@ export const compressConfig = (config: any): string => {
         };
     }
     if (config.visualizerMode) minified.vm = config.visualizerMode;
+    if (config.jizuraEnabled !== undefined) minified.jze = config.jizuraEnabled;
+    if (config.jizuraStyle) minified.jzs = config.jizuraStyle;
+    if (config.jizuraSettings) minified.jzg = config.jizuraSettings;
+    if (config.jizuraSongPresets) minified.jzp = config.jizuraSongPresets;
+    if (config.foliaSongPresets) minified.fsp = config.foliaSongPresets;
     if (config.randomVisualizerModePerSong !== undefined) minified.rvms = config.randomVisualizerModePerSong;
     if (config.visualizerBackgroundMode) minified.vbm = config.visualizerBackgroundMode;
     if (config.backgroundOpacity !== undefined) minified.bo = config.backgroundOpacity;
@@ -543,6 +548,11 @@ export const decompressConfig = (str: string): any => {
     const isMinified = isCompressedShortcode
         || parsed.t !== undefined
         || parsed.vm !== undefined
+        || parsed.jze !== undefined
+        || parsed.jzs !== undefined
+        || parsed.jzg !== undefined
+        || parsed.jzp !== undefined
+        || parsed.fsp !== undefined
         || parsed.rvms !== undefined
         || parsed.ccb !== undefined
         || parsed.dvgb !== undefined
@@ -581,6 +591,11 @@ export const decompressConfig = (str: string): any => {
             };
         }
         if (parsed.vm) decompressed.visualizerMode = parsed.vm;
+        if (parsed.jze !== undefined) decompressed.jizuraEnabled = parsed.jze;
+        if (parsed.jzs) decompressed.jizuraStyle = parsed.jzs;
+        if (parsed.jzg) decompressed.jizuraSettings = parsed.jzg;
+        if (parsed.jzp) decompressed.jizuraSongPresets = parsed.jzp;
+        if (parsed.fsp) decompressed.foliaSongPresets = parsed.fsp;
         if (parsed.rvms !== undefined) decompressed.randomVisualizerModePerSong = parsed.rvms;
         if (parsed.vbm) decompressed.visualizerBackgroundMode = parsed.vbm;
         if (parsed.bo !== undefined) decompressed.backgroundOpacity = parsed.bo;
@@ -638,7 +653,8 @@ export const decompressConfig = (str: string): any => {
         return decompressed;
     } else {
         const validKeys = [
-            'theme', 'visualizerMode', 'randomVisualizerModePerSong', 'visualizerBackgroundMode', 'backgroundOpacity',
+            'theme', 'visualizerMode', 'jizuraEnabled', 'jizuraStyle', 'jizuraSettings', 'jizuraSongPresets', 'foliaSongPresets',
+            'randomVisualizerModePerSong', 'visualizerBackgroundMode', 'backgroundOpacity',
             'useCoverColorBg', 'disableVisualizerGeometricBackground', 'disableVisualizerVignette', 'staticMode',
             'visualizerOpacity', 'hidePlayerTranslationSubtitle', 'showSubtitleTranslation', 'subtitleContentMode',
             'subtitleOverlayBackground', 'subtitleUpcomingLyricsBlur', 'subtitleOverlayOpacity',

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
-import type { LocalPlaylist } from '../../types';
+import type { LocalPlaylist, PersonalPlaylist, SongResult } from '../../types';
 import type { ProviderCollection } from '../../types/onlineMusic';
 import PlaylistSelectionDialog from '../shared/PlaylistSelectionDialog';
 import TextInputDialog from '../shared/TextInputDialog';
@@ -23,9 +23,12 @@ import { useAddToPlaylistStore } from '../../stores/useAddToPlaylistStore';
 type AddToPlaylistHostProps = {
     isDaylight: boolean;
     localPlaylists: LocalPlaylist[];
+    personalPlaylists: PersonalPlaylist[];
     onlinePlaylists: ProviderCollection[];
     onAddCurrentSongToLocalPlaylist: (playlistId: string) => Promise<void>;
     onCreateCurrentLocalPlaylist: (name: string) => Promise<void>;
+    onAddCurrentSongToPersonalPlaylist: (playlistId: string, song?: SongResult) => Promise<void>;
+    onCreateCurrentPersonalPlaylist: (name: string, song?: SongResult) => Promise<void>;
     onAddCurrentSongToOnlinePlaylist: (playlist: ProviderCollection) => Promise<void>;
     onAddCurrentSongToNavidromePlaylist: (playlistId: string) => Promise<void>;
     onCreateCurrentNavidromePlaylist: (name: string) => Promise<void>;
@@ -36,9 +39,12 @@ type PlaylistEntry = { id: string; name: string; description?: string };
 export const AddToPlaylistHost: React.FC<AddToPlaylistHostProps> = ({
     isDaylight,
     localPlaylists,
+    personalPlaylists,
     onlinePlaylists,
     onAddCurrentSongToLocalPlaylist,
     onCreateCurrentLocalPlaylist,
+    onAddCurrentSongToPersonalPlaylist,
+    onCreateCurrentPersonalPlaylist,
     onAddCurrentSongToOnlinePlaylist,
     onAddCurrentSongToNavidromePlaylist,
     onCreateCurrentNavidromePlaylist,
@@ -90,37 +96,45 @@ export const AddToPlaylistHost: React.FC<AddToPlaylistHostProps> = ({
     }, [currentSong?.id, isNavidrome, refreshNavidromePlaylists]);
 
     const availablePlaylists = useMemo<PlaylistEntry[]>(() => {
+        const personal = personalPlaylists.map(playlist => ({
+            id: `personal:${playlist.id}`,
+            name: playlist.name,
+            description: `${playlist.songs.length} ${t('playlist.tracks')}`,
+        }));
         if (isLocal) {
-            return localPlaylists.map((playlist) => ({
+            return [...personal, ...localPlaylists.map((playlist) => ({
                 id: playlist.id,
                 name: playlist.name,
                 description: `${playlist.songIds.length} ${t('playlist.tracks')}`,
-            }));
+            }))];
         }
 
         if (isOnline) {
-            return onlinePlaylists.map((playlist) => ({
+            return [...personal, ...onlinePlaylists.map((playlist) => ({
                 id: String(playlist.id),
                 name: playlist.name,
                 description: `${playlist.trackCount || 0} ${t('playlist.tracks')}`,
-            }));
+            }))];
         }
 
         if (isNavidrome) {
-            return navidromePlaylists;
+            return [...personal, ...navidromePlaylists];
         }
 
         return [];
-    }, [isLocal, isOnline, isNavidrome, localPlaylists, navidromePlaylists, onlinePlaylists, t]);
+    }, [isLocal, isOnline, isNavidrome, localPlaylists, navidromePlaylists, onlinePlaylists, personalPlaylists, t]);
 
     const isApplicable = Boolean(currentSong && !isStage && (isLocal || isOnline || isNavidrome));
     // Local and Navidrome can make a playlist on the spot, so having none is not a refusal there.
-    const canAdd = (isLocal)
+    const canAdd = personalPlaylists.length > 0
+        || (isLocal)
         || (isOnline && canAddOnlineSong && onlinePlaylists.length > 0)
         || (isNavidrome);
-    const disabledReason = isOnline && !canAddOnlineSong
-        ? t('status.providerPlaylistMutationUnavailable', { provider: onlineProviderLabel })
-        : (!canAdd ? t('localMusic.noPlaylistsFound') : undefined);
+    const disabledReason = !canAdd
+        ? (isOnline && !canAddOnlineSong
+            ? t('status.providerPlaylistMutationUnavailable', { provider: onlineProviderLabel })
+            : t('localMusic.noPlaylistsFound'))
+        : undefined;
 
     // The track can change under an open dialog — a blend lands, the queue advances — and the new
     // one may have nowhere to go. Closing beats leaving a picker up that cannot pick.
@@ -146,8 +160,14 @@ export const AddToPlaylistHost: React.FC<AddToPlaylistHostProps> = ({
                 description={t('home.playlists') || 'Playlists'}
                 playlists={availablePlaylists}
                 onSelect={async (playlistId) => {
+                    const selectedId = String(playlistId);
+                    if (selectedId.startsWith('personal:')) {
+                        await onAddCurrentSongToPersonalPlaylist(selectedId.slice('personal:'.length), currentSong ?? undefined);
+                        return;
+                    }
+
                     if (isLocal) {
-                        await onAddCurrentSongToLocalPlaylist(String(playlistId));
+                        await onAddCurrentSongToLocalPlaylist(selectedId);
                         return;
                     }
 
@@ -163,7 +183,7 @@ export const AddToPlaylistHost: React.FC<AddToPlaylistHostProps> = ({
                         await refreshNavidromePlaylists();
                     }
                 }}
-                onCreate={(isLocal || isNavidrome) ? () => {
+                onCreate={(isLocal || isOnline || isNavidrome) ? () => {
                     close();
                     setIsCreateOpen(true);
                 } : undefined}
@@ -181,6 +201,11 @@ export const AddToPlaylistHost: React.FC<AddToPlaylistHostProps> = ({
                 onConfirm={async (name) => {
                     if (isLocal) {
                         await onCreateCurrentLocalPlaylist(name);
+                        return;
+                    }
+
+                    if (isOnline) {
+                        await onCreateCurrentPersonalPlaylist(name, currentSong ?? undefined);
                         return;
                     }
 

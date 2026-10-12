@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // test/unit/onlineMusic/kugouProvider.test.ts
 
 const requestMock = vi.hoisted(() => vi.fn());
+const lyricSearchMock = vi.hoisted(() => vi.fn());
 const anonymousSearchMock = vi.hoisted(() => vi.fn());
 const legacyPlayInfoMock = vi.hoisted(() => vi.fn());
 const transportState = vi.hoisted(() => ({ hasAuthenticatedSearchSession: true }));
@@ -12,6 +13,7 @@ vi.mock('@/services/onlineMusic/kugouTransport', () => ({
     hasKugouAuthenticatedSearchSession: () => transportState.hasAuthenticatedSearchSession,
     requestKugouAnonymousSearch: anonymousSearchMock,
     requestKugou: requestMock,
+    requestKugouLyricSearch: lyricSearchMock,
     requestKugouLegacyPlayInfo: legacyPlayInfoMock,
 }));
 
@@ -41,6 +43,8 @@ describe('kugouProvider', () => {
         vi.useRealTimers();
         requestMock.mockReset();
         anonymousSearchMock.mockReset();
+        lyricSearchMock.mockReset();
+        lyricSearchMock.mockResolvedValue(null);
         legacyPlayInfoMock.mockReset();
         transportState.hasAuthenticatedSearchSession = true;
     });
@@ -198,9 +202,12 @@ describe('kugouProvider', () => {
         expect(result?.lyrics?.isWordByWord).toBe(true);
         expect(result?.lyrics?.lines[0]?.fullText).toBe('测试');
         expect(requestMock).toHaveBeenCalledWith('search_lyric', {
+            keyword: '测试',
             hash: 'LYRIC-HASH',
+            timelength: 3000,
             duration: 3000,
-            man: 'no',
+            lrctxt: '1',
+            man: 'yes',
             album_audio_id: '42',
         });
         expect(requestMock).toHaveBeenCalledWith('lyric', {

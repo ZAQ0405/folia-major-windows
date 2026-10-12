@@ -1,9 +1,11 @@
 import { useEffect, useRef } from 'react';
 import type { SongResult, VisualizerMode } from '../types';
-import { VISUALIZER_REGISTRY } from '../components/visualizer/registry';
+import { getFoliaVisualizerEntries } from '../components/visualizer/registry';
+import { useVisualizerSettingsStore } from '../stores/useVisualizerSettingsStore';
 import { getPlaybackSongKey } from '../utils/appPlaybackGuards';
 
-// Applies a different registered lyric animation mode when the active track changes.
+// Applies a per-song Folia mode when one is saved, or rolls a different registered lyric animation
+// mode when the optional random-per-song setting is enabled.
 export function useRandomVisualizerMode({
     currentSong,
     enabled,
@@ -17,18 +19,15 @@ export function useRandomVisualizerMode({
 }) {
     const observedSongIdRef = useRef<string | null>(null);
     const wasEnabledRef = useRef(enabled);
+    const jizuraEnabled = useVisualizerSettingsStore(state => state.jizuraEnabled);
+    const foliaSongPresets = useVisualizerSettingsStore(state => state.foliaSongPresets);
 
     useEffect(() => {
         const songId = currentSong ? getPlaybackSongKey(currentSong) : null;
         const wasEnabled = wasEnabledRef.current;
         wasEnabledRef.current = enabled;
 
-        if (!enabled) {
-            observedSongIdRef.current = songId;
-            return;
-        }
-
-        if (!wasEnabled) {
+        if (jizuraEnabled) {
             observedSongIdRef.current = songId;
             return;
         }
@@ -37,20 +36,29 @@ export function useRandomVisualizerMode({
             return;
         }
 
-        if (observedSongIdRef.current === null) {
+        const savedPreset = foliaSongPresets[songId];
+        if (savedPreset) {
+            observedSongIdRef.current = songId;
+            if (visualizerMode !== savedPreset.mode) {
+                setVisualizerMode(savedPreset.mode, { notify: false });
+            }
+            return;
+        }
+
+        if (!enabled) {
             observedSongIdRef.current = songId;
             return;
         }
 
-        if (observedSongIdRef.current === songId) {
-            return;
-        }
+        const songChanged = observedSongIdRef.current !== songId;
+        const randomModeJustEnabled = !wasEnabled;
+        if (!songChanged && !randomModeJustEnabled) return;
 
         observedSongIdRef.current = songId;
-        const candidates = VISUALIZER_REGISTRY
+        const candidates = getFoliaVisualizerEntries()
             .map(entry => entry.mode)
-            .filter(mode => mode !== visualizerMode);
+            .filter(mode => mode !== visualizerMode && mode !== 'jizura' && mode !== 'still');
         const nextMode = candidates[Math.floor(Math.random() * candidates.length)] ?? visualizerMode;
         setVisualizerMode(nextMode, { notify: false });
-    }, [currentSong, enabled, setVisualizerMode, visualizerMode]);
+    }, [currentSong, enabled, foliaSongPresets, jizuraEnabled, setVisualizerMode, visualizerMode]);
 }

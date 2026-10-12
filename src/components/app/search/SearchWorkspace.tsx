@@ -11,7 +11,6 @@ import {
 } from '../../../stores/useSearchNavigationStore';
 import SearchResultsList from './SearchResultsList';
 import { useCollectionNavigationStore } from '../../../stores/useCollectionNavigationStore';
-import { useOnlineProviderAccountStore } from '../../../stores/useOnlineProviderAccountStore';
 import { omni } from '../../../services/onlineMusic/omni';
 
 // src/components/app/search/SearchWorkspace.tsx
@@ -66,13 +65,19 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
         setSearchScrollTop: state.setSearchScrollTop,
     })));
     const results = searchResults || [];
-    const activeOnlineProviderId = useOnlineProviderAccountStore(state => state.activeProviderId);
-    const sources = useMemo<SearchSource[]>(() => [activeOnlineProviderId, 'local', 'navidrome'], [activeOnlineProviderId]);
+    const sources = useMemo<SearchSource[]>(() => [
+        'all',
+        ...omni.getLuoxueSearchChannels().map(channel => channel.id),
+        'local',
+        'navidrome',
+    ].filter((source, index, list) => list.indexOf(source) === index), []);
     const hasCollection = useCollectionNavigationStore(state => Boolean(state.snapshot?.stack.length));
     const getSourceLabel = (source: SearchSource) => {
         if (source === 'local') return t('search.sourceLocal');
         if (source === 'navidrome') return t('search.sourceNavidrome');
-        return omni.getProviderLabel(source);
+        if (source === 'all') return t('search.sourceAll');
+        return omni.getLuoxueSearchChannels().find(channel => channel.id === source)?.label
+            || omni.getProviderLabel(source);
     };
 
     useEffect(() => {
@@ -94,7 +99,7 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                     initial={{ opacity: 0, y: 28 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 28 }}
-                    className={`fixed inset-0 flex flex-col overflow-hidden px-3 py-4 sm:px-6 sm:py-6 ${
+                    className={`folia-search-workspace fixed inset-0 flex flex-col overflow-hidden px-3 py-4 sm:px-6 sm:py-6 ${
                         hasCollection ? 'z-[5]' : 'z-50'
                     }`}
                     style={{
@@ -165,6 +170,11 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                                 </button>
                             ))}
                         </nav>
+                        {searchSourceTab === 'all' && (
+                            <div className="text-[11px] opacity-50" style={{ color: theme.primaryColor }}>
+                                {t('search.sourceAllDesc')}
+                            </div>
+                        )}
                     </header>
 
                     <div className="mx-auto mt-3 min-h-0 w-full max-w-5xl flex-1">

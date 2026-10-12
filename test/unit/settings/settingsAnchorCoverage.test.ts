@@ -48,11 +48,13 @@ describe('settings section anchors', () => {
         const source = fs.readFileSync(path.join(SETTINGS_DIR, 'PlaybackSettingsSubview.tsx'), 'utf8');
         const renderedOrder = [
             ['queueSettings', 'anchorId="queueSettings"'],
+            ['playbackModeSettings', 'anchorId="playbackModeSettings"'],
             ['scrobbleSettings', 'anchorId="scrobbleSettings"'],
             ['transitionSettings', '<TransitionSettingsSection'],
             ['replayGainSettings', 'anchorId="replayGainSettings"'],
             ['lyrics', 'anchorId="lyrics"'],
             ['audioOutputSettings', 'anchorId="audioOutputSettings"'],
+            ['jsMusicSources', '<JsMusicSourcesSection'],
         ]
             .map(([id, marker]) => {
                 expect(source, `${marker} missing`).toContain(marker);

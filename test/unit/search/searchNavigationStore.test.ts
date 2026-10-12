@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveCommandPaletteSearchSource, useSearchNavigationStore } from '@/stores/useSearchNavigationStore';
 import { neteaseApi } from '@/services/netease';
 import { getNavidromeConfig, navidromeApi } from '@/services/navidromeService';
+import { omni } from '@/services/onlineMusic/omni';
 import type { LocalLibraryAssignment, LocalLibraryEntity } from '@/types/localLibrary';
 
 vi.mock('@/services/netease', () => ({
@@ -352,5 +353,57 @@ describe('useSearchNavigationStore', () => {
         expect(useSearchNavigationStore.getState().searchError).toBeNull();
         expect(useSearchNavigationStore.getState().searchResults).toHaveLength(2);
         expect(useSearchNavigationStore.getState().hasMore).toBe(false);
+    });
+
+    it('searches all online channels while preserving each result provider identity', async () => {
+        const searchAllMock = vi.spyOn(omni, 'searchLuoxueSongs').mockResolvedValue({
+            items: [
+                {
+                    id: 'netease-song',
+                    name: '网易结果',
+                    artists: [],
+                    album: { id: 1, name: 'Album' },
+                    durationMs: 1000,
+                    sourceRef: { kind: 'online', providerId: 'netease', mediaId: 'netease-song' },
+                },
+                {
+                    id: 'kugou-song',
+                    name: '酷狗结果',
+                    artists: [],
+                    album: { id: 2, name: 'Album' },
+                    durationMs: 1000,
+                    sourceRef: { kind: 'online', providerId: 'kugou', mediaId: 'kugou-song' },
+                },
+            ],
+            hasMore: true,
+            nextOffset: 30,
+        });
+
+        await useSearchNavigationStore.getState().submitSearch({
+            query: 'multi-channel',
+            sourceTab: 'all',
+            deps,
+        });
+
+        expect(searchAllMock).toHaveBeenCalledWith('multi-channel', { limit: 30, offset: 0 });
+        expect(useSearchNavigationStore.getState().searchResults?.map(song => song.sourceRef?.kind === 'online' && song.sourceRef.providerId))
+            .toEqual(['netease', 'kugou']);
+        expect(useSearchNavigationStore.getState().hasMore).toBe(true);
+    });
+
+    it('routes a selected LX platform tab to its matching search channel', async () => {
+        const channelSearchMock = vi.spyOn(omni, 'searchLuoxueChannel').mockResolvedValue({
+            items: [],
+            hasMore: false,
+            nextOffset: 0,
+        });
+
+        await useSearchNavigationStore.getState().submitSearch({
+            query: '告白气球',
+            sourceTab: 'kuwo',
+            deps,
+        });
+
+        expect(channelSearchMock).toHaveBeenCalledWith('kuwo', '告白气球', { limit: 30, offset: 0 });
     });
 });

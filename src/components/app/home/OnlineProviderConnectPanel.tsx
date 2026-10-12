@@ -1,5 +1,7 @@
 import { User } from 'lucide-react';
-import type { ProviderAccountSummary } from '../../../types/onlineMusic';
+import type { ProviderAccountSummary, ProviderChannelHealthMap } from '../../../types/onlineMusic';
+import { useTranslation } from 'react-i18next';
+import { isAndroidCapacitor } from '../../../utils/runtimePlatform';
 
 // src/components/app/home/OnlineProviderConnectPanel.tsx
 
@@ -10,6 +12,8 @@ type OnlineProviderConnectPanelProps = {
     prompt: string;
     getActionLabel: (provider: ProviderAccountSummary) => string;
     onSelect: (provider: ProviderAccountSummary) => void;
+    channelHealth: ProviderChannelHealthMap;
+    onCheckChannel: (providerId: ProviderAccountSummary['providerId']) => void;
 };
 
 // 在线平台使用统一的纯色圆形文字徽章。
@@ -19,6 +23,7 @@ const providerBadge = (
     if (provider.providerId === 'netease') return { label: '云', className: 'bg-red-600' };
     if (provider.providerId === 'kugou') return { label: 'K', className: 'bg-blue-600' };
     if (provider.providerId === 'qq') return { label: 'Q', className: 'bg-green-600' };
+    if (provider.providerId === 'kuwo') return { label: 'W', className: 'bg-orange-500' };
     return { label: provider.shortName.slice(0, 1), className: 'bg-zinc-600' };
 };
 
@@ -29,8 +34,24 @@ const OnlineProviderConnectPanel = ({
     prompt,
     getActionLabel,
     onSelect,
-}: OnlineProviderConnectPanelProps) => (
-    <div className="flex flex-1 w-full flex-col items-center justify-center space-y-6 px-4">
+    channelHealth,
+    onCheckChannel,
+}: OnlineProviderConnectPanelProps) => {
+    const { t } = useTranslation();
+    const channelLabel = (provider: ProviderAccountSummary): string => {
+        const status = channelHealth[provider.providerId]?.status;
+        if (!provider.availability.configured) {
+            if (!isAndroidCapacitor) return t('home.providerNotConfigured');
+            return provider.availability.reason === 'runtime-unavailable'
+                ? t('home.providerRuntimeUnavailable')
+                : t('home.providerAudioApiNotConfigured');
+        }
+        if (status === 'available') return t('home.providerChannelAvailable');
+        if (status === 'unavailable') return t('home.providerChannelUnavailable');
+        return t('home.providerChannelChecking');
+    };
+    return (
+    <div className="folia-provider-connect-panel flex flex-1 w-full flex-col items-center justify-center space-y-6 px-4">
         <div className={`w-20 h-20 rounded-3xl ${isDaylight ? 'bg-white/40 shadow-sm border border-black/5' : 'bg-white/5 border border-white/5'} flex items-center justify-center backdrop-blur-md`}>
             <User size={36} className="opacity-25" />
         </div>
@@ -43,7 +64,7 @@ const OnlineProviderConnectPanel = ({
           * 448px 装得下；加入 QQ 音乐后三个按钮简体下要 566px、英文下要 730px，会被挤到第二行。
           * flex-wrap 保留，窗口真的窄下去仍然照常换行。
           */}
-        <div className="flex flex-wrap items-center justify-center gap-3.5 max-w-3xl w-full pt-2">
+        <div className="folia-provider-connect-actions flex flex-wrap items-center justify-center gap-3.5 max-w-3xl w-full pt-2">
             {providers.map(provider => {
                 const configured = provider.availability.configured;
                 const isPrimaryProvider = provider.providerId === 'netease';
@@ -65,11 +86,27 @@ const OnlineProviderConnectPanel = ({
                                 : badge.label}
                         </span>
                         <span>{getActionLabel(provider)}</span>
+                        <span className="flex items-center gap-1 text-[10px] font-medium opacity-65">
+                            <span className={`h-1.5 w-1.5 rounded-full ${channelHealth[provider.providerId]?.status === 'available'
+                                ? 'bg-emerald-500'
+                                : channelHealth[provider.providerId]?.status === 'unavailable'
+                                    ? 'bg-rose-500'
+                                    : 'bg-amber-400'}`} />
+                            {channelLabel(provider)}
+                        </span>
                     </button>
                 );
             })}
         </div>
+        <button
+            type="button"
+            onClick={() => providers.forEach(provider => onCheckChannel(provider.providerId))}
+            className="text-xs opacity-55 transition-opacity hover:opacity-100"
+        >
+            {t('home.providerChannelCheck')}
+        </button>
     </div>
-);
+    );
+};
 
 export default OnlineProviderConnectPanel;

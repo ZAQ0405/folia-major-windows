@@ -59,6 +59,8 @@ interface DesktopGrid3DSurfaceProps {
     theme: Theme;
     isDaylight: boolean;
     hasFloatingPlayer?: boolean;
+    /** Android-only mode for small collections that should be visible at once. */
+    fitAllOnAndroid?: boolean;
     playlistVisibilityScope?: string;
     batchConfig?: GridMapBatchConfig;
 }
@@ -79,6 +81,7 @@ export const DesktopGrid3DSurface: React.FC<DesktopGrid3DSurfaceProps> = ({
     theme,
     isDaylight,
     hasFloatingPlayer = false,
+    fitAllOnAndroid = false,
     playlistVisibilityScope = 'default',
     batchConfig,
 }) => {
@@ -257,6 +260,7 @@ export const DesktopGrid3DSurface: React.FC<DesktopGrid3DSurfaceProps> = ({
                 emptyMessage={emptyMessage}
                 isDaylight={isDaylight}
                 hasFloatingPlayer={hasFloatingPlayer}
+                fitAllOnAndroid={fitAllOnAndroid}
             />
 
             <AnimatePresence>

@@ -82,7 +82,7 @@ export const PolaroidCardCover: React.FC<{
                 className="w-full h-full object-cover transition-opacity duration-350 pointer-events-none select-none opacity-0"
             />
             <div className="absolute inset-0 bg-zinc-300/40 dark:bg-zinc-700/40 transition-opacity duration-350 flex items-center justify-center">
-                <Disc size={spinnerSize} className="opacity-20 animate-spin" style={{ animationDuration: '3s', color: 'var(--text-primary)' }} />
+                <Disc size={spinnerSize} className="opacity-20" style={{ color: 'var(--text-primary)' }} />
             </div>
         </>
     );

@@ -83,6 +83,7 @@ const createBaseParams = () => {
         theme,
         navidromeEnabled: false,
         playAll: vi.fn(),
+        playAllInLattice: vi.fn(),
         addAllToQueue: vi.fn(),
         addSongToQueue: vi.fn(),
         onOpenCollection: vi.fn(),
@@ -92,6 +93,18 @@ const createBaseParams = () => {
 };
 
 describe('home stage entry wiring', () => {
+    it('keeps playlist playback on the shared queue entry path', () => {
+        const params = createBaseParams();
+        const model = buildHomeModel(params);
+
+        // GridView uses these two callbacks for both provider and local/personal playlists.
+        // Keeping the exact app-level functions here means their playback-entry preference
+        // (including Queue Collage) is not bypassed by a playlist-specific adapter.
+        expect(model.surfaceProps.onPlaySong).toBe(params.playSong);
+        expect(model.surfaceProps.onPlayAll).toBe(params.playAll);
+        expect(model.surfaceProps.onPlayAllInLattice).toBe(params.playAllInLattice);
+    });
+
     it('exposes stage entry props through the Home view model', async () => {
         const params = createBaseParams();
         const model = buildHomeModel(params);

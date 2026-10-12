@@ -10,6 +10,7 @@ interface QuickControlChipProps {
     label: string;
     title: string;
     isDaylight: boolean;
+    active?: boolean;
 }
 
 export const QuickControlChip: React.FC<QuickControlChipProps> = ({
@@ -17,13 +18,17 @@ export const QuickControlChip: React.FC<QuickControlChipProps> = ({
     label,
     title,
     isDaylight,
+    active = false,
 }) => (
     <button
         type="button"
         onClick={onClick}
-        className={`h-6 rounded-md px-1.5 text-[10px] font-bold transition-all ${isDaylight ? 'bg-white shadow-sm hover:bg-white/90' : 'bg-white/20 shadow-sm hover:bg-white/30'}`}
+        className={`h-6 rounded-md px-1.5 text-[10px] font-bold transition-all ${active
+            ? (isDaylight ? 'bg-white shadow-sm' : 'bg-white/35 shadow-sm')
+            : (isDaylight ? 'bg-white/55 shadow-sm hover:bg-white/80' : 'bg-white/20 shadow-sm hover:bg-white/30')}`}
         title={title}
         aria-label={title}
+        aria-pressed={active}
     >
         {label}
     </button>

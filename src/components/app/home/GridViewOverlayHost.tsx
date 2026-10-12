@@ -9,6 +9,7 @@ import { resolveNavidromePlaybackCarrier } from '../../../utils/appPlaybackGuard
 import { deleteFolderSongs, resyncAllFolders, resyncFolder } from '../../../services/localMusicService';
 import { deleteLocalPlaylist, removeSongsFromLocalPlaylist, updateLocalPlaylist } from '../../../services/localPlaylistService';
 import { downloadLocalPlaylistM3u8 } from '../../../services/localPlaylistFileService';
+import { downloadPersonalPlaylistJson } from '../../../services/personalPlaylistFileService';
 import { getNavidromeConfig, navidromeApi } from '../../../services/navidromeService';
 import { getLocalCoverAssetUrl } from '../../../services/localCoverAssetUrl';
 import {
@@ -21,6 +22,8 @@ import {
     resolveLocalGridViewTracks,
     resolveNavidromeGridViewTracks,
 } from './gridViewCollectionAdapters';
+import { deletePersonalPlaylist, removeSongsFromPersonalPlaylist, updatePersonalPlaylist } from '../../../services/personalPlaylistService';
+import { getSongCoverUrl } from '../../../services/onlineMusic/songMetadata';
 import type { LocalLibraryCatalogSnapshot } from '../../../hooks/useLocalLibraryCatalog';
 import { LocalLibraryEntityPanel } from '../../modal/LocalLibraryEntityPanel';
 import { LocalFolderSongInfoPanel } from '../../modal/LocalFolderSongInfoPanel';
@@ -137,6 +140,16 @@ const GridViewOverlayHost: React.FC<GridViewOverlayHostProps> = ({
         : '';
     const liveSelectedCollection = useMemo(() => {
         if (!selectedCollection || !isLocalGridViewCollection(selectedCollection)) {
+            if (selectedCollection?.source === 'personal') {
+                const playlist = surfaceProps.personalPlaylists.find(item => item.id === selectedCollection.playlistId);
+                if (!playlist) return null;
+                return {
+                    ...selectedCollection,
+                    name: playlist.name,
+                    coverUrl: playlist.songs[0] ? getSongCoverUrl(playlist.songs[0]) : undefined,
+                    trackCount: playlist.songs.length,
+                };
+            }
             if (selectedCollection?.source !== 'online') return selectedCollection;
 
             const refreshed = surfaceProps.playlists.find(collection => (
@@ -149,7 +162,7 @@ const GridViewOverlayHost: React.FC<GridViewOverlayHostProps> = ({
         }
 
         return resolveLiveLocalCollection(selectedCollection, surfaceProps, localLibraryCatalog);
-    }, [surfaceProps.localPlaylists, surfaceProps.localSongs, surfaceProps.playlists, localLibraryCatalog, selectedCollection]);
+    }, [surfaceProps.localPlaylists, surfaceProps.localSongs, surfaceProps.personalPlaylists, surfaceProps.playlists, localLibraryCatalog, selectedCollection]);
     const displaySelectedCollection = useMemo(() => {
         if (!liveSelectedCollection) {
             return null;
@@ -382,7 +395,25 @@ const GridViewOverlayHost: React.FC<GridViewOverlayHostProps> = ({
             setResolvedLocalCollectionCoverUrl(undefined);
             setNavidromePlaylistItems([]);
         }
+        if (selectedCollection.source === 'personal') {
+            setExternalTracks(undefined);
+            setExternalTracksLoading(false);
+            setResolvedLocalCollectionCoverUrl(undefined);
+            setNavidromePlaylistItems([]);
+        }
     }, [selectedCollectionKey]);
+
+    useEffect(() => {
+        if (!selectedCollection || selectedCollection.source !== 'personal') return;
+        const playlist = surfaceProps.personalPlaylists.find(item => item.id === selectedCollection.playlistId);
+        if (!playlist) {
+            handleBackCollection();
+            return;
+        }
+        setExternalTracks(playlist.songs);
+        setExternalTracksLoading(false);
+        setResolvedLocalCollectionCoverUrl(undefined);
+    }, [handleBackCollection, selectedCollection, surfaceProps.personalPlaylists]);
 
     useEffect(() => {
         if (!selectedCollection || !isLocalGridViewCollection(selectedCollection)) {
@@ -548,6 +579,29 @@ const GridViewOverlayHost: React.FC<GridViewOverlayHostProps> = ({
                 await removeSongsFromLocalPlaylist(playlistId, songIds);
             },
         },
+        personal: {
+            onRenamePlaylist: async (playlistId, name) => {
+                await updatePersonalPlaylist(playlistId, playlist => ({ ...playlist, name: name.trim() }));
+                await surfaceProps.onRefreshPersonalPlaylists?.();
+            },
+            onDeletePlaylist: async (playlistId) => {
+                await deletePersonalPlaylist(playlistId);
+                await surfaceProps.onRefreshPersonalPlaylists?.();
+            },
+            onExportPlaylist: async (playlistId) => {
+                const playlist = surfaceProps.personalPlaylists?.find(item => item.id === playlistId);
+                if (!playlist) return;
+                downloadPersonalPlaylistJson(playlist);
+                surfaceProps.onStatusMessage?.({
+                    type: 'success',
+                    text: t('localMusic.playlistDataExportSuccess', { name: playlist.name }),
+                });
+            },
+            onRemovePlaylistSongs: async (playlistId, songKeys) => {
+                await removeSongsFromPersonalPlaylist(playlistId, songKeys);
+                await surfaceProps.onRefreshPersonalPlaylists?.();
+            },
+        },
         navidrome: {
             availablePlaylists: navidromePlaylistItems,
             onAddToPlaylist: async (playlistId, songs) => {
@@ -675,6 +729,7 @@ const GridViewOverlayHost: React.FC<GridViewOverlayHostProps> = ({
                             onSelectTrack={handleSelectTrack}
                             onAddTrackToQueue={handleAddTrackToQueue}
                             onPlayAll={surfaceProps.onPlayAll}
+                            onPlayInLattice={surfaceProps.onPlayAllInLattice}
                             onAddAllToQueue={surfaceProps.onAddAllToQueue}
                             onSelectAlbum={handlePushAlbumCollection}
                             onSelectArtist={handlePushArtistCollection}

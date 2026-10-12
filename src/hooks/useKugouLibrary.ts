@@ -8,6 +8,7 @@ import {
     loadProviderAccountSnapshot,
     saveProviderAccountSnapshot,
 } from '../services/onlineMusic/providerAccountCache';
+import { isProviderLikedCollection } from '../utils/providerCollection';
 
 // src/hooks/useKugouLibrary.ts
 
@@ -176,7 +177,7 @@ export const useKugouLibrary = () => {
                 let hasMore = true;
                 while (hasMore && offset < 1000) {
                     const page = await omni.getProviderUserPlaylists('kugou', user.id, { limit: PAGE_SIZE, offset });
-                    collections.push(...page.items);
+                    collections.push(...page.items.filter(collection => !isProviderLikedCollection(collection)));
                     console.info('[KugouLibrary] playlists:page', {
                         offset,
                         itemCount: page.items.length,
@@ -271,7 +272,7 @@ export const useKugouLibrary = () => {
                 if (user) {
                     const collections = snapshot.collections
                         .map(collection => omni.normalizeCachedCollection('kugou', collection, collection.type))
-                        .filter(Boolean) as ProviderCollection[];
+                        .filter((collection): collection is ProviderCollection => collection !== null && !isProviderLikedCollection(collection));
                     updateAccount('kugou', {
                         status: 'authenticated',
                         user,

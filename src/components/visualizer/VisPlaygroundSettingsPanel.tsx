@@ -21,7 +21,11 @@ import {
 } from '../../types';
 import { colorWithAlpha } from './colorMix';
 import FontFallbackStackControl from './FontFallbackStackControl';
-import { VISUALIZER_REGISTRY, getVisualizerModeLabel, type VisualizerRegistryEntry } from './registry';
+import {
+    getVisualizerModeLabel,
+    getFoliaVisualizerEntries,
+    type VisualizerRegistryEntry,
+} from './registry';
 import { type VisPlaygroundEditSection } from './VisPlaygroundPreviewHotspots';
 import { type PreviewPlaceholderId } from './PreviewPlaceholder';
 import type { VisualizerBackgroundActions, VisualizerBackgroundConfig } from './backgrounds/definition';
@@ -32,6 +36,9 @@ import {
     VISUALIZER_BACKGROUND_REGISTRY,
 } from './backgrounds/registry';
 import { usePlayerChromeSettingsStore } from '../../stores/usePlayerChromeSettingsStore';
+import { JIZURA_THEME_OPTIONS } from './jizura/styleOptions';
+import type { JizuraRerollScope, JizuraSettings } from './jizura/settings';
+import JizuraSettingsWorkbench from './jizura/JizuraSettingsWorkbench';
 
 // src/components/visualizer/VisPlaygroundSettingsPanel.tsx
 // Right-side settings panel for the click-to-edit visualizer playground.
@@ -66,6 +73,15 @@ interface VisPlaygroundSettingsPanelProps {
     isDaylight: boolean;
     theme: Theme;
     visualizerMode: VisualizerMode;
+    jizuraEnabled: boolean;
+    jizuraStyle: string;
+    jizuraSettings: JizuraSettings;
+    onJizuraSettingsChange?: (patch: Partial<JizuraSettings>) => void;
+    onResetJizuraSettings?: () => void;
+    onJizuraThemeChange?: (themeId: JizuraSettings['themeId']) => void;
+    onJizuraReroll?: (scope: JizuraRerollScope) => void;
+    jizuraSongLabel?: string | null;
+    jizuraSongScoped?: boolean;
     visualizerEntry: VisualizerRegistryEntry;
     onVisualizerModeChange?: (mode: VisualizerMode) => void;
     onResetVisualizerTuning?: () => void;
@@ -278,6 +294,92 @@ const ResetSectionButton: React.FC<{
     </button>
 );
 
+const JizuraSettingsPanel: React.FC<{
+    settings: JizuraSettings;
+    onChange?: (patch: Partial<JizuraSettings>) => void;
+    theme: Theme;
+    isDaylight: boolean;
+    controlCardBg: string;
+    onReset?: () => void;
+    onThemeChange?: (themeId: JizuraSettings['themeId']) => void;
+    t: (key: string) => string;
+}> = ({ settings, onChange, theme, isDaylight, controlCardBg, onReset, onThemeChange, t }) => {
+    const rows: Array<{ key: keyof Pick<JizuraSettings, 'extra' | 'wa' | 'horror' | 'typo' | 'kinetic' | 'unify' | 'typeset'>; label: string; description: string }> = [
+        { key: 'extra', label: t('options.jizuraUseExtra'), description: t('options.jizuraUseExtraDesc') },
+        { key: 'wa', label: t('options.jizuraUseWa'), description: t('options.jizuraUseWaDesc') },
+        { key: 'horror', label: t('options.jizuraUseHorror'), description: t('options.jizuraUseHorrorDesc') },
+        { key: 'typo', label: t('options.jizuraUseTypo'), description: t('options.jizuraUseTypoDesc') },
+        { key: 'kinetic', label: t('options.jizuraUseKinetic'), description: t('options.jizuraUseKineticDesc') },
+        { key: 'unify', label: t('options.jizuraUseUnify'), description: t('options.jizuraUseUnifyDesc') },
+        { key: 'typeset', label: t('options.jizuraUseTypeset'), description: t('options.jizuraUseTypesetDesc') },
+    ];
+
+    return (
+        <div className="rounded-[24px] border p-4 space-y-4" style={{ backgroundColor: controlCardBg, borderColor: colorWithAlpha(theme.secondaryColor, 0.16) }}>
+            <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                    <div className="text-sm font-medium" style={{ color: theme.primaryColor }}>{t('options.jizuraLyricMv')}</div>
+                    <div className="text-xs opacity-70" style={{ color: theme.secondaryColor }}>{t('options.jizuraSettingsDesc')}</div>
+                </div>
+                <ResetSectionButton label={t('ui.default')} onClick={onReset} theme={theme} />
+            </div>
+
+            <label className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5" style={{ borderColor: colorWithAlpha(theme.secondaryColor, 0.16), backgroundColor: colorWithAlpha(theme.backgroundColor, isDaylight ? 0.18 : 0.24) }}>
+                <span className="text-sm font-medium" style={{ color: theme.primaryColor }}>{t('options.jizuraTheme')}</span>
+                <select
+                    value={settings.themeId}
+                    onChange={event => onThemeChange?.(event.target.value as JizuraSettings['themeId'])}
+                    className="min-w-0 max-w-[62%] rounded-lg border bg-transparent px-2.5 py-1.5 text-sm outline-none"
+                    style={{ color: theme.primaryColor, borderColor: colorWithAlpha(theme.secondaryColor, 0.22) }}
+                >
+                    {JIZURA_THEME_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+            </label>
+
+            <div className="space-y-1 rounded-xl border px-3" style={{ borderColor: colorWithAlpha(theme.secondaryColor, 0.14) }}>
+                {rows.map(row => (
+                    <label key={row.key} className="flex cursor-pointer items-start gap-3 border-b py-3 last:border-b-0" style={{ borderColor: colorWithAlpha(theme.secondaryColor, 0.1) }}>
+                        <input
+                            type="checkbox"
+                            checked={settings[row.key]}
+                            onChange={event => onChange?.({ [row.key]: event.target.checked })}
+                            className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent-color)]"
+                        />
+                        <span className="min-w-0 space-y-0.5">
+                            <span className="block text-sm font-medium" style={{ color: theme.primaryColor }}>{row.label}</span>
+                            <span className="block text-xs leading-relaxed opacity-65" style={{ color: theme.secondaryColor }}>{row.description}</span>
+                        </span>
+                    </label>
+                ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+                <label className="space-y-1 text-xs" style={{ color: theme.secondaryColor }}>
+                    <span>{t('options.jizuraCenterDirection')}</span>
+                    <select
+                        value={settings.centerDir}
+                        onChange={event => onChange?.({ centerDir: event.target.value as JizuraSettings['centerDir'] })}
+                        className="w-full rounded-lg border bg-transparent px-2 py-2 text-sm outline-none"
+                        style={{ color: theme.primaryColor, borderColor: colorWithAlpha(theme.secondaryColor, 0.18) }}
+                    >
+                        <option value="tb">{t('options.jizuraCenterTopBottom')}</option>
+                        <option value="lr">{t('options.jizuraCenterLeftRight')}</option>
+                    </select>
+                </label>
+                <label className="flex items-end gap-2 rounded-lg border px-2 py-2 text-xs" style={{ color: theme.primaryColor, borderColor: colorWithAlpha(theme.secondaryColor, 0.18) }}>
+                    <input
+                        type="checkbox"
+                        checked={settings.centerFree}
+                        onChange={event => onChange?.({ centerFree: event.target.checked })}
+                        className="h-4 w-4 accent-[var(--accent-color)]"
+                    />
+                    <span>{t('options.jizuraCenterFree')}</span>
+                </label>
+            </div>
+        </div>
+    );
+};
+
 const SectionTabs: React.FC<Pick<VisPlaygroundSettingsPanelProps, 'activeSection' | 'onSectionChange' | 't' | 'theme' | 'isDaylight'>> = ({
     activeSection,
     onSectionChange,
@@ -314,6 +416,15 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
         isDaylight,
         theme,
         visualizerMode,
+        jizuraEnabled,
+        jizuraStyle,
+        jizuraSettings,
+        onJizuraSettingsChange,
+        onResetJizuraSettings,
+        onJizuraThemeChange,
+        onJizuraReroll,
+        jizuraSongLabel,
+        jizuraSongScoped,
         visualizerEntry,
         onVisualizerModeChange,
         onResetVisualizerTuning,
@@ -416,12 +527,10 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
         if (subtitleFontWeight !== null) setSubtitleFontWeightSliderValue(subtitleFontWeight);
     }, [subtitleFontWeight]);
 
-    const modeOptions = useMemo(() => (
-        VISUALIZER_REGISTRY.map(entry => ({
-            label: getVisualizerModeLabel(entry.mode, t),
-            value: entry.mode,
-        }))
-    ), [t]);
+    const foliaModeOptions = useMemo(() => getFoliaVisualizerEntries().map(entry => ({
+        label: getVisualizerModeLabel(entry.mode, t),
+        value: entry.mode,
+    })), [t]);
     const [subtitleFontFamilyDraft, setSubtitleFontFamilyDraft] = useState(subtitleFontFamily ?? '');
 
     useEffect(() => {
@@ -437,6 +546,26 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
             label: getVisualizerBackgroundModeLabel(entry.mode, t),
         }))
     ), [t]);
+
+    // JIZURA is a separate lyric-MV workbench. Do not wrap it in Folia's
+    // common/background/visualizer/subtitle settings navigation.
+    if (jizuraEnabled) {
+        return (
+            <JizuraSettingsWorkbench
+                settings={jizuraSettings}
+                style={jizuraStyle}
+                theme={theme}
+                isDaylight={isDaylight}
+                onChange={onJizuraSettingsChange}
+                onReset={onResetJizuraSettings}
+                onThemeChange={onJizuraThemeChange}
+                onReroll={onJizuraReroll}
+                songLabel={jizuraSongLabel}
+                songScoped={jizuraSongScoped}
+                t={t}
+            />
+        );
+    }
 
     return (
         <div className="min-h-0 flex flex-col gap-4">
@@ -660,14 +789,27 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
 
                 {activeSection === 'visualizer' && (
                     <>
+                        {jizuraEnabled ? (
+                            <JizuraSettingsPanel
+                                settings={jizuraSettings}
+                                onChange={onJizuraSettingsChange}
+                                onReset={onResetJizuraSettings}
+                                onThemeChange={onJizuraThemeChange}
+                                theme={theme}
+                                isDaylight={isDaylight}
+                                controlCardBg={controlCardBg}
+                                t={t}
+                            />
+                        ) : (
+                            <>
                         <div className="rounded-[24px] border p-4 space-y-4" style={{ backgroundColor: controlCardBg, borderColor: colorWithAlpha(theme.secondaryColor, 0.16) }}>
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-1">
                                     <div className="text-sm font-medium" style={{ color: theme.primaryColor }}>
-                                        {t('options.lyricsRenderer')}
+                                        {jizuraEnabled ? t('options.jizuraLyricMv') : t('options.visualizerCategoryFolia')}
                                     </div>
                                     <div className="text-xs opacity-70" style={{ color: theme.secondaryColor }}>
-                                        {t('options.lyricsRendererDesc')}
+                                        {jizuraEnabled ? t('options.jizuraLyricMvDesc') : t('options.visualizerCategoryFoliaDesc')}
                                     </div>
                                 </div>
                                 <ResetSectionButton
@@ -678,9 +820,9 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                             </div>
 
                             <PresetGroup
-                                label={t('options.visualizerMode')}
+                                label={t('options.lyricsRenderer')}
                                 value={visualizerMode}
-                                options={modeOptions}
+                                options={foliaModeOptions}
                                 onChange={(mode) => onVisualizerModeChange?.(mode)}
                                 isDaylight={isDaylight}
                                 theme={theme}
@@ -733,6 +875,8 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                             onSliderPointerDown,
                             onSliderCommit,
                         })}
+                            </>
+                        )}
                     </>
                 )}
 

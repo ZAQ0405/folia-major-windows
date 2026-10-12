@@ -1,6 +1,6 @@
 import { LyricData, OnlineLyricsState, ReplayGainInfo, SongResult } from '../types';
 import { saveToCache } from './db';
-import { PrefetchedSongData, isUrlValid, updatePrefetchedAudioUrl } from './prefetchService';
+import { PrefetchedSongData, updatePrefetchedAudioUrl } from './prefetchService';
 import { isPureMusicLyricText } from '../utils/lyrics/pureMusic';
 import { migrateLyricDataRenderHints } from '../utils/lyrics/renderHints';
 import { loadOnlineLyricsState, markOnlineLyricsPureMusic, resolveOnlineLyrics, saveOnlineLyricsState } from '../utils/onlineLyricsState';
@@ -13,11 +13,13 @@ import { getCachedSongAudioBlob, getCachedSongReplayGain, getSongCacheWithLegacy
 import { toSafePlaybackUrl } from '../utils/appPlaybackHelpers';
 import { getProviderSongMetadata } from './onlineMusic/songMetadata';
 import { useLyricSettingsStore } from '../stores/useLyricSettingsStore';
+import { isSourcePlaybackMode } from '../stores/usePlaybackModeStore';
 
 export async function loadOnlineSongAudioSource(
     song: SongResult,
     audioQuality: AudioQualityPreference,
-    prefetched: PrefetchedSongData | null
+    prefetched: PrefetchedSongData | null,
+    options: { forceRefresh?: boolean } = {},
 ): Promise<
     | { kind: 'ok'; audioSrc: string; blobUrl?: string; replayGain?: ReplayGainInfo }
     | { kind: 'unavailable' }
@@ -37,17 +39,15 @@ export async function loadOnlineSongAudioSource(
         }
     }
 
-    if (prefetched?.audioUrl && prefetched.audioUrl !== 'CACHED_IN_DB' && isUrlValid(prefetched.audioUrlFetchedAt)) {
-        return {
-            kind: 'ok',
-            audioSrc: prefetched.audioUrl,
-            replayGain: song.replayGain ?? prefetched.replayGain,
-        };
-    }
+    // Never play a prefetched online URL directly here. Official URLs are entitlement-dependent:
+    // a URL fetched before login (or before a VIP session was available) can be a preview and stay
+    // valid-looking in memory. Source mode also needs LX to perform its own final resolution.
+    // The provider/source resolver below is therefore the single authority for the URL that enters
+    // the audio element.
 
     let source = null;
     try {
-        source = await omni.getAudioSource(song, audioQuality);
+        source = await omni.getAudioSource(song, audioQuality, options);
     } catch (error) {
         console.warn('[OnlinePlayback] Provider audio source is temporarily unavailable', error);
         return { kind: 'unavailable' };
@@ -58,7 +58,9 @@ export async function loadOnlineSongAudioSource(
     }
 
     const replayGain = applyOnlineAudioSourceMetadata(song, source?.replayGain).replayGain;
-    updatePrefetchedAudioUrl(song, url, audioQuality, replayGain);
+    if (!isSourcePlaybackMode()) {
+        updatePrefetchedAudioUrl(song, url, audioQuality, replayGain);
+    }
     return { kind: 'ok', audioSrc: url, replayGain };
 }
 
@@ -84,6 +86,7 @@ export async function loadOnlineSongLyrics(
 ): Promise<void> {
     const { isCurrent, onLyrics, onPureMusicChange, onStateChange, onAutoMatchStart, onDone } = callbacks;
     const lyricCacheKey = getSongResourceCacheKey('lyric', song);
+    const jsSourceMode = isSourcePlaybackMode();
     const onlineLyricsState = await loadOnlineLyricsState(song);
   const initialSettingsLyricSettings = useLyricSettingsStore.getState();
 
@@ -95,7 +98,7 @@ export async function loadOnlineSongLyrics(
     const preferredCachedLyrics = resolveOnlineLyrics(onlineLyricsState, cachedLyrics);
     const hasAuthoritativeLyricsSelection = onlineLyricsState?.lyricsSource === 'imported'
         || Boolean(onlineLyricsState?.hasOnlineOverride);
-    if (preferredCachedLyrics && (hasAuthoritativeLyricsSelection || !initialSettingsLyricSettings.autoUseBestLyric)) {
+    if (preferredCachedLyrics && (hasAuthoritativeLyricsSelection || (!jsSourceMode && !initialSettingsLyricSettings.autoUseBestLyric))) {
         const cachedText = preferredCachedLyrics.lines.map(line => line.fullText).join('\n');
         onPureMusicChange?.(
             onlineLyricsState?.lyricsSource === 'online' && typeof onlineLyricsState.matchedIsPureMusic === 'boolean'
@@ -108,6 +111,7 @@ export async function loadOnlineSongLyrics(
     }
 
     if (prefetched?.lyricRaw?.isPureMusic && !prefetched.lyrics
+        && !jsSourceMode
         && (hasAuthoritativeLyricsSelection || !initialSettingsLyricSettings.autoUseBestLyric)) {
         onPureMusicChange?.(true);
         onLyrics(null);
@@ -115,7 +119,7 @@ export async function loadOnlineSongLyrics(
         return;
     }
 
-    if (prefetched?.lyrics) {
+    if (prefetched?.lyrics && !jsSourceMode) {
         const preferredPrefetchedLyrics = resolveOnlineLyrics(onlineLyricsState, prefetched.lyrics);
         const effectiveLyrics = preferredPrefetchedLyrics ?? prefetched.lyrics;
 
@@ -136,7 +140,7 @@ export async function loadOnlineSongLyrics(
         }
     }
 
-    const processed = prefetched?.lyrics
+    const processed = prefetched?.lyrics && !jsSourceMode
         ? {
             mainLrc: prefetched.lyricRaw?.mainLrc ?? null,
             yrcLrc: prefetched.lyricRaw?.yrcLrc ?? null,

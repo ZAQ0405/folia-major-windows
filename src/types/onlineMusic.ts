@@ -57,6 +57,16 @@ export interface ProviderAvailability {
     reason?: 'not-configured' | 'runtime-unavailable';
 }
 
+export type ProviderChannelHealthStatus = 'checking' | 'available' | 'unavailable';
+
+export interface ProviderChannelHealth {
+    status: ProviderChannelHealthStatus;
+    checkedAt?: number;
+    message?: string;
+}
+
+export type ProviderChannelHealthMap = Partial<Record<OnlineProviderId, ProviderChannelHealth>>;
+
 export interface ProviderAccountSummary {
     providerId: OnlineProviderId;
     displayName: string;
@@ -209,7 +219,11 @@ export interface OnlineSearchProvider {
 
 export interface OnlinePlaybackProvider {
     getSongDetail(id: MediaId): Promise<UnifiedSong | null>;
-    getAudioSource(song: SongResult, quality: AudioQualityPreference): Promise<ProviderAudioSource | null>;
+    getAudioSource(
+        song: SongResult,
+        quality: AudioQualityPreference,
+        options?: { forceRefresh?: boolean },
+    ): Promise<ProviderAudioSource | null>;
     getAvailability?(song: SongResult): ProviderSongAvailability;
     getReplacement?(song: SongResult): Promise<ProviderSongReplacement | null>;
 }
@@ -251,6 +265,7 @@ export interface QrLoginMethod {
 export interface OnlineAuthProvider {
     getLoginStatus(): Promise<ProviderUser | null>;
     logout(): Promise<void>;
+    loginWithCredentials?(username: string, password: string): Promise<ProviderUser>;
     getQrLoginMethods?(): QrLoginMethod[];
     // 需要远端能力发现的 provider 在这里等待结果；UI 用同一份返回值决定单步或多步流程。
     resolveQrLoginMethods?(): Promise<QrLoginMethod[]>;

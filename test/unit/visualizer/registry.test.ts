@@ -3,6 +3,9 @@ import {
     DEFAULT_VISUALIZER_MODE,
     VISUALIZER_REGISTRY,
     getVisualizerModeLabel,
+    getVisualizerCategory,
+    getVisualizerCategoryEntries,
+    getVisualizerRegistryEntries,
     getVisualizerRegistryEntry,
     hasVisualizerMode,
 } from '@/components/visualizer/registry';
@@ -13,6 +16,7 @@ describe('visualizer registry', () => {
     it('auto-loads the built-in visualizer entries in stable order', () => {
         expect(VISUALIZER_REGISTRY.map(entry => entry.mode)).toEqual([
             'sonnet',
+            'jizura',
             'tempera',
             'classic',
             'cadenza',
@@ -50,5 +54,28 @@ describe('visualizer registry', () => {
         const label = getVisualizerModeLabel('partita', key => key);
 
         expect(label).toBe('云阶');
+    });
+
+    it('keeps Folia and JIZURA lyric-PV styles independently selectable', () => {
+        expect(getVisualizerCategoryEntries('folia').map(entry => entry.mode)).toEqual([
+            'sonnet',
+            'tempera',
+            'classic',
+            'cadenza',
+            'partita',
+            'fume',
+            'tilt',
+            'claddagh',
+            'monet',
+            'pendolo',
+            'cappella',
+            'diorama',
+            'still',
+        ]);
+        expect(getVisualizerCategoryEntries('jizura').map(entry => entry.mode)).toEqual(['jizura']);
+        expect(getVisualizerRegistryEntries({ folia: true, jizura: false }).map(entry => entry.mode))
+            .not.toContain('jizura');
+        expect(getVisualizerRegistryEntry('jizura') && getVisualizerCategory(getVisualizerRegistryEntry('jizura')))
+            .toBe('jizura');
     });
 });

@@ -10,6 +10,7 @@ import type {
     OmniPage,
     OmniPlaybackReport,
     OmniProviderCapabilities,
+    ProviderChannelHealth,
     OmniProviderId,
     OmniProviderSummary,
     OmniSongAvailability,
@@ -34,6 +35,12 @@ import {
     requireOnlineMusicProvider,
 } from './providerRegistry';
 import { saveProviderAccountSnapshot } from './providerAccountCache';
+import { jsMusicSourceManager } from '../jsMusicSource/jsSourceManager';
+import { isSourcePlaybackMode } from '../../stores/usePlaybackModeStore';
+import { probeKugouTransport } from './kugouTransport';
+import { probeQqTransport } from './qqTransport';
+import { getLuoxueSearchChannels, searchLuoxueChannel, searchLuoxueChannels } from './luoxueSearch';
+import { isProviderLikedCollection } from '../../utils/providerCollection';
 
 // src/services/onlineMusic/omni.ts
 // Online Music Network Interface (Omni) - a unified interface for interacting with multiple online music providers.
@@ -170,6 +177,38 @@ export const omni = {
         return requireOnlineMusicProvider(providerId).getAvailability?.() ?? { configured: true };
     },
 
+    async checkProviderChannel(providerId: OmniProviderId): Promise<ProviderChannelHealth> {
+        const checkedAt = Date.now();
+        const provider = requireOnlineMusicProvider(providerId);
+        const availability = provider.getAvailability?.() ?? { configured: true };
+        if (!availability.configured) {
+            return {
+                status: 'unavailable',
+                checkedAt,
+                message: availability.reason || 'not-configured',
+            };
+        }
+
+        try {
+            if (providerId === 'qq') {
+                await probeQqTransport();
+            } else if (providerId === 'kugou') {
+                await probeKugouTransport();
+            } else if (provider.search) {
+                await provider.search.searchSongs('告白气球', 1, 0);
+            } else if (provider.auth?.getLoginStatus) {
+                await provider.auth.getLoginStatus();
+            }
+            return { status: 'available', checkedAt: Date.now() };
+        } catch (error) {
+            return {
+                status: 'unavailable',
+                checkedAt: Date.now(),
+                message: error instanceof Error ? error.message : String(error),
+            };
+        }
+    },
+
     getProviderLabel(providerId: OmniProviderId): string {
         const provider = getOnlineMusicProvider(providerId);
         return provider?.shortName || provider?.displayName || providerId;
@@ -188,6 +227,65 @@ export const omni = {
         return provider.search.searchSongs(query, page.limit, page.offset);
     },
 
+    /** Search one platform through the same LX musicSdk channel used by federated search. */
+    getLuoxueSearchChannels(): Array<{ id: OmniProviderId; label: string }> {
+        return getLuoxueSearchChannels();
+    },
+
+    async searchLuoxueChannel(providerId: OmniProviderId, query: string, page: PageInput): Promise<OmniPage<UnifiedSong>> {
+        return searchLuoxueChannel(providerId, query, page);
+    },
+
+    // Luoxue-style federated search: query every registered online channel in parallel while
+    // retaining each result's providerRef, so a result can be played through its own channel.
+    getSearchProviderIds(): OmniProviderId[] {
+        return listOnlineMusicProviders()
+            .filter(provider => providerSupports(provider, 'search') && Boolean(provider.search))
+            .map(provider => provider.id);
+    },
+
+    async searchAllProviderSongs(query: string, page: PageInput): Promise<OmniPage<UnifiedSong>> {
+        const providerIds = this.getSearchProviderIds();
+        const settled = await Promise.allSettled(
+            providerIds.map(providerId => this.searchProviderSongs(providerId, query, page)),
+        );
+        const pages = settled
+            .filter((result): result is PromiseFulfilledResult<OmniPage<UnifiedSong>> => result.status === 'fulfilled')
+            .map(result => result.value);
+        settled.forEach((result, index) => {
+            if (result.status === 'rejected') {
+                console.warn('[Omni] Federated search channel failed', providerIds[index], result.reason);
+            }
+        });
+        if (pages.length === 0) {
+            const firstFailure = settled.find(result => result.status === 'rejected');
+            throw firstFailure?.status === 'rejected'
+                ? firstFailure.reason
+                : new OnlineProviderError('unavailable', 'No online music search channel is available');
+        }
+
+        const seen = new Set<string>();
+        const items = pages.flatMap(pageResult => pageResult.items).filter(song => {
+            const source = song.sourceRef?.kind === 'online'
+                ? `${song.sourceRef.providerId}:${song.sourceRef.mediaId}`
+                : String(song.id);
+            if (seen.has(source)) return false;
+            seen.add(source);
+            return true;
+        });
+        return {
+            items,
+            total: pages.reduce((sum, pageResult) => sum + (pageResult.total ?? pageResult.items.length), 0),
+            hasMore: pages.some(pageResult => pageResult.hasMore),
+            nextOffset: page.offset + page.limit,
+        };
+    },
+
+    /** Reuses Luoxue's built-in musicSdk search layer. JS source scripts do not search. */
+    async searchLuoxueSongs(query: string, page: PageInput): Promise<OmniPage<UnifiedSong>> {
+        return searchLuoxueChannels(query, page);
+    },
+
     async getLoginStatus(providerId: OmniProviderId): Promise<OmniUser | null> {
         const provider = requireOnlineMusicProvider(providerId);
         if (!provider.auth) return unsupported(providerId, 'auth');
@@ -198,6 +296,16 @@ export const omni = {
         const provider = requireOnlineMusicProvider(providerId);
         if (!provider.auth) return unsupported(providerId, 'auth');
         await provider.auth.logout();
+    },
+
+    supportsCredentialLogin(providerId: OmniProviderId): boolean {
+        return Boolean(requireOnlineMusicProvider(providerId).auth?.loginWithCredentials);
+    },
+
+    async loginWithCredentials(providerId: OmniProviderId, username: string, password: string): Promise<OmniUser> {
+        const auth = requireOnlineMusicProvider(providerId).auth;
+        if (!auth?.loginWithCredentials) return unsupported(providerId, 'credential-login');
+        return auth.loginWithCredentials(username, password);
     },
 
     // 没有这个能力就回空数组，UI 据此走单步流程；netease / kugou 完全不受影响。
@@ -263,7 +371,9 @@ export const omni = {
             let hasMore = true;
             while (hasMore && offset < 1000) {
                 const page = await this.getProviderUserPlaylists(providerId, userId, { limit, offset });
-                playlists.push(...page.items.filter(collection => collection.type === 'playlist'));
+                playlists.push(...page.items.filter(collection => (
+                    collection.type === 'playlist' && !isProviderLikedCollection(collection)
+                )));
                 hasMore = page.hasMore && page.nextOffset > offset;
                 offset = page.nextOffset;
             }
@@ -308,6 +418,7 @@ export const omni = {
         const collections = useOnlineProviderAccountStore.getState().accounts[source.providerId]?.collections || [];
         return collections.filter(collection => (
             collection.type === 'playlist'
+            && !isProviderLikedCollection(collection)
             && (provider.mutations?.canAddToPlaylist?.(collection) ?? true)
         ));
     },
@@ -436,10 +547,25 @@ export const omni = {
     },
 
     canPlaySong(song: SongResult): boolean {
+        if (isSourcePlaybackMode()) {
+            return song.sourceRef?.kind === 'online';
+        }
         return Boolean(providerForSong(song).playback);
     },
 
-    async getAudioSource(song: SongResult, quality: AudioQualityPreference): Promise<OmniAudioSource | null> {
+    async getAudioSource(
+        song: SongResult,
+        quality: AudioQualityPreference,
+        options: { forceRefresh?: boolean } = {},
+    ): Promise<OmniAudioSource | null> {
+        // The selected playback mode is explicit. Source availability must never implicitly
+        // change the mode, and logging in to an official provider must never change it either.
+        if (isSourcePlaybackMode()) {
+            // LX Music-style resolution is the playback core. In source mode an empty result is
+            // unavailable; do not silently fall back to an official-provider preview URL.
+            return await jsMusicSourceManager.resolveAudioSource(song, quality, options);
+        }
+
         const source = await (providerForSong(song).playback?.getAudioSource(song, quality) ?? null);
         // Written here rather than at either caller because this is the only moment a provider ever
         // states a track's ReplayGain, and both callers - the prefetch pass and playback itself -
@@ -463,6 +589,24 @@ export const omni = {
     },
 
     async getLyrics(song: SongResult, context?: { userId?: MediaId | null }): Promise<OmniLyricsResult> {
+        if (isSourcePlaybackMode()) {
+            const jsLyrics = await jsMusicSourceManager.resolveLyrics(song);
+            if (jsLyrics) {
+                const sourceRef = getPlaybackSourceRef(song);
+                return (await resolveProviderLyricsChorus(jsLyrics, {
+                    providerId: sourceRef.kind === 'online' ? sourceRef.providerId : 'source',
+                    songId: sourceRef.kind === 'online' ? sourceRef.mediaId : song.id,
+                })).result;
+            }
+            const sourceRef = getPlaybackSourceRef(song);
+            const sourceProvider = getOnlineMusicProviderForSong(song);
+            if (!sourceProvider?.lyrics) {
+                return unsupported(
+                    sourceRef.kind === 'online' ? sourceRef.providerId : 'source',
+                    'lyrics',
+                );
+            }
+        }
         const provider = providerForSong(song);
         if (!provider.lyrics) return unsupported(provider.id, 'lyrics');
         const providerUserId = useOnlineProviderAccountStore.getState().accounts[provider.id]?.user?.id ?? context?.userId;

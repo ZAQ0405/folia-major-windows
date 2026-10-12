@@ -13,13 +13,38 @@ import { applyDetectedChorusEffects, applyNeteaseChorusByTime } from '../chorusE
 import type { NeteaseChorusRange } from '../chorusEffects';
 import { getOriginalCoverUrl } from '../../coverUrl';
 
-const isElectron = typeof window !== 'undefined' && (window as any).electron;
+const QQ_REQUEST_TIMEOUT_MS = 15_000;
+const QQ_REQUEST_ATTEMPTS = 3;
+
+type QqRequestResponse = {
+  ok: boolean;
+  status: number;
+  bodyText: string;
+};
+
+const getElectronRequestBridge = () => {
+  const bridge = typeof window !== 'undefined' ? window.electron?.fetchJsSourceRequest : undefined;
+  return typeof bridge === 'function' ? bridge : undefined;
+};
+
+const waitBeforeRetry = async (attempt: number): Promise<void> => {
+  // Keep retries quick for the UI while giving QQ's edge a chance to recover.
+  await new Promise(resolve => setTimeout(resolve, 250 * attempt));
+};
 
 /**
- * Sends a POST request to u.y.qq.com via proxy or directly in Electron.
+ * Sends a QQ request via the Electron main-process bridge or the web proxy.
  */
 async function requestQQ(method: string, module: string, param: any): Promise<any> {
-  const payload = {
+  const isDesktopSearch = method === 'DoSearchForQQMusicDesktop';
+  const request = {
+    method,
+    module,
+    param,
+  };
+  const payload = isDesktopSearch
+    ? { [module]: request }
+    : {
     comm: {
       ct: 11,
       cv: "1003006",
@@ -32,37 +57,85 @@ async function requestQQ(method: string, module: string, param: any): Promise<an
       udid: "0",
       uid: "0",
     },
-    request: {
-      method,
-      module,
-      param,
-    },
-  };
+      request,
+    };
 
   const targetUrl = 'https://u.y.qq.com/cgi-bin/musicu.fcg';
-  const url = isElectron ? targetUrl : `/api/lyric-proxy?url=${encodeURIComponent(targetUrl)}`;
+  // QQ's current desktop search endpoint rejects the old POST envelope with code 2001.
+  // The desktop client sends the module envelope as the URL `data` parameter instead.
+  const requestUrl = isDesktopSearch
+    ? `${targetUrl}?data=${encodeURIComponent(JSON.stringify(payload))}`
+    : targetUrl;
+  const bridge = getElectronRequestBridge();
+  const url = bridge ? requestUrl : `/api/lyric-proxy?url=${encodeURIComponent(requestUrl)}`;
+  const requestBody = JSON.stringify(payload);
+  const headers = {
+    'Content-Type': 'application/json',
+    'Referer': 'https://y.qq.com/',
+    ...(isDesktopSearch ? { 'Cookie': 'uin=' } : { 'Cookie': 'tmeLoginType=-1;' }),
+    'User-Agent': isDesktopSearch
+      ? 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/142.0.0.0 Safari/537.36'
+      : 'okhttp/3.14.9',
+  };
 
-  const response = await fetch(url, {
-    method: 'POST',
-    credentials: isElectron ? 'omit' : 'same-origin',
-    headers: {
-      'Content-Type': 'application/json',
-      'Cookie': 'tmeLoginType=-1;',
-      'User-Agent': 'okhttp/3.14.9',
-    },
-    body: JSON.stringify(payload),
-  });
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= QQ_REQUEST_ATTEMPTS; attempt += 1) {
+    try {
+      let response: QqRequestResponse;
+      if (bridge) {
+        const bridged = await bridge(requestUrl, {
+          method: isDesktopSearch ? 'GET' : 'POST',
+          headers,
+          ...(isDesktopSearch ? {} : { body: requestBody }),
+          timeout: QQ_REQUEST_TIMEOUT_MS,
+        });
+        response = {
+          ok: bridged.ok,
+          status: bridged.status,
+          bodyText: bridged.bodyText,
+        };
+      } else {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), QQ_REQUEST_TIMEOUT_MS);
+        try {
+          const fetched = await fetch(url, {
+            method: isDesktopSearch ? 'GET' : 'POST',
+            credentials: 'same-origin',
+            headers,
+            ...(isDesktopSearch ? {} : { body: requestBody }),
+            signal: controller.signal,
+          });
+          response = {
+            ok: fetched.ok,
+            status: fetched.status,
+            bodyText: await fetched.text(),
+          };
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
 
-  if (!response.ok) {
-    throw new Error(`QQ Music API request failed: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`QQ Music API request failed: ${response.status}`);
+      }
+
+      const data = JSON.parse(response.bodyText);
+      const result = isDesktopSearch ? data[module] : data.request;
+      if (data.code !== 0 || result?.code !== 0) {
+        throw new Error(`QQ Music API error: code ${data.code || result?.code}`);
+      }
+
+      return result.data;
+    } catch (error) {
+      lastError = error;
+      if (attempt < QQ_REQUEST_ATTEMPTS) {
+        await waitBeforeRetry(attempt);
+        continue;
+      }
+    }
   }
 
-  const data = await response.json();
-  if (data.code !== 0 || data.request?.code !== 0) {
-    throw new Error(`QQ Music API error: code ${data.code || data.request?.code}`);
-  }
-
-  return data.request.data;
+  throw lastError instanceof Error ? lastError : new Error('QQ Music API request failed');
 }
 
 /**
@@ -96,25 +169,17 @@ export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20): 
 
   const pagesize = pageSize;
   const param = {
-    search_id: String(
-      Math.floor(
-        Math.random() * 100000000000000 + Date.now() % 86400000
-      )
-    ),
-    remoteplace: "search.android.keyboard",
+    // Keep the desktop search payload minimal. QQ currently returns code 2001
+    // when mobile/session-only fields are included in this request.
     query: safeKeyword.length > 60 ? safeKeyword.slice(0, 60) : safeKeyword,
     search_type: 0, // 0 = SONG
     num_per_page: pagesize,
     page_num: page,
-    highlight: 0,
-    nqc_flag: 0,
-    page_id: 1,
-    grp: 1,
   };
 
   try {
-    const data = await requestQQ("DoSearchForQQMusicLite", "music.search.SearchCgiService", param);
-    const songs = data?.body?.item_song || [];
+    const data = await requestQQ("DoSearchForQQMusicDesktop", "music.search.SearchCgiService", param);
+    const songs = data?.body?.song?.list || data?.body?.item_song || [];
     
     return songs.map((info: any) => {
       const artists = (info.singer || []).map((s: any, idx: number) => ({
@@ -127,9 +192,10 @@ export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20): 
         ? getOriginalCoverUrl(`https://y.gtimg.cn/music/photo_new/T002R300x300M000${albumMid}.jpg?max_age=2592000`)
         : undefined;
 
+      const mediaMid = info.file?.media_mid || info.media_mid || info.mediaMid || '';
       return {
         id: Number(info.id || 0),
-        name: info.title || 'Unknown Song',
+        name: info.title || info.name || 'Unknown Song',
         artists,
         album: {
           id: Number(info.album?.id || 0),
@@ -138,6 +204,16 @@ export async function searchQQLyrics(keyword: string, page = 1, pageSize = 20): 
         },
         durationMs: (info.interval || 0) * 1000,
         qqMid: info.mid,
+        sourceRef: {
+          kind: 'online' as const,
+          providerId: 'qq' as const,
+          mediaId: String(info.mid || info.id || ''),
+          providerData: {
+            songId: Number(info.id || 0),
+            songMid: String(info.mid || ''),
+            ...(mediaMid ? { mediaMid: String(mediaMid) } : {}),
+          },
+        },
       };
     });
   } catch (error) {

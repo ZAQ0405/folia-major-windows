@@ -21,6 +21,7 @@ import {
     saveProviderAccountSnapshot,
 } from '../services/onlineMusic/providerAccountCache';
 import { setStatusMessage as setStatusMsg } from '../stores/useStatusMessageStore';
+import { isProviderLikedCollection } from '../utils/providerCollection';
 
 type StatusSetter = Dispatch<SetStateAction<StatusMessage | null>>;
 
@@ -47,7 +48,7 @@ const getAllUserPlaylists = async (userId: MediaId): Promise<ProviderCollection[
 
     while (hasMore) {
         const page = await omni.getProviderUserPlaylists('netease', userId, { limit, offset });
-        allPlaylists.push(...page.items);
+        allPlaylists.push(...page.items.filter(collection => !isProviderLikedCollection(collection)));
         hasMore = page.hasMore && page.nextOffset > offset;
         offset = page.nextOffset;
     }
@@ -206,7 +207,9 @@ export function useNeteaseLibrary({
                 ? omni.normalizeCachedUser('netease', cachedUserRaw)
                 : null;
             const cachedPlaylists = Array.isArray(cachedPlaylistsRaw)
-                ? cachedPlaylistsRaw.map(item => omni.normalizeCachedCollection('netease', item, 'playlist')).filter(Boolean) as ProviderCollection[]
+                ? cachedPlaylistsRaw
+                    .map(item => omni.normalizeCachedCollection('netease', item, 'playlist'))
+                    .filter((collection): collection is ProviderCollection => collection !== null && !isProviderLikedCollection(collection))
                 : [];
             const cachedCloudPlaylist = cachedCloudPlaylistRaw
                 ? omni.normalizeCachedCollection('netease', cachedCloudPlaylistRaw, 'cloud')

@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronRight, LogIn, LogOut, UserRound } from 'lucide-react';
+import { ChevronRight, LogIn, LogOut, RefreshCw, UserRound } from 'lucide-react';
 import { AnimatePresence, motion, useMotionValueEvent } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import type { OnlineProviderId, ProviderAccountSummary } from '../../../types/onlineMusic';
+import type { OnlineProviderId, ProviderAccountSummary, ProviderChannelHealthMap } from '../../../types/onlineMusic';
 import { playerBottomBarLiveOffset } from '../../../stores/motionSignals';
 import {
     PLAYER_BOTTOM_BAR_BASE_OFFSET_PX,
     resolvePlayerBottomComponentBottomPx,
 } from '../../../utils/playerBottomBarLayout';
+import { isAndroidCapacitor } from '../../../utils/runtimePlatform';
 
 // src/components/app/home/OnlineProviderSwitcher.tsx
 
@@ -18,6 +19,8 @@ type OnlineProviderSwitcherProps = {
     onSelect: (provider: ProviderAccountSummary) => void;
     onLogout: (provider: ProviderAccountSummary) => void;
     onBackToPlayer: () => void;
+    channelHealth?: ProviderChannelHealthMap;
+    onCheckChannel?: (providerId: OnlineProviderId) => void;
 };
 
 // 在线平台使用统一的纯色圆形文字徽章。
@@ -50,6 +53,8 @@ const OnlineProviderSwitcher: React.FC<OnlineProviderSwitcherProps> = ({
     onSelect,
     onLogout,
     onBackToPlayer,
+    channelHealth = {},
+    onCheckChannel = () => undefined,
 }) => {
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);
@@ -136,7 +141,7 @@ const OnlineProviderSwitcher: React.FC<OnlineProviderSwitcherProps> = ({
         <div
             ref={setRootNode}
             data-testid="online-provider-switcher"
-            className="pointer-events-auto absolute bottom-4 right-4 z-[100] md:bottom-6 md:right-6"
+            className="folia-provider-switcher pointer-events-auto absolute bottom-4 right-4 z-[100] md:bottom-6 md:right-6"
         >
             <div className={`flex items-center rounded-full p-0.5 shadow-lg md:p-1.5 ${surfaceClass}`}>
                 <button
@@ -183,7 +188,7 @@ const OnlineProviderSwitcher: React.FC<OnlineProviderSwitcherProps> = ({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 6, scale: 0.97 }}
                         transition={{ duration: 0.16 }}
-                        className={`absolute bottom-[calc(100%+0.75rem)] right-0 w-72 max-w-[calc(100vw-2rem)] origin-bottom-right rounded-3xl p-3 shadow-2xl md:w-80 ${surfaceClass}`}
+                        className={`folia-provider-switcher-menu absolute bottom-[calc(100%+0.75rem)] right-0 w-72 max-w-[calc(100vw-2rem)] origin-bottom-right rounded-3xl p-3 shadow-2xl md:w-80 ${surfaceClass}`}
                     >
                         <div className="px-3 pb-3 pt-1 text-xs font-medium opacity-50">{t('home.onlineProvider')}</div>
                         <button
@@ -201,10 +206,33 @@ const OnlineProviderSwitcher: React.FC<OnlineProviderSwitcherProps> = ({
                         {providers.map(provider => {
                             const active = provider.providerId === activeProviderId;
                             const configured = provider.availability.configured;
+                            const accountLabel = isAndroidCapacitor
+                                ? provider.status === 'authenticated'
+                                    ? provider.user?.nickname || t('home.providerAccountConnected')
+                                    : provider.status === 'error'
+                                        ? t('home.providerAccountError')
+                                        : provider.hydration === 'loading' || provider.status === 'unknown'
+                                            ? t('home.providerAccountChecking')
+                                            : t('home.providerNotLoggedIn')
+                                : !configured
+                                    ? t('home.providerNotConfigured')
+                                    : provider.user?.nickname || t('home.providerNotLoggedIn');
+                            const health = channelHealth[provider.providerId];
+                            const healthLabel = !configured
+                                ? isAndroidCapacitor
+                                    ? provider.availability.reason === 'runtime-unavailable'
+                                        ? t('home.providerRuntimeUnavailable')
+                                        : t('home.providerAudioApiNotConfigured')
+                                    : t('home.providerNotConfigured')
+                                : health?.status === 'available'
+                                    ? t('home.providerChannelAvailable')
+                                    : health?.status === 'unavailable'
+                                        ? t('home.providerChannelUnavailable')
+                                        : t('home.providerChannelChecking');
                             return (
                                 <div
                                     key={provider.providerId}
-                                    className={`mb-1 flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors last:mb-0 ${active ? (isDaylight ? 'bg-black/5' : 'bg-white/8') : ''} ${configured ? (isDaylight ? 'hover:bg-black/8' : 'hover:bg-white/12') : 'cursor-not-allowed opacity-40'}`}
+                                    className={`folia-provider-row mb-1 flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors last:mb-0 ${active ? (isDaylight ? 'bg-black/5' : 'bg-white/8') : ''} ${configured ? (isDaylight ? 'hover:bg-black/8' : 'hover:bg-white/12') : 'cursor-not-allowed opacity-40'}`}
                                 >
                                     <button
                                         type="button"
@@ -227,13 +255,31 @@ const OnlineProviderSwitcher: React.FC<OnlineProviderSwitcherProps> = ({
                                             <span className="block truncate text-sm font-semibold">{provider.shortName}</span>
                                             <span className="mt-0.5 block truncate text-[11px] opacity-45">{provider.displayName}</span>
                                             <span className="mt-1 block truncate text-xs opacity-65">
-                                                {!configured
-                                                    ? t('home.providerNotConfigured')
-                                                    : provider.user?.nickname || t('home.providerNotLoggedIn')}
+                                                {accountLabel}
+                                            </span>
+                                            <span className="mt-1 flex items-center gap-1 truncate text-[11px] opacity-60">
+                                                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${health?.status === 'available'
+                                                    ? 'bg-emerald-500'
+                                                    : health?.status === 'unavailable'
+                                                        ? 'bg-rose-500'
+                                                        : 'bg-amber-400'}`} />
+                                                {healthLabel}
                                             </span>
                                         </span>
                                         {!active && provider.status !== 'authenticated' ? <LogIn size={16} className="opacity-55" /> : null}
                                     </button>
+                                    {configured && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onCheckChannel(provider.providerId)}
+                                            disabled={health?.status === 'checking'}
+                                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${isDaylight ? 'hover:bg-black/8' : 'hover:bg-white/12'} disabled:opacity-40`}
+                                            title={t('home.providerChannelCheck')}
+                                            aria-label={t('home.providerChannelCheck')}
+                                        >
+                                            <RefreshCw size={15} className={health?.status === 'checking' ? 'animate-spin' : ''} />
+                                        </button>
+                                    )}
                                     {active && provider.status === 'authenticated' && (
                                         <button
                                             type="button"

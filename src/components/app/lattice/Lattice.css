@@ -108,6 +108,9 @@
     contain: layout paint;
 }
 
+/* The Android skin promotes artwork to a real image layer; keep that helper inert on desktop. */
+.lattice-poster-artwork { display: none; }
+
 /* An overlay border stays visible above artwork without changing layout or the focus ring. The
    card clips its own children, so this mark has to be built inward: the accent stroke, a shade
    hairline behind it so the accent still reads over a bright sleeve, and a soft inward glow that
@@ -402,4 +405,242 @@
 .lattice-poster-copy strong[data-title-settled] {
     display: block;
     -webkit-line-clamp: unset;
+}
+
+/* Android landscape has a wide but short canvas. The wall scale is height-aware
+   in PosterWall; these controls keep the expanded poster's touch targets usable
+   after that smaller world scale is applied. */
+@media (orientation: landscape) {
+    .folia-android-shell .lattice-root .lattice-chrome {
+        width: min(100%, 640px);
+        gap: 8px;
+    }
+
+    .folia-android-shell .lattice-root .lattice-chrome button {
+        width: 128px;
+        height: 128px;
+    }
+
+    .folia-android-shell .lattice-root .lattice-chrome button svg {
+        width: 34px;
+        height: 34px;
+    }
+
+    .folia-android-shell .lattice-root .lattice-chrome-transport {
+        min-height: 128px;
+        gap: 6px;
+    }
+
+    .folia-android-shell .lattice-root .lattice-progress {
+        margin-right: 28px;
+    }
+
+    .folia-android-shell .lattice-root .lattice-progress input[type='range'] {
+        height: 96px;
+    }
+
+    .folia-android-shell .lattice-root .lattice-chrome-time {
+        font-size: 28px;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded .lattice-poster-copy {
+        bottom: 240px;
+    }
+
+    .folia-android-shell .lattice-root .lattice-back {
+        top: 12px;
+        left: 12px;
+        width: 40px;
+        height: 40px;
+    }
+
+    /*
+     * Android card skin
+     *
+     * The wall keeps its free-form layout, but the old square posters read like a
+     * stack of unrelated images on a small landscape canvas. Give every tile one
+     * quiet surface language, then reserve the stronger treatment for the opened
+     * card. These rules are intentionally scoped to the Android shell so the
+     * desktop wall keeps its original poster treatment.
+     */
+    .folia-android-shell .lattice-root .lattice-poster {
+        border: 1px solid rgb(255 255 255 / 16%);
+        border-radius: 18px !important;
+        box-shadow:
+            0 4px 12px rgb(0 0 0 / 18%),
+            inset 0 0 0 1px rgb(0 0 0 / 14%);
+        filter: none;
+        transition: none;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster:hover {
+        filter: none;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster-artwork {
+        display: none;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster::after {
+        z-index: 1;
+        border-radius: 18px !important;
+        opacity: 1;
+        background:
+            linear-gradient(180deg, rgb(255 255 255 / 8%), transparent 30%),
+            linear-gradient(180deg, transparent 36%, rgb(0 0 0 / 7%) 54%, rgb(0 0 0 / 72%) 100%);
+        transition: none;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster-shade {
+        border-radius: 18px !important;
+        background: linear-gradient(180deg, rgb(0 0 0 / 0%) 28%, rgb(0 0 0 / 12%) 52%, rgb(0 0 0 / 42%) 100%);
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster-copy {
+        right: 10px;
+        bottom: 10px;
+        left: 10px;
+        z-index: 2;
+        gap: 3px;
+        padding: 7px 8px 6px;
+        border: 1px solid rgb(255 255 255 / 12%);
+        border-radius: 11px !important;
+        background: rgb(8 10 14 / 42%);
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster-copy strong {
+        font-size: clamp(20px, 2vw, 30px);
+        line-height: 1;
+        letter-spacing: -0.025em;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster-copy small {
+        font-size: 11px;
+        line-height: 1.1;
+        opacity: 0.7;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster-badge {
+        top: 8px;
+        right: 8px;
+        left: auto;
+        z-index: 2;
+        padding: 4px 6px;
+        border: 1px solid rgb(255 255 255 / 15%);
+        border-radius: 999px !important;
+        background: rgb(8 10 14 / 54%);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded {
+        border: 1px solid color-mix(in srgb, var(--text-accent, #8de8ff) 72%, white 18%);
+        border-radius: 26px !important;
+        filter: none;
+        box-shadow:
+            0 22px 56px rgb(0 0 0 / 46%),
+            0 0 0 5px rgb(0 0 0 / 20%),
+            0 0 28px color-mix(in srgb, var(--text-accent, #8de8ff) 24%, transparent);
+    }
+
+    .folia-android-shell .lattice-root {
+        background:
+            radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--text-accent, #8de8ff) 10%, transparent), transparent 48%),
+            radial-gradient(circle at 14% 86%, color-mix(in srgb, var(--text-secondary, #6a48ff) 12%, transparent), transparent 42%),
+            color-mix(in srgb, var(--bg-color, #070707) 92%, #15202c);
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded .lattice-poster-shade {
+        background:
+            linear-gradient(180deg, rgb(0 0 0 / 2%) 34%, rgb(0 0 0 / 6%) 68%, rgb(0 0 0 / 20%) 100%),
+            linear-gradient(90deg, rgb(0 0 0 / 8%), transparent 62%, rgb(0 0 0 / 5%));
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded::after {
+        background:
+            linear-gradient(180deg, rgb(255 255 255 / 5%), transparent 30%),
+            linear-gradient(180deg, transparent 44%, rgb(0 0 0 / 5%) 64%, rgb(0 0 0 / 30%) 100%);
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded .lattice-poster-controls {
+        right: 22px;
+        bottom: 22px;
+        left: 22px;
+        padding: 7px 10px 6px;
+        border: 1px solid rgb(255 255 255 / 17%);
+        border-radius: 18px !important;
+        background: rgb(7 10 15 / 48%);
+        z-index: 6;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded::after,
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded .lattice-poster-shade {
+        border-radius: 26px !important;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded .lattice-poster-artwork {
+        border-radius: 26px !important;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded .lattice-poster-copy {
+        right: 26px;
+        bottom: 240px;
+        left: 26px;
+        padding: 0;
+        border: 0;
+        border-radius: 0 !important;
+        background: transparent;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded .lattice-poster-copy strong {
+        font-size: clamp(48px, 6vw, 82px);
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded .lattice-poster-copy small {
+        font-size: 17px;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-current {
+        border-color: color-mix(in srgb, var(--text-accent, #8de8ff) 54%, white 15%);
+        filter: none;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-current::before {
+        border-radius: 18px !important;
+        border-width: 1px;
+        box-shadow:
+            inset 0 0 0 1px rgb(255 255 255 / 26%),
+            inset 0 0 22px -8px color-mix(in srgb, var(--text-accent, #8de8ff) 48%, transparent);
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded.is-current::before {
+        border-radius: 26px !important;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-focused:not(.is-expanded),
+    .folia-android-shell .lattice-root .lattice-poster:focus-visible:not(.is-expanded) {
+        filter: saturate(1) brightness(1);
+    }
+
+    /* Pixi can clear the Android WebGL surface as opaque black on a few GPU drivers even when
+       backgroundAlpha is zero. Screen compositing keeps the cover visible beneath the lyric layer
+       and still preserves the bright lyric strokes. */
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded .lattice-lyrics {
+        mix-blend-mode: screen;
+    }
+}
+
+/* The wall's desktop square-reset selector is intentionally very specific. Keep the Android
+   card skin above it for the actual world elements, including the compact copy chips. */
+@media (orientation: landscape) {
+    .folia-android-shell .lattice-root .lattice-field .lattice-world .lattice-poster,
+    .folia-android-shell .lattice-root .lattice-field .lattice-world .lattice-poster-copy,
+    .folia-android-shell .lattice-root .lattice-field .lattice-world .lattice-poster-badge {
+        border-radius: 18px !important;
+    }
+
+    .folia-android-shell .lattice-root .lattice-field .lattice-world .lattice-poster.is-expanded,
+    .folia-android-shell .lattice-root .lattice-field .lattice-world .lattice-poster.is-expanded .lattice-poster-copy {
+        border-radius: 26px !important;
+    }
 }

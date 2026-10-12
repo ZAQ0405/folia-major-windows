@@ -28,6 +28,16 @@ const formatDuration = (duration: number) => {
     return `${minutes}:${String(seconds).padStart(2, '0')}`;
 };
 
+const providerLabelKey = (providerId: string): string => {
+    switch (providerId) {
+        case 'netease': return 'search.platformNetease';
+        case 'qq': return 'search.platformQq';
+        case 'kugou': return 'search.platformKugou';
+        case 'kuwo': return 'search.platformKuwo';
+        default: return 'search.platformUnknown';
+    }
+};
+
 const SearchResultRow: React.FC<SearchResultRowProps> = ({
     track,
     style,
@@ -44,6 +54,7 @@ const SearchResultRow: React.FC<SearchResultRowProps> = ({
     const coverUrl = getSizedCoverUrl(metadata.coverUrl, 120);
     const artists = metadata.artists;
     const album = metadata.album;
+    const providerId = track.sourceRef?.kind === 'online' ? String(track.sourceRef.providerId) : '';
     const canOpenAlbum = Boolean(album?.name && (
         track.isLocal ? album.entityId
             : track.isNavidrome ? track.navidromeData?.albumId
@@ -94,6 +105,11 @@ const SearchResultRow: React.FC<SearchResultRowProps> = ({
                         {isUnavailable && (
                             <span className="shrink-0 rounded-full border border-current/10 px-2 py-0.5 text-[10px] opacity-60">
                     {unavailableLabel}
+                            </span>
+                        )}
+                        {providerId && (
+                            <span className="shrink-0 rounded-full border border-current/10 px-1.5 py-0.5 text-[10px] font-normal opacity-55">
+                                {t(providerLabelKey(providerId))}
                             </span>
                         )}
                     </div>

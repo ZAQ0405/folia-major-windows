@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { SongResult, StageSource } from '../../../types';
+import type { PersonalPlaylist, SongResult, StageSource } from '../../../types';
 import type { GridViewCollectionDescriptor } from './gridViewCollectionAdapters';
 import type { HomeSurfaceProps } from './homeSurfaceTypes';
 import { resolveSearchSource, type SearchSource } from '../../../stores/useSearchNavigationStore';
@@ -38,7 +38,9 @@ export type HomeModelDeps = {
     localSongs: HomeSurfaceProps['localSongs'];
     localLibraryCatalog: HomeSurfaceProps['localLibraryCatalog'];
     localPlaylists: HomeSurfaceProps['localPlaylists'];
+    personalPlaylists?: PersonalPlaylist[];
     onRefreshLocalSongs: HomeSurfaceProps['onRefreshLocalSongs'];
+    onRefreshPersonalPlaylists?: HomeSurfaceProps['onRefreshPersonalPlaylists'];
     onAddLocalSongToQueue?: HomeSurfaceProps['onAddLocalSongToQueue'];
     localMusicState: HomeSurfaceProps['localMusicState'];
     setLocalMusicState: HomeSurfaceProps['setLocalMusicState'];
@@ -51,6 +53,7 @@ export type HomeModelDeps = {
     openStagePlayer: () => Promise<void>;
     theme: HomeSurfaceProps['theme'];
     playAll: (songs: SongResult[]) => void;
+    playAllInLattice: (songs: SongResult[]) => void;
     addAllToQueue: (songs: SongResult[]) => void;
     addSongToQueue: (song: SongResult) => void;
     onStatusMessage?: HomeSurfaceProps['onStatusMessage'];
@@ -78,7 +81,9 @@ export const buildHomeModel = ({
     localSongs,
     localLibraryCatalog,
     localPlaylists,
+    personalPlaylists = [],
     onRefreshLocalSongs,
+    onRefreshPersonalPlaylists,
     onAddLocalSongToQueue,
     localMusicState,
     setLocalMusicState,
@@ -93,6 +98,7 @@ export const buildHomeModel = ({
     theme,
     navidromeEnabled,
     playAll,
+    playAllInLattice,
     addAllToQueue,
     addSongToQueue,
     onStatusMessage,
@@ -115,6 +121,7 @@ export const buildHomeModel = ({
             cloudPlaylist: onlineProviderPlatform?.activeProvider?.collections.find(collection => collection.type === 'cloud') ?? cloudPlaylist,
             currentTrack: currentSong,
             onPlayAll: playAll,
+            onPlayAllInLattice: playAllInLattice,
             onAddAllToQueue: addAllToQueue,
             onAddSongToQueue: addSongToQueue,
             onStatusMessage,
@@ -127,7 +134,9 @@ export const buildHomeModel = ({
             localSongs,
             localLibraryCatalog,
             localPlaylists,
+            personalPlaylists,
             onRefreshLocalSongs,
+            onRefreshPersonalPlaylists,
             onAddLocalSongToQueue,
             localMusicState,
             setLocalMusicState,

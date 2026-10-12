@@ -1,5 +1,6 @@
 import { AlertTriangle, Check, Loader2, RotateCcw, ServerCog, X } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useState, type FormEvent } from 'react';
 
 // src/components/app/home/OnlineProviderLoginModal.tsx
 
@@ -36,6 +37,15 @@ type OnlineProviderLoginModalProps = {
     closeLabel: string;
     loginMethods?: LoginMethodsProps;
     backendFailure?: BackendFailureProps;
+    credentialLogin?: {
+        accountLabel: string;
+        passwordLabel: string;
+        accountPlaceholder: string;
+        passwordPlaceholder: string;
+        submitLabel: string;
+        submittingLabel: string;
+        onSubmit: (account: string, password: string) => Promise<void>;
+    };
     onRetry: () => void;
     onClose: () => void;
 };
@@ -50,20 +60,37 @@ const OnlineProviderLoginModal = ({
     closeLabel,
     loginMethods,
     backendFailure,
+    credentialLogin,
     onRetry,
     onClose,
 }: OnlineProviderLoginModalProps) => {
+    const [account, setAccount] = useState('');
+    const [password, setPassword] = useState('');
+    const [credentialError, setCredentialError] = useState<string | null>(null);
+    const [credentialSubmitting, setCredentialSubmitting] = useState(false);
     // 步骤一：还没选登录方式，二维码区显示占位框，且不会向后端发出任何请求。
     const awaitingMethod = Boolean(loginMethods) && loginMethods?.selectedId == null;
     // 后端故障优先于其余所有状态：这时候刷新二维码没有意义。
-    const canRetry = (state === 'expired' || state === 'error') && !awaitingMethod && !backendFailure;
+    const canRetry = !credentialLogin && (state === 'expired' || state === 'error') && !awaitingMethod && !backendFailure;
+    const submitCredentials = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        setCredentialError(null);
+        setCredentialSubmitting(true);
+        try {
+            await credentialLogin?.onSubmit(account, password);
+        } catch (error) {
+            setCredentialError(error instanceof Error ? error.message : '登录失败');
+        } finally {
+            setCredentialSubmitting(false);
+        }
+    };
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xl p-4"
+            className="folia-provider-login-modal absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xl p-4"
             role="dialog"
             aria-modal="true"
             aria-label={title}
@@ -119,7 +146,43 @@ const OnlineProviderLoginModal = ({
                         </div>
                     </div>
                 )}
-                <div className="relative inline-block bg-white p-2 rounded-xl mb-4 shadow-inner">
+                {credentialLogin ? (
+                    <form onSubmit={submitCredentials} className="mt-2 text-left space-y-3">
+                        <label className="block">
+                            <span className="mb-1 block text-[11px] font-medium opacity-65" style={{ color: 'var(--text-secondary)' }}>{credentialLogin.accountLabel}</span>
+                            <input
+                                value={account}
+                                onChange={event => setAccount(event.target.value)}
+                                placeholder={credentialLogin.accountPlaceholder}
+                                autoComplete="username"
+                                className="w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm outline-none focus:border-green-500/70"
+                                style={{ color: 'var(--text-primary)' }}
+                                disabled={credentialSubmitting}
+                            />
+                        </label>
+                        <label className="block">
+                            <span className="mb-1 block text-[11px] font-medium opacity-65" style={{ color: 'var(--text-secondary)' }}>{credentialLogin.passwordLabel}</span>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={event => setPassword(event.target.value)}
+                                placeholder={credentialLogin.passwordPlaceholder}
+                                autoComplete="current-password"
+                                className="w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm outline-none focus:border-green-500/70"
+                                style={{ color: 'var(--text-primary)' }}
+                                disabled={credentialSubmitting}
+                            />
+                        </label>
+                        {credentialError && <p className="text-[11px] leading-snug text-red-400">{credentialError}</p>}
+                        <button
+                            type="submit"
+                            disabled={credentialSubmitting || !account.trim() || !password}
+                            className="w-full rounded-xl bg-green-500 px-4 py-2.5 text-xs font-bold text-black transition-opacity disabled:cursor-default disabled:opacity-40"
+                        >
+                            {credentialSubmitting ? credentialLogin.submittingLabel : credentialLogin.submitLabel}
+                        </button>
+                    </form>
+                ) : <div className="relative inline-block bg-white p-2 rounded-xl mb-4 shadow-inner">
                     {backendFailure ? (
                         <div className="w-40 h-40 flex flex-col items-center justify-center gap-1.5 rounded-lg bg-red-50 px-3 text-center">
                             <AlertTriangle className="text-red-500 shrink-0" size={22} />
@@ -141,16 +204,16 @@ const OnlineProviderLoginModal = ({
                             <Loader2 className="animate-spin text-gray-400" size={24} />
                         </div>
                     )}
-                </div>
+                </div>}
                 {loginMethods && !awaitingMethod && (
                     <p className="text-[11px] font-medium opacity-45" style={{ color: 'var(--text-secondary)' }}>
                         {loginMethods.currentText}
                     </p>
                 )}
                 {/* 步骤一不显示状态文案：关窗重开时 hook 里还留着上一轮的状态，照原样显示会是过期信息。 */}
-                <p className={`text-xs font-medium mt-2 ${state === 'confirmed' ? 'text-green-400' : 'opacity-60'}`} style={{ color: state === 'confirmed' ? undefined : 'var(--text-secondary)' }}>
+                {!credentialLogin && <p className={`text-xs font-medium mt-2 ${state === 'confirmed' ? 'text-green-400' : 'opacity-60'}`} style={{ color: state === 'confirmed' ? undefined : 'var(--text-secondary)' }}>
                     {awaitingMethod || backendFailure ? '' : statusText}
-                </p>
+                </p>}
                 {backendFailure && (
                     <button
                         type="button"

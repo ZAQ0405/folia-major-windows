@@ -15,6 +15,7 @@ import {
     loadProviderAccountSnapshot,
     saveProviderAccountSnapshot,
 } from '../services/onlineMusic/providerAccountCache';
+import { isProviderLikedCollection } from '../utils/providerCollection';
 
 // src/hooks/useQqLibrary.ts
 
@@ -88,7 +89,7 @@ export const refreshQqLibraryAccount = async ({
             let hasMore = true;
             while (hasMore && offset < 1000) {
                 const page = await loadPlaylistPage(user.id, PAGE_SIZE, offset);
-                collections.push(...page.items);
+                collections.push(...page.items.filter(collection => !isProviderLikedCollection(collection)));
                 console.info('[QQLibrary] playlists:page', {
                     offset,
                     itemCount: page.items.length,
@@ -212,7 +213,7 @@ export const useQqLibrary = () => {
                 if (user) {
                     const collections = snapshot.collections
                         .map(collection => omni.normalizeCachedCollection('qq', collection, collection.type))
-                        .filter(Boolean) as ProviderCollection[];
+                        .filter((collection): collection is ProviderCollection => collection !== null && !isProviderLikedCollection(collection));
                     updateAccount('qq', {
                         status: 'authenticated',
                         user,

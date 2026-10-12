@@ -1,6 +1,7 @@
 import md5 from 'blueimp-md5';
 import { OnlineProviderError } from '../../types/onlineMusic';
 import { readProviderSessionValue, removeProviderSessionValue, writeProviderSessionValue } from './providerStorage';
+import { resolveAndroidTransportBase } from './androidTransport';
 
 // src/services/onlineMusic/kugouTransport.ts
 
@@ -17,6 +18,20 @@ export const KUGOU_OPERATIONS = [
 
 export type KugouOperation = typeof KUGOU_OPERATIONS[number];
 export type KugouParams = Record<string, string | number | boolean | undefined>;
+
+export type KugouLyricCandidate = {
+    id: string | number;
+    accesskey: string;
+    fmt?: 'krc' | 'lrc';
+    [key: string]: unknown;
+};
+
+const KUGOU_LYRIC_SEARCH_URL = 'http://lyrics.kugou.com/search';
+const KUGOU_LYRIC_SEARCH_HEADERS = {
+    'KG-RC': '1',
+    'KG-THash': 'expand_search_manager.cpp:852736169:451',
+    'User-Agent': 'KuGou2012-9020-ExpandSearchManager',
+};
 
 const ENDPOINTS: Record<KugouOperation, string> = {
     register_dev: '/register/dev',
@@ -64,7 +79,7 @@ const getWebApiBase = (): string => {
         ? String(process.env?.VITE_KUGOU_API_BASE || '')
         : '';
     const value = viteValue || processValue;
-    return value.trim().replace(/\/$/, '');
+    return resolveAndroidTransportBase(value);
 };
 
 const isDeviceVerificationRequired = (body: any): boolean => {
@@ -217,6 +232,97 @@ export const requestKugouLegacyPlayInfo = async (hash: string): Promise<any> => 
     return response.json();
 };
 
+/**
+ * Builds the same fuzzy lyric-search request used by Luoxue/LX.
+ *
+ * The hash narrows the result to the concrete recording while keyword and
+ * timelength allow KuGou to recover lyrics when the recording metadata is not
+ * an exact match. `lrctxt=1` asks KuGou to include lyric candidates that can
+ * be downloaded immediately.
+ */
+export const buildKugouLyricSearchUrl = (
+    keyword: string,
+    hash: string,
+    timelength: number,
+): string => {
+    const targetUrl = new URL(KUGOU_LYRIC_SEARCH_URL);
+    targetUrl.searchParams.set('ver', '1');
+    targetUrl.searchParams.set('man', 'yes');
+    targetUrl.searchParams.set('client', 'pc');
+    targetUrl.searchParams.set('keyword', keyword.trim());
+    targetUrl.searchParams.set('hash', hash.trim().toUpperCase());
+    targetUrl.searchParams.set('timelength', String(Math.max(0, Math.round(timelength))));
+    targetUrl.searchParams.set('lrctxt', '1');
+    return targetUrl.toString();
+};
+
+const normalizeKugouLyricCandidate = (candidate: any): KugouLyricCandidate | null => {
+    const id = candidate?.id;
+    const accesskey = candidate?.accesskey ?? candidate?.accessKey;
+    if ((typeof id !== 'string' && typeof id !== 'number') || !accesskey) return null;
+
+    // This is LX's format selection rule. KuGou returns KRC for word-timed
+    // candidates and plain LRC for candidates without KRC content.
+    const fmt = Number(candidate?.krctype) === 1 && Number(candidate?.contenttype) !== 1
+        ? 'krc'
+        : 'lrc';
+    return { ...candidate, id, accesskey: String(accesskey), fmt };
+};
+
+const parseKugouLyricSearchBody = (body: any): KugouLyricCandidate | null => {
+    const candidates = Array.isArray(body?.candidates)
+        ? body.candidates
+        : Array.isArray(body?.data?.candidates)
+            ? body.data.candidates
+            : [];
+    return normalizeKugouLyricCandidate(candidates[0]);
+};
+
+/**
+ * Calls KuGou's native fuzzy lyric search with the same request shape as LX.
+ * The retry count intentionally mirrors LX's six-attempt behavior for
+ * transient 5xx responses. Electron uses the main-process proxy so these
+ * legacy KuGou headers are preserved without CORS restrictions.
+ */
+export const requestKugouLyricSearch = async (
+    keyword: string,
+    hash: string,
+    timelength: number,
+    retry = 0,
+): Promise<KugouLyricCandidate | null> => {
+    const targetUrl = buildKugouLyricSearchUrl(keyword, hash, timelength);
+    const electronProxy = typeof window !== 'undefined' ? window.electron?.fetchLyricProxy : undefined;
+
+    try {
+        const response = electronProxy
+            ? await electronProxy(targetUrl, { method: 'GET', headers: KUGOU_LYRIC_SEARCH_HEADERS })
+            : await fetch(
+                typeof window !== 'undefined' && window.electron
+                    ? targetUrl
+                    : `/api/lyric-proxy?url=${encodeURIComponent(targetUrl)}`,
+                { method: 'GET', credentials: 'omit', headers: KUGOU_LYRIC_SEARCH_HEADERS },
+            );
+
+        if (!response.ok) {
+            if (retry < 5) return requestKugouLyricSearch(keyword, hash, timelength, retry + 1);
+            throw new OnlineProviderError('network', `KuGou lyric search failed: ${response.status}`, 'kugou');
+        }
+
+        const body = 'bodyText' in response
+            ? JSON.parse(response.bodyText)
+            : await response.json();
+        return parseKugouLyricSearchBody(body);
+    } catch (error) {
+        if (retry < 5) return requestKugouLyricSearch(keyword, hash, timelength, retry + 1);
+        if (error instanceof OnlineProviderError) throw error;
+        throw new OnlineProviderError(
+            'network',
+            `KuGou lyric search failed: ${error instanceof Error ? error.message : String(error)}`,
+            'kugou',
+        );
+    }
+};
+
 const clearWebDeviceIdentity = (): void => {
     removeProviderSessionValue('kugou', 'dfid');
     const storedCookie = readProviderSessionValue('kugou', 'cookie');
@@ -263,6 +369,11 @@ export const getKugouTransportAvailability = () => {
     return getWebApiBase()
         ? { configured: true } as const
         : { configured: false, reason: 'not-configured' as const };
+};
+
+/** A real anonymous search is the least invasive health check for the KuGou bridge. */
+export const probeKugouTransport = async (): Promise<void> => {
+    await requestKugouAnonymousSearch('告白气球', 1, 1);
 };
 
 // Routes one provider request through Electron IPC or an explicitly configured Web backend.

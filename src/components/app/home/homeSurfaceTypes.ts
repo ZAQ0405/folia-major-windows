@@ -4,6 +4,7 @@ import type {
     HomeViewTab,
     LocalLibraryGroup,
     LocalPlaylist,
+    PersonalPlaylist,
     LocalSong,
     SongResult,
     StageSource,
@@ -38,7 +39,9 @@ export interface HomeSurfaceProps {
     localSongs: LocalSong[];
     localLibraryCatalog: LocalLibraryCatalogSnapshot;
     localPlaylists: LocalPlaylist[];
+    personalPlaylists: PersonalPlaylist[];
     onRefreshLocalSongs: () => Promise<void> | void;
+    onRefreshPersonalPlaylists?: () => Promise<void> | void;
     onAddLocalSongToQueue?: (song: LocalSong) => void;
     focusedPlaylistIndex?: number;
     setFocusedPlaylistIndex?: (index: number) => void;
@@ -58,6 +61,7 @@ export interface HomeSurfaceProps {
     onOpenLattice?: () => void;
     navidromeEnabled?: boolean;
     onPlayAll?: (songs: SongResult[]) => void;
+    onPlayAllInLattice?: (songs: SongResult[]) => void;
     onAddAllToQueue?: (songs: SongResult[]) => void;
     onAddSongToQueue?: (song: SongResult) => void;
     onStatusMessage?: (message: StatusMessage) => void;

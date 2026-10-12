@@ -1,6 +1,7 @@
 import type { MediaId, OnlineProviderId, ProviderCollection, ProviderUser } from '../../types/onlineMusic';
 import { getFromCache, removeFromCache, saveToCache } from '../db';
 import { getProviderCacheKey } from './providerStorage';
+import { isProviderLikedCollection } from '../../utils/providerCollection';
 
 // src/services/onlineMusic/providerAccountCache.ts
 
@@ -35,7 +36,11 @@ export const loadProviderAccountSnapshot = async (
     };
     // 缓存可能是上一版本、另一台设备或被改坏的文件写的。坏元素单独剔除就够了，
     // 为一个空字符串丢掉整份快照会让首页白屏到刷新结束。
-    return { ...snapshot, likedSongIds: snapshot.likedSongIds.filter(isUsableMediaId) };
+    return {
+        ...snapshot,
+        collections: snapshot.collections.filter(collection => !isProviderLikedCollection(collection)),
+        likedSongIds: snapshot.likedSongIds.filter(isUsableMediaId),
+    };
 };
 
 export const saveProviderAccountSnapshot = async (
@@ -46,6 +51,7 @@ export const saveProviderAccountSnapshot = async (
         version: SNAPSHOT_VERSION,
         savedAt: Date.now(),
         ...snapshot,
+        collections: snapshot.collections.filter(collection => !isProviderLikedCollection(collection)),
     };
     await saveToCache(getProviderAccountSnapshotCacheKey(providerId), value);
     return value;

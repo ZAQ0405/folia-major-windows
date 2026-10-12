@@ -99,21 +99,27 @@ describe('online audio ReplayGain plumbing', () => {
         );
     });
 
-    it('reuses prefetched metadata without asking the provider again', async () => {
+    it('refreshes a prefetched official URL through the provider', async () => {
         const prefetched = {
             audioUrl: 'https://audio.test/prefetched.flac',
             audioUrlFetchedAt: Date.now(),
             replayGain: { trackGain: -3.2 },
         } as any;
+        sourceMock.mockResolvedValue({
+            url: 'https://audio.test/current-account.flac',
+            fetchedAt: 2,
+            quality: 'high',
+            replayGain: { trackGain: -1.1 },
+        });
 
         const result = await loadOnlineSongAudioSource(song, 'high', prefetched);
 
         expect(result).toMatchObject({
             kind: 'ok',
-            audioSrc: 'https://audio.test/prefetched.flac',
-            replayGain: { trackGain: -3.2 },
+            audioSrc: 'https://audio.test/current-account.flac',
+            replayGain: { trackGain: -1.1 },
         });
-        expect(sourceMock).not.toHaveBeenCalled();
+        expect(sourceMock).toHaveBeenCalledWith(song, 'high', {});
     });
 
     it('leaves ReplayGain absent when the provider has no metadata', async () => {

@@ -22,6 +22,7 @@ import { modeNeedsBeatGrid } from './automix/transitionStrategy';
 import { useLyricSettingsStore } from '../stores/useLyricSettingsStore';
 import { useAutomixSettingsStore } from '../stores/useAutomixSettingsStore';
 import { useAudioSettingsStore } from '../stores/useAudioSettingsStore';
+import { getPlaybackMode } from '../stores/usePlaybackModeStore';
 
 // Prefetch configuration
 //
@@ -91,6 +92,8 @@ export interface PrefetchedSongData {
     } | null;
     lyricPreferenceSource: LyricProviderSource | null;
     coverUrl: string | null;
+    /** The mode that produced audioUrl/CACHED_IN_DB. Lyrics and cover data are mode-independent. */
+    playbackMode: ReturnType<typeof getPlaybackMode>;
 }
 
 // In-memory prefetch cache (not persisted to IndexedDB to avoid stale URLs)
@@ -123,6 +126,17 @@ export const getPrefetchedData = (song: SongResult, requiredQuality?: AudioQuali
     const songId = song.id;
     const cached = prefetchCache.get(songKey);
     if (!cached) return null;
+
+    const playbackMode = getPlaybackMode();
+    if (cached.playbackMode !== playbackMode) {
+        // Keep lyrics and cover data, but never carry an audio URL across the manual channel
+        // switch.  The URL may be a preview from the official provider or a full-length LX source.
+        cached.audioUrl = null;
+        cached.audioUrlFetchedAt = 0;
+        cached.audioUrlQuality = null;
+        cached.replayGain = undefined;
+        cached.playbackMode = playbackMode;
+    }
 
     if (cached.audioUrl && cached.audioUrl !== 'CACHED_IN_DB') {
         cached.audioUrl = toSafePlaybackUrl(cached.audioUrl) ?? null;
@@ -183,13 +197,24 @@ const prefetchSong = async (
 
     // Check if already prefetched with valid URL
     const existing = prefetchCache.get(songKey);
+    const playbackMode = getPlaybackMode();
+    if (existing?.playbackMode !== playbackMode) {
+        // Reuse only mode-independent metadata. Audio is resolved again below through omni.
+        if (existing) {
+            existing.audioUrl = null;
+            existing.audioUrlFetchedAt = 0;
+            existing.audioUrlQuality = null;
+            existing.replayGain = undefined;
+            existing.playbackMode = playbackMode;
+        }
+    }
     if (existing?.audioUrl && existing.audioUrl !== 'CACHED_IN_DB') {
         existing.audioUrl = toSafePlaybackUrl(existing.audioUrl) ?? null;
     }
   const currentSettingsLyricSettings = useLyricSettingsStore.getState();
     const lyricPreferenceMatches = !currentSettingsLyricSettings.autoUseBestLyric
         || existing?.lyricPreferenceSource === currentSettingsLyricSettings.preferredAlternativeLyricSource;
-    if (existing && lyricPreferenceMatches && existing.audioUrl && isUrlValid(existing.audioUrlFetchedAt) && (existing.lyrics || existing.lyricRaw?.isPureMusic)) {
+    if (existing && existing.playbackMode === playbackMode && lyricPreferenceMatches && existing.audioUrl && isUrlValid(existing.audioUrlFetchedAt) && (existing.lyrics || existing.lyricRaw?.isPureMusic)) {
         console.log(`[Prefetch] Already cached: ${song.name}`);
         touchPrefetchCacheEntry(songKey, existing);
         analyseForAutomix(song, existing.audioUrl);
@@ -201,14 +226,15 @@ const prefetchSong = async (
     const data: PrefetchedSongData = {
         songKey,
         songId,
-        audioUrl: existing?.audioUrl && existing.audioUrlQuality === audioQuality && isUrlValid(existing.audioUrlFetchedAt) ? existing.audioUrl : null,
-        audioUrlFetchedAt: existing?.audioUrlFetchedAt || 0,
-        audioUrlQuality: existing?.audioUrlQuality || null,
+        audioUrl: existing?.playbackMode === playbackMode && existing.audioUrl && existing.audioUrlQuality === audioQuality && isUrlValid(existing.audioUrlFetchedAt) ? existing.audioUrl : null,
+        audioUrlFetchedAt: existing?.playbackMode === playbackMode ? existing.audioUrlFetchedAt : 0,
+        audioUrlQuality: existing?.playbackMode === playbackMode ? existing.audioUrlQuality : null,
         replayGain: existing?.replayGain ?? song.replayGain,
         lyrics: existing?.lyrics || null,
         lyricRaw: existing?.lyricRaw || null,
         lyricPreferenceSource: existing?.lyricPreferenceSource || null,
         coverUrl: existing?.coverUrl || null,
+        playbackMode,
     };
 
     // Prefetch audio URL (if not cached or expired)
@@ -398,6 +424,7 @@ export const updatePrefetchedAudioUrl = (
         lyricRaw: existing?.lyricRaw || null,
         lyricPreferenceSource: existing?.lyricPreferenceSource || null,
         coverUrl: existing?.coverUrl || null,
+        playbackMode: getPlaybackMode(),
     };
 
     touchPrefetchCacheEntry(songKey, nextData);

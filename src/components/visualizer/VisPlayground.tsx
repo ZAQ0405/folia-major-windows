@@ -58,6 +58,11 @@ import VisPlaygroundPreviewHotspots, { type VisPlaygroundEditSection } from './V
 import VisPlaygroundSettingsPanel from './VisPlaygroundSettingsPanel';
 import type { VisualizerBackgroundActions, VisualizerBackgroundConfig } from './backgrounds/definition';
 import { useVisPlaygroundPreviewPlayback } from './useVisPlaygroundPreviewPlayback';
+import { useVisualizerSettingsStore } from '../../stores/useVisualizerSettingsStore';
+import { selectDisplaySong, usePlaybackStore } from '../../stores/usePlaybackStore';
+import { getPlaybackSongKey } from '../../utils/appPlaybackGuards';
+import { getJizuraThemeLabel } from './jizura/styleOptions';
+import type { JizuraRerollScope } from './jizura/settings';
 
 interface VisPlaygroundProps {
     theme?: Theme;
@@ -628,7 +633,42 @@ const VisPlayground: React.FC<VisPlaygroundProps> = ({
     });
 
     const visualizerEntry = getVisualizerRegistryEntry(visualizerMode);
-    const modeLabel = getVisualizerModeLabel(visualizerMode, t);
+    const jizuraEnabled = useVisualizerSettingsStore(state => state.jizuraEnabled);
+    const globalJizuraStyle = useVisualizerSettingsStore(state => state.jizuraStyle);
+    const globalJizuraSettings = useVisualizerSettingsStore(state => state.jizuraSettings);
+    const displaySong = usePlaybackStore(selectDisplaySong);
+    const jizuraSongKey = displaySong ? getPlaybackSongKey(displaySong) : null;
+    const jizuraSongPreset = useVisualizerSettingsStore(state => (
+        jizuraSongKey ? state.jizuraSongPresets[jizuraSongKey] : undefined
+    ));
+    const jizuraActiveVariant = useVisualizerSettingsStore(state => (
+        jizuraSongKey && state.jizuraActiveVariant?.songKey === jizuraSongKey
+            ? state.jizuraActiveVariant
+            : null
+    ));
+    const jizuraStyle = jizuraSongPreset?.style ?? jizuraActiveVariant?.style ?? globalJizuraStyle;
+    const jizuraSettings = jizuraSongPreset?.settings ?? jizuraActiveVariant?.settings ?? globalJizuraSettings;
+    const handleSetGlobalJizuraSettings = useVisualizerSettingsStore(state => state.handleSetJizuraSettings);
+    const handleResetGlobalJizuraSettings = useVisualizerSettingsStore(state => state.handleResetJizuraSettings);
+    const handleSetJizuraSongPreset = useVisualizerSettingsStore(state => state.handleSetJizuraSongPreset);
+    const handleResetJizuraSongPreset = useVisualizerSettingsStore(state => state.handleResetJizuraSongPreset);
+    const handleSetJizuraSettings = (patch: Partial<typeof jizuraSettings>) => {
+        if (jizuraSongKey) {
+            handleSetJizuraSongPreset(jizuraSongKey, { settings: patch });
+            return;
+        }
+        handleSetGlobalJizuraSettings(patch);
+    };
+    const handleResetJizuraSettings = () => {
+        if (jizuraSongKey) {
+            handleResetJizuraSongPreset(jizuraSongKey);
+            return;
+        }
+        handleResetGlobalJizuraSettings();
+    };
+    const modeLabel = jizuraEnabled
+        ? `${t('options.jizuraLyricMv')} · ${getJizuraThemeLabel(jizuraSettings.themeId)}`
+        : getVisualizerModeLabel(visualizerMode, t);
     const hotspotLabels = useMemo<Record<Exclude<VisPlaygroundEditSection, 'common'>, string>>(() => ({
         background: t('options.previewBackgroundHotspot'),
         visualizer: t('options.previewVisualizerHotspot'),
@@ -1169,6 +1209,9 @@ const VisPlayground: React.FC<VisPlaygroundProps> = ({
                         <div className="absolute inset-0">
                             <VisualizerRenderer
                                 mode={visualizerMode}
+                                jizuraEnabled={jizuraEnabled}
+                                jizuraStyle={jizuraStyle}
+                                jizuraSettings={jizuraSettings}
                                 currentTime={currentTime}
                                 currentLineIndex={currentLineIndex}
                                 lines={previewPlaceholder.lines}
@@ -1229,6 +1272,18 @@ const VisPlayground: React.FC<VisPlaygroundProps> = ({
                         isDaylight={isDaylight}
                         theme={previewTheme}
                         visualizerMode={visualizerMode}
+                        jizuraEnabled={jizuraEnabled}
+                        jizuraStyle={jizuraStyle}
+                        jizuraSettings={jizuraSettings}
+                        onJizuraSettingsChange={handleSetJizuraSettings}
+                        onResetJizuraSettings={handleResetJizuraSettings}
+                        onJizuraThemeChange={(themeId) => handleSetJizuraSettings({ themeId })}
+                        onJizuraReroll={(scope: JizuraRerollScope) => handleSetJizuraSettings({
+                            revision: jizuraSettings.revision + 1,
+                            rerollScope: scope,
+                        })}
+                        jizuraSongLabel={displaySong?.name ?? null}
+                        jizuraSongScoped={Boolean(jizuraSongKey)}
                         visualizerEntry={visualizerEntry}
                         onVisualizerModeChange={onVisualizerModeChange}
                         onResetVisualizerTuning={handleResetVisualizerTuning}

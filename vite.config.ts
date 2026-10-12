@@ -6,6 +6,8 @@ import { commandPinyinPlugin } from './dev/pinyin/commandPinyinPlugin.mjs';
 import { VitePWA } from 'vite-plugin-pwa';
 import { execSync } from 'child_process';
 import fs from 'fs';
+import dns from 'node:dns/promises';
+import net from 'node:net';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -37,6 +39,8 @@ function isAllowedLyricProxyHost(hostname: string): boolean {
     hostname === 'y.gtimg.cn' ||
     hostname === 'kugou.com' || hostname.endsWith('.kugou.com') ||
     hostname === 'kgimg.com' || hostname.endsWith('.kgimg.com') ||
+    hostname === 'kuwo.cn' || hostname.endsWith('.kuwo.cn') ||
+    hostname === 'kuwo.com' || hostname.endsWith('.kuwo.com') ||
     hostname === 'amll-ttml-db.stevexmh.net';
 }
 
@@ -64,6 +68,107 @@ function readDevRequestBody(req: import('http').IncomingMessage): Promise<Uint8A
     req.on('end', () => resolve(new Uint8Array(Buffer.concat(chunks))));
     req.on('error', reject);
   });
+}
+
+const JS_SOURCE_PROXY_IGNORED_HEADERS = new Set([
+  'host', 'connection', 'content-length',
+]);
+
+function isPrivateJsSourceAddress(address: string): boolean {
+  if (net.isIP(address) === 6) {
+    const normalized = address.toLowerCase();
+    return normalized === '::1' || normalized === '::' || normalized.startsWith('fc') || normalized.startsWith('fd') ||
+      normalized.startsWith('fe8') || normalized.startsWith('fe9') || normalized.startsWith('fea') || normalized.startsWith('feb');
+  }
+  const parts = address.split('.').map(Number);
+  if (parts.length !== 4 || parts.some(part => !Number.isInteger(part) || part < 0 || part > 255)) return true;
+  return parts[0] === 10 || parts[0] === 127 || (parts[0] === 169 && parts[1] === 254) ||
+    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || (parts[0] === 192 && parts[1] === 168) ||
+    (parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127) || parts[0] === 0;
+}
+
+async function assertDevJsSourceTarget(targetUrl: URL): Promise<void> {
+  if (!['http:', 'https:'].includes(targetUrl.protocol)) throw new Error('Only HTTP(S) targets are supported');
+  if (targetUrl.username || targetUrl.password) throw new Error('Target credentials are not allowed');
+  const hostname = targetUrl.hostname.toLowerCase();
+  if (hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local') || hostname === 'metadata.google.internal') {
+    throw new Error('Private target is not allowed');
+  }
+  if (net.isIP(hostname) && isPrivateJsSourceAddress(hostname)) throw new Error('Private target is not allowed');
+  if (!net.isIP(hostname)) {
+    const records = await dns.lookup(hostname, { all: true, verbatim: true });
+    if (!records.length || records.some(record => isPrivateJsSourceAddress(record.address))) throw new Error('Target resolves to a private address');
+  }
+}
+
+function devJsSourceProxyPlugin() {
+  return {
+    name: 'folia-dev-js-source-proxy',
+    apply: 'serve' as const,
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use(async (req, res, next) => {
+        const requestUrl = new URL(req.url ?? '/', 'http://localhost');
+        if (requestUrl.pathname !== '/api/js-source-request') {
+          next();
+          return;
+        }
+        if (req.method === 'OPTIONS') {
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
+          res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+          res.statusCode = 200;
+          res.end();
+          return;
+        }
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.end(JSON.stringify({ error: 'Only POST is supported' }));
+          return;
+        }
+        const targetUrlString = requestUrl.searchParams.get('url');
+        if (!targetUrlString) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ error: 'Missing url parameter' }));
+          return;
+        }
+        try {
+          const targetUrl = new URL(targetUrlString);
+          await assertDevJsSourceTarget(targetUrl);
+          const raw = Buffer.from(await readDevRequestBody(req)).toString('utf8');
+          const payload = raw ? JSON.parse(raw) as { method?: string; headers?: Record<string, unknown>; body?: string } : {};
+          const headers: Record<string, string> = {};
+          for (const [key, value] of Object.entries(payload.headers ?? {})) {
+            if (typeof value === 'string' && !JS_SOURCE_PROXY_IGNORED_HEADERS.has(key.toLowerCase())) headers[key] = value;
+          }
+          const method = typeof payload.method === 'string' ? payload.method.toUpperCase() : 'GET';
+          if (!['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) throw new Error('Unsupported method');
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 20_000);
+          try {
+            const response = await fetch(targetUrl.toString(), {
+              method,
+              headers,
+              body: ['GET', 'HEAD'].includes(method) ? undefined : payload.body,
+              signal: controller.signal,
+            });
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            const contentType = response.headers.get('content-type');
+            if (contentType) res.setHeader('Content-Type', contentType);
+            res.statusCode = response.status;
+            res.end(Buffer.from(await response.arrayBuffer()));
+          } finally {
+            clearTimeout(timeout);
+          }
+        } catch (error) {
+          console.error('Vite JS source proxy request failed:', error);
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Content-Type', 'application/json');
+          res.statusCode = 502;
+          res.end(JSON.stringify({ error: 'JS source request failed', details: String(error) }));
+        }
+      });
+    },
+  };
 }
 
 function devLyricProxyPlugin() {
@@ -138,6 +243,7 @@ function devLyricProxyPlugin() {
 }
 
 export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig> {
+  const isCapacitorBuild = process.env.FOLIA_BUILD_TARGET === 'capacitor';
   let commitHash = '';
   if (process.env.VERCEL_GIT_COMMIT_SHA) {
     commitHash = process.env.VERCEL_GIT_COMMIT_SHA.substring(0, 7);
@@ -192,7 +298,7 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
   const dockerStackVersion = process.env.DOCKER_STACK_VERSION?.trim() || '';
 
   return {
-    base: process.env.ELECTRON === 'true' ? './' : '/',
+    base: process.env.ELECTRON === 'true' || isCapacitorBuild ? './' : '/',
     worker: {
       format: 'es'
     },
@@ -227,9 +333,10 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
     },
     plugins: [
       devLyricProxyPlugin(),
+      devJsSourceProxyPlugin(),
       commandPinyinPlugin(),
       react(),
-      VitePWA({
+      ...(isCapacitorBuild ? [] : [VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg'],
         devOptions: {
@@ -258,7 +365,7 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
             }
           ]
         }
-      })
+      })])
     ],
     define: {
       '__COMMIT_HASH__': JSON.stringify(commitHash + commitSuffix),

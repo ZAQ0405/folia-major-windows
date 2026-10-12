@@ -1254,6 +1254,19 @@ export interface LocalPlaylist {
   isFavorite?: boolean;
 }
 
+/**
+ * Account-independent playlist. Unlike LocalPlaylist, this stores a small song snapshot so
+ * online songs remain available after restart even when the user has not signed in anywhere.
+ */
+export interface PersonalPlaylist {
+  id: string;
+  name: string;
+  songs: SongResult[];
+  createdAt: number;
+  updatedAt: number;
+  isFavorite?: boolean;
+}
+
 export type LocalLibraryGroupType = 'folder' | 'album' | 'artist' | 'playlist';
 
 export interface LocalLibraryGroup {

@@ -1,5 +1,6 @@
 import { OnlineProviderError } from '../../types/onlineMusic';
 import { readProviderSessionValue, removeProviderSessionValue, writeProviderSessionValue } from './providerStorage';
+import { resolveAndroidTransportBase } from './androidTransport';
 
 // src/services/onlineMusic/qqTransport.ts
 
@@ -51,7 +52,7 @@ const getWebApiBase = (): string => {
         ? String(process.env?.VITE_QQ_API_BASE || '')
         : '';
     const value = viteValue || processValue;
-    return value.trim().replace(/\/$/, '');
+    return resolveAndroidTransportBase(value);
 };
 
 // Electron embeds qq-music-api and starts it on a free port, so the base is only known at runtime.
@@ -168,6 +169,20 @@ export const getQqTransportAvailability = () => {
     return getWebApiBase()
         ? { configured: true } as const
         : { configured: false, reason: 'not-configured' as const };
+};
+
+// The embedded Node server in qq-music-api 3.1.x exposes the QR routes directly but does not
+// expose the optional /login/channels discovery route. Its QR service already has the canonical
+// QQ and WeChat channels, so callers should use the built-in list without probing a known 404.
+export const isEmbeddedQqTransport = (): boolean => Boolean(getElectronQqPortReader());
+
+/**
+ * Checks the embedded/configured QQMusicApi without requiring an account session.
+ * `/login/status` is intentionally used instead of `/login/channels`: older backends
+ * do not expose channel discovery but still support QR login through the fallback list.
+ */
+export const probeQqTransport = async (): Promise<void> => {
+    await requestQq('login_status');
 };
 
 const endpointFor = (operation: QqOperation, params: QqParams): { path: string; query: QqParams } => {

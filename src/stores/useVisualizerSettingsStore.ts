@@ -6,7 +6,7 @@
 // ./visualizerSettingsPersistence; this file owns the state and the actions only.
 
 import { create } from 'zustand';
-import { getVisualizerModeLabel } from '../components/visualizer/registry';
+import { getFoliaVisualizerEntries, getVisualizerModeLabel } from '../components/visualizer/registry';
 import { DEFAULT_CADENZA_TUNING, DEFAULT_CAPPELLA_TUNING, DEFAULT_CLADDAGH_TUNING, DEFAULT_CLASSIC_TUNING, DEFAULT_DIORAMA_TUNING, DEFAULT_FUME_TUNING, DEFAULT_LATENT_BACKGROUND_TUNING, DEFAULT_MONET_BACKGROUND_TUNING, DEFAULT_MONET_TUNING, DEFAULT_NOMAND_BACKGROUND_TUNING, DEFAULT_PARTITA_TUNING, DEFAULT_PENDOLO_TUNING, DEFAULT_SONNET_TUNING, DEFAULT_TEMPERA_TUNING, DEFAULT_TILT_TUNING, type CadenzaTuning, type CappellaTuning, type CladdaghTuning, type ClassicTuning, type DioramaTuning, type FumeTuning, type LatentBackgroundTuning, type MonetBackgroundTuning, type MonetTuning, type NomandBackgroundTuning, type PartitaTuning, type PendoloTuning, type SonnetTuning, type TemperaTuning, type TiltTuning, type UrlBackgroundItem, type VisualizerBackgroundMode, type VisualizerFrameRate, type VisualizerMode } from '../types';
 import { VISUALIZER_FRAME_RATE_STORAGE_KEY, setGlobalVisualizerFrameRate } from '../utils/frameRateLimiter';
 import { sanitizeUrlBackgroundItem, sanitizeUrlBackgroundList } from '../utils/urlBackground';
@@ -16,9 +16,13 @@ import { buildStoredCappellaEmojiPack, clearCustomCappellaEmojiPack, isSupported
 import { buildStoredMonetBackgroundImage, clearMonetBackgroundImage, isSupportedMonetBackgroundFile, saveMonetBackgroundImage } from '../services/monetBackgroundImage';
 import { buildStoredMonetPortraitImage, clearMonetPortraitImage, isSupportedMonetPortraitFile, saveMonetPortraitImage } from '../services/monetPortraitImage';
 import { setStatusMessage } from './useStatusMessageStore';
-import { VISUALIZER_OPACITY_STORAGE_KEY, clampCladdaghEllipseTiltDeg, clampCladdaghFocusScaleRatio, clampCladdaghLetterSpacingOffset, clampCladdaghRadiusScale, clampClassicBreathingFloatMultiplier, clampClassicWordSpacing, clampFumeBackgroundObjectOpacity, clampFumeCameraSpeed, clampFumeGlowIntensity, clampFumeHeroScale, clampFumeTextHoldRatio, clampPartitaStagger, clampUnit, readStoredBackgroundOpacity, readStoredCadenzaTuning, readStoredCappellaTuning, readStoredCladdaghTuning, readStoredClassicTuning, readStoredDioramaTuning, readStoredFumeTuning, readStoredLatentBackgroundTuning, readStoredMonetBackgroundTuning, readStoredMonetTuning, readStoredNomandBackgroundTuning, readStoredPartitaTuning, readStoredPendoloTuning, readStoredSonnetTuning, readStoredTemperaTuning, readStoredTiltTuning, readStoredUrlBackgroundList, readStoredUrlBackgroundSelectedId, readStoredVisualizerBackgroundMode, readStoredVisualizerFrameRate, readStoredVisualizerMode, readStoredVisualizerOpacity, resolveCappellaAvatarSource, resolveFumeCameraTrackingMode, resolvePendoloNumber, resolveStoredDioramaTuning, resolveStoredLatentBackgroundTuning, resolveStoredMonetBackgroundTuning, resolveStoredMonetTuning, resolveStoredNomandBackgroundTuning, sanitizeTemperaLayerImages } from './visualizerSettingsPersistence';
+import { VISUALIZER_OPACITY_STORAGE_KEY, clampCladdaghEllipseTiltDeg, clampCladdaghFocusScaleRatio, clampCladdaghLetterSpacingOffset, clampCladdaghRadiusScale, clampClassicBreathingFloatMultiplier, clampClassicWordSpacing, clampFumeBackgroundObjectOpacity, clampFumeCameraSpeed, clampFumeGlowIntensity, clampFumeHeroScale, clampFumeTextHoldRatio, clampPartitaStagger, clampUnit, readStoredBackgroundOpacity, readStoredCadenzaTuning, readStoredCappellaTuning, readStoredCladdaghTuning, readStoredClassicTuning, readStoredDioramaTuning, readStoredFumeTuning, readStoredJizuraEnabled, readStoredJizuraStyle, readStoredLatentBackgroundTuning, readStoredMonetBackgroundTuning, readStoredMonetTuning, readStoredNomandBackgroundTuning, readStoredPartitaTuning, readStoredPendoloTuning, readStoredSonnetTuning, readStoredTemperaTuning, readStoredTiltTuning, readStoredUrlBackgroundList, readStoredUrlBackgroundSelectedId, readStoredVisualizerBackgroundMode, readStoredVisualizerCategoryEnabled, readStoredVisualizerFrameRate, readStoredVisualizerMode, readStoredVisualizerOpacity, resolveCappellaAvatarSource, resolveFumeCameraTrackingMode, resolvePendoloNumber, resolveStoredDioramaTuning, resolveStoredLatentBackgroundTuning, resolveStoredMonetBackgroundTuning, resolveStoredMonetTuning, resolveStoredNomandBackgroundTuning, sanitizeTemperaLayerImages } from './visualizerSettingsPersistence';
 import { getStoredBoolean, setStoredBoolean } from './storagePrimitives';
 import { useVisualizerAssetStore } from './useVisualizerAssetStore';
+import type { VisualizerCategory, VisualizerCategoryEnabledMap } from '../types/visualizerModes';
+import { DEFAULT_JIZURA_SETTINGS, persistJizuraSettings, readStoredJizuraSettings, sanitizeJizuraSettings, type JizuraSettings } from '../components/visualizer/jizura/settings';
+import { persistJizuraSongPresets, readStoredJizuraSongPresets, sanitizeJizuraSongPresetMap, type JizuraSongPreset, type JizuraSongPresetMap } from '../components/visualizer/jizura/songPresets';
+import { persistFoliaSongPresets, readStoredFoliaSongPresets, sanitizeFoliaSongPresetMap, type FoliaSongPresetMap } from '../components/visualizer/folia/songPresets';
 
 export type VisualizerSettingsState = {
     disableVisualizerVignette: boolean;
@@ -30,6 +34,14 @@ export type VisualizerSettingsState = {
     urlBackgroundSelectedId: string | null;
     visualizerFrameRate: VisualizerFrameRate;
     visualizerMode: VisualizerMode;
+    jizuraEnabled: boolean;
+    jizuraStyle: string;
+    jizuraSettings: JizuraSettings;
+    jizuraSongPresets: JizuraSongPresetMap;
+    jizuraActiveVariant: (JizuraSongPreset & { songKey: string }) | null;
+    jizuraRandomNonce: number;
+    foliaSongPresets: FoliaSongPresetMap;
+    enabledVisualizerCategories: VisualizerCategoryEnabledMap;
     randomVisualizerModePerSong: boolean;
     classicTuning: ClassicTuning;
     cadenzaTuning: CadenzaTuning;
@@ -59,6 +71,20 @@ export type VisualizerSettingsState = {
     handleSetUrlBackgroundList: (items: UrlBackgroundItem[]) => void;
     handleSetVisualizerFrameRate: (frameRate: VisualizerFrameRate) => void;
     handleSetVisualizerMode: (mode: VisualizerMode, options?: { notify?: boolean }) => void;
+    handleSetFoliaSongPreset: (songKey: string, mode: VisualizerMode) => void;
+    handleSetFoliaSongPresets: (presets: unknown) => void;
+    handleResetFoliaSongPreset: (songKey: string) => void;
+    handleToggleJizuraEnabled: (enabled: boolean) => void;
+    handleSetJizuraStyle: (style: string) => void;
+    handleSetJizuraSettings: (patch: Partial<JizuraSettings>) => void;
+    handleSetJizuraSongPresets: (presets: unknown) => void;
+    handleResetJizuraSettings: () => void;
+    handleSetJizuraSongPreset: (songKey: string, patch: { style?: string; settings?: Partial<JizuraSettings> }) => void;
+    handleResetJizuraSongPreset: (songKey: string) => void;
+    handleRerollJizura: (songKey?: string | null) => void;
+    handleSetJizuraActiveVariant: (variant: (JizuraSongPreset & { songKey: string }) | null) => void;
+    handleSaveJizuraActiveVariant: (songKey: string) => void;
+    handleSetVisualizerCategoryEnabled: (category: VisualizerCategory, enabled: boolean) => void;
     handleToggleRandomVisualizerModePerSong: (enable: boolean) => void;
     handleSetClassicTuning: (patch: Partial<ClassicTuning>) => void;
     handleResetClassicTuning: () => void;
@@ -109,7 +135,20 @@ export const useVisualizerSettingsStore = create<VisualizerSettingsState>((set, 
     urlBackgroundList: readStoredUrlBackgroundList(),
     urlBackgroundSelectedId: readStoredUrlBackgroundSelectedId(),
     visualizerFrameRate: readStoredVisualizerFrameRate(),
-    visualizerMode: readStoredVisualizerMode(),
+    visualizerMode: (() => {
+        const storedMode = readStoredVisualizerMode();
+        return getFoliaVisualizerEntries().some(entry => entry.mode === storedMode)
+            ? storedMode
+            : getFoliaVisualizerEntries()[0]?.mode ?? storedMode;
+    })(),
+    jizuraEnabled: readStoredJizuraEnabled() || readStoredVisualizerMode() === 'jizura',
+    jizuraStyle: readStoredJizuraStyle(),
+    jizuraSettings: readStoredJizuraSettings(),
+    jizuraSongPresets: readStoredJizuraSongPresets(),
+    jizuraActiveVariant: null,
+    jizuraRandomNonce: 0,
+    foliaSongPresets: readStoredFoliaSongPresets(),
+    enabledVisualizerCategories: readStoredVisualizerCategoryEnabled(),
     randomVisualizerModePerSong: getStoredBoolean('random_visualizer_mode_per_song', false),
     classicTuning: readStoredClassicTuning(),
     cadenzaTuning: readStoredCadenzaTuning(),
@@ -237,10 +276,20 @@ export const useVisualizerSettingsStore = create<VisualizerSettingsState>((set, 
         set({ visualizerFrameRate: frameRate });
     },
     handleSetVisualizerMode: (mode, options) => {
+        if (mode === 'jizura') {
+            get().handleToggleJizuraEnabled(true);
+            return;
+        }
+        const entry = getFoliaVisualizerEntries()
+            .find(candidate => candidate.mode === mode);
+        if (!entry) {
+            return;
+        }
         if (typeof window !== 'undefined') {
             localStorage.setItem('visualizer_mode', mode);
+            localStorage.setItem('jizura_enabled', 'false');
         }
-        set({ visualizerMode: mode });
+        set({ visualizerMode: mode, jizuraEnabled: false });
         if (options?.notify !== false) {
             setStatusMessage({
                 type: 'info',
@@ -249,6 +298,133 @@ export const useVisualizerSettingsStore = create<VisualizerSettingsState>((set, 
                 }),
             });
         }
+    },
+    handleSetFoliaSongPreset: (songKey, mode) => {
+        if (!songKey || mode === 'jizura' || mode === 'still') return;
+        const next = { ...get().foliaSongPresets, [songKey]: { mode } };
+        persistFoliaSongPresets(next);
+        set({ foliaSongPresets: next });
+        setStatusMessage({ type: 'success', text: i18n.t('notifications.foliaSongPresetSaved') });
+    },
+    handleSetFoliaSongPresets: (presets) => {
+        const next = sanitizeFoliaSongPresetMap(presets);
+        persistFoliaSongPresets(next);
+        set({ foliaSongPresets: next });
+    },
+    handleResetFoliaSongPreset: (songKey) => {
+        const next = { ...get().foliaSongPresets };
+        delete next[songKey];
+        persistFoliaSongPresets(next);
+        set({ foliaSongPresets: next });
+        setStatusMessage({ type: 'info', text: i18n.t('notifications.foliaSongPresetCleared') });
+    },
+    handleToggleJizuraEnabled: (enabled) => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('jizura_enabled', String(enabled));
+        }
+        set({ jizuraEnabled: enabled });
+        setStatusMessage({
+            type: 'info',
+            text: i18n.t(enabled ? 'notifications.jizuraEnabled' : 'notifications.jizuraDisabled'),
+        });
+    },
+    handleSetJizuraStyle: (style) => {
+        const next = style.trim() || 'noir';
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('jizura_style', next);
+        }
+        set({ jizuraStyle: next });
+    },
+    handleSetJizuraSettings: (patch) => {
+        const next = sanitizeJizuraSettings({ ...get().jizuraSettings, ...patch });
+        persistJizuraSettings(next);
+        set({ jizuraSettings: next });
+    },
+    handleSetJizuraSongPresets: (presets) => {
+        const next = sanitizeJizuraSongPresetMap(presets);
+        persistJizuraSongPresets(next);
+        set({ jizuraSongPresets: next });
+    },
+    handleResetJizuraSettings: () => {
+        const next = { ...DEFAULT_JIZURA_SETTINGS };
+        persistJizuraSettings(next);
+        set({ jizuraSettings: next, jizuraStyle: 'noir' });
+        if (typeof window !== 'undefined') localStorage.setItem('jizura_style', 'noir');
+    },
+    handleSetJizuraSongPreset: (songKey, patch) => {
+        const state = get();
+        const activeVariant = state.jizuraActiveVariant?.songKey === songKey
+            ? state.jizuraActiveVariant
+            : null;
+        const current = state.jizuraSongPresets[songKey] ?? {
+            style: activeVariant?.style ?? state.jizuraStyle,
+            settings: activeVariant?.settings ?? state.jizuraSettings,
+        };
+        const nextPreset: JizuraSongPreset = {
+            style: typeof patch.style === 'string' ? patch.style.trim() || current.style : current.style,
+            settings: { ...current.settings, ...(patch.settings ?? {}) },
+        };
+        const next = { ...get().jizuraSongPresets, [songKey]: nextPreset };
+        persistJizuraSongPresets(next);
+        set({ jizuraSongPresets: next });
+    },
+    handleResetJizuraSongPreset: (songKey) => {
+        const next = { ...get().jizuraSongPresets };
+        delete next[songKey];
+        persistJizuraSongPresets(next);
+        set({ jizuraSongPresets: next });
+    },
+    handleRerollJizura: (songKey) => {
+        const currentPresets = get().jizuraSongPresets;
+        const nextPresets = songKey && currentPresets[songKey]
+            ? Object.fromEntries(Object.entries(currentPresets).filter(([key]) => key !== songKey))
+            : currentPresets;
+        if (nextPresets !== currentPresets) {
+            persistJizuraSongPresets(nextPresets);
+        }
+        set(state => ({
+            jizuraRandomNonce: state.jizuraRandomNonce + 1,
+            jizuraSongPresets: nextPresets,
+            jizuraActiveVariant: null,
+        }));
+    },
+    handleSetJizuraActiveVariant: (variant) => {
+        const current = get().jizuraActiveVariant;
+        if (current?.songKey === variant?.songKey
+            && current?.style === variant?.style
+            && JSON.stringify(current?.settings) === JSON.stringify(variant?.settings)) {
+            return;
+        }
+        set({ jizuraActiveVariant: variant });
+    },
+    handleSaveJizuraActiveVariant: (songKey) => {
+        const active = get().jizuraActiveVariant;
+        if (!active || active.songKey !== songKey) return;
+        const next = {
+            ...get().jizuraSongPresets,
+            [songKey]: {
+                style: active.style,
+                settings: active.settings,
+            },
+        };
+        persistJizuraSongPresets(next);
+        set({ jizuraSongPresets: next, jizuraActiveVariant: null });
+        setStatusMessage({ type: 'success', text: i18n.t('notifications.jizuraRandomSaved') });
+    },
+    handleSetVisualizerCategoryEnabled: (category, enabled) => {
+        const current = get().enabledVisualizerCategories;
+        const next = { ...current, [category]: enabled } as VisualizerCategoryEnabledMap;
+        if (!next.folia && !next.jizura) {
+            return;
+        }
+
+        const nextMode = get().visualizerMode;
+
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('visualizer_category_enabled', JSON.stringify(next));
+            localStorage.setItem('visualizer_mode', nextMode);
+        }
+        set({ enabledVisualizerCategories: next, visualizerMode: nextMode });
     },
     handleToggleRandomVisualizerModePerSong: (enable) => {
         setStoredBoolean('random_visualizer_mode_per_song', enable);
@@ -834,6 +1010,19 @@ export const selectVisualizerSettingsSnapshot = (state: VisualizerSettingsState)
     handleSetVisualizerBackgroundMode: state.handleSetVisualizerBackgroundMode,
     handleSetVisualizerFrameRate: state.handleSetVisualizerFrameRate,
     handleSetVisualizerMode: state.handleSetVisualizerMode,
+    handleSetFoliaSongPreset: state.handleSetFoliaSongPreset,
+    handleSetFoliaSongPresets: state.handleSetFoliaSongPresets,
+    handleResetFoliaSongPreset: state.handleResetFoliaSongPreset,
+    handleToggleJizuraEnabled: state.handleToggleJizuraEnabled,
+    handleSetJizuraStyle: state.handleSetJizuraStyle,
+    handleSetJizuraSettings: state.handleSetJizuraSettings,
+    handleSetJizuraActiveVariant: state.handleSetJizuraActiveVariant,
+    handleSaveJizuraActiveVariant: state.handleSaveJizuraActiveVariant,
+    handleResetJizuraSettings: state.handleResetJizuraSettings,
+    handleSetJizuraSongPreset: state.handleSetJizuraSongPreset,
+    handleResetJizuraSongPreset: state.handleResetJizuraSongPreset,
+    handleRerollJizura: state.handleRerollJizura,
+    handleSetVisualizerCategoryEnabled: state.handleSetVisualizerCategoryEnabled,
     handleSetVisualizerOpacity: state.handleSetVisualizerOpacity,
     handleToggleDisableVisualizerGeometricBackground: state.handleToggleDisableVisualizerGeometricBackground,
     handleToggleDisableVisualizerVignette: state.handleToggleDisableVisualizerVignette,
@@ -856,6 +1045,14 @@ export const selectVisualizerSettingsSnapshot = (state: VisualizerSettingsState)
     visualizerBackgroundMode: state.visualizerBackgroundMode,
     visualizerFrameRate: state.visualizerFrameRate,
     visualizerMode: state.visualizerMode,
+    jizuraEnabled: state.jizuraEnabled,
+    jizuraStyle: state.jizuraStyle,
+    jizuraSettings: state.jizuraSettings,
+    jizuraSongPresets: state.jizuraSongPresets,
+    jizuraActiveVariant: state.jizuraActiveVariant,
+    foliaSongPresets: state.foliaSongPresets,
+    jizuraRandomNonce: state.jizuraRandomNonce,
+    enabledVisualizerCategories: state.enabledVisualizerCategories,
     visualizerOpacity: state.visualizerOpacity,
 });
 

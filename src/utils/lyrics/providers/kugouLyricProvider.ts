@@ -13,6 +13,7 @@ import { krcDecrypt } from './krcDecrypt';
 import { applyDetectedChorusEffects, applyNeteaseChorusByTime } from '../chorusEffects';
 import type { NeteaseChorusRange } from '../chorusEffects';
 import { buildKugouLyricSearchQuery } from '../searchQuery';
+import { requestKugouLyricSearch } from '../../../services/onlineMusic/kugouTransport';
 
 const isElectron = typeof window !== 'undefined' && (window as any).electron;
 type KugouLyricFormat = 'lrc' | 'enhanced-lrc' | 'vtt' | 'krc';
@@ -296,7 +297,6 @@ export async function fetchKugouLyrics(
     throw new Error('Missing song hash for Kugou lyric download');
   }
 
-  const artistsStr = song.artists?.map(a => a.name).join(', ') || '';
   const sourceProviderData = song.sourceRef?.kind === 'online' && song.sourceRef.providerId === 'kugou'
     ? song.sourceRef.providerData
     : undefined;
@@ -304,38 +304,42 @@ export async function fetchKugouLyrics(
     ?? sourceProviderData?.mixSongId
     ?? sourceProviderData?.catalogLookupId;
 
-  // 1. Search lyric candidates
-  const searchParams = {
-    ...(albumAudioId !== undefined && albumAudioId !== null && String(albumAudioId) !== ''
-      ? { album_audio_id: albumAudioId }
-      : {}),
-    duration: song.durationMs,
-    hash: song.kgHash,
-    keyword: `${artistsStr} - ${song.name}`,
-    lrctxt: '1',
-    man: 'no',
-  };
-
   try {
-    const searchRes = await requestKugou(
-      'https://lyrics.kugou.com/v1/search',
-      searchParams,
-      'Lyric'
+    // Use LX's native fuzzy lyric search first. The provider endpoint remains
+    // as a compatibility fallback for older/self-hosted KuGou API bridges.
+    let best = await requestKugouLyricSearch(
+      song.name.trim(),
+      String(song.kgHash).toUpperCase(),
+      song.durationMs,
     );
-    const candidates = searchRes?.candidates || [];
-    if (candidates.length === 0) {
-      return null;
+
+    if (!best) {
+      const artistsStr = song.artists?.map(a => a.name).join(', ') || '';
+      const searchRes = await requestKugou(
+        'https://lyrics.kugou.com/v1/search',
+        {
+          ...(albumAudioId !== undefined && albumAudioId !== null && String(albumAudioId) !== ''
+            ? { album_audio_id: albumAudioId }
+            : {}),
+          duration: song.durationMs,
+          hash: song.kgHash,
+          keyword: `${artistsStr} - ${song.name}`,
+          lrctxt: '1',
+          man: 'no',
+        },
+        'Lyric'
+      );
+      best = searchRes?.candidates?.[0] ?? null;
     }
 
-    // Use the best candidate (first one)
-    const best = candidates[0];
+    if (!best) return null;
 
     // 2. Download lyrics
     const downloadParams = {
       accesskey: best.accesskey,
       charset: 'utf8',
       client: 'mobi',
-      fmt: 'krc',
+      fmt: best.fmt || 'krc',
       id: best.id,
       ver: '1',
     };

@@ -3,7 +3,8 @@ import { getPlaybackSongKey, getPlaybackSourceRef } from '../../utils/appPlaybac
 import { saveAudioBlob } from '../audioCache';
 import { getFromCache, saveToCache } from '../db';
 import { getCachedSongAudioBlob } from '../onlineMusic/resourceCache';
-import { getSongResourceCacheKey } from '../onlineMusic/resourceKeys';
+import { getSongPlaybackAudioCacheKey } from '../onlineMusic/resourceKeys';
+import { getPlaybackMode } from '../../stores/usePlaybackModeStore';
 import { getPlaybackAnalysisKey, getPlaybackRepresentation } from '../playbackRecovery/representationRegistry';
 import { analyseTrackOffThread, melSpectrogramOffThread } from './analysisOffThread';
 import { analyseBeatGrid, canRunBeatThis } from './beatThis';
@@ -214,6 +215,7 @@ const readBytes = async (
     /** A head-only profile is already stored, so there is nothing a second range request buys. */
     hasStoredPartial: boolean,
 ): Promise<BytesResult> => {
+    const playbackMode = getPlaybackMode();
     const representation = getPlaybackRepresentation(song);
     if (representation) {
         try {
@@ -247,10 +249,10 @@ const readBytes = async (
         }
 
         const blob = await (await fetch(audioUrl)).blob();
-        if (!isLocal) {
+        if (!isLocal && playbackMode === 'source') {
             // The same write the audio bridge would have done after playback. Fetching once and
             // feeding both is the whole reason a full read is allowed here at all.
-            await saveAudioBlob(getSongResourceCacheKey('audio', song), blob);
+            await saveAudioBlob(getSongPlaybackAudioCacheKey(song, 'source'), blob);
         }
         return { bytes: await blob.arrayBuffer(), partial: false };
     } catch (error) {

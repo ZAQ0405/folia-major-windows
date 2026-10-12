@@ -11,6 +11,7 @@ const transportState = vi.hoisted(() => ({ hasSession: true }));
 
 vi.mock('@/services/onlineMusic/qqTransport', () => ({
     getQqTransportAvailability: () => ({ configured: true }),
+    isEmbeddedQqTransport: () => true,
     hasQqSession: () => transportState.hasSession,
     clearQqSession: clearSessionMock,
     requestQq: requestMock,
@@ -549,6 +550,22 @@ describe('qqProvider', () => {
         expect(requestMock.mock.calls).toEqual([
             ['song_info', { songmid: '003rJSwm3TechU' }],
             ['music_play', { songmid: '003rJSwm3TechU', mediaId: '001MediaMidFixture', quality: 'flac' }],
+            ['music_play', { songmid: '003rJSwm3TechU', mediaId: '001MediaMidFixture', quality: '320' }],
+        ]);
+    });
+
+    it('hydrates the missing media_mid before requesting official QQ playback', async () => {
+        const searchOnlySong = normalizeQqSong({ ...SEARCH_ITEM, file: undefined });
+        requestMock
+            .mockResolvedValueOnce({ response: { songinfo: { data: { track_info: SEARCH_ITEM } } } })
+            .mockResolvedValueOnce({ data: { playUrl: { '003rJSwm3TechU': { url: 'https://audio.example.test/vip.mp3' } } } });
+
+        await expect(qqProvider.playback!.getAudioSource(searchOnlySong, 'high')).resolves.toMatchObject({
+            url: 'https://audio.example.test/vip.mp3',
+            quality: 'high',
+        });
+        expect(requestMock.mock.calls).toEqual([
+            ['song_info', { songmid: '003rJSwm3TechU' }],
             ['music_play', { songmid: '003rJSwm3TechU', mediaId: '001MediaMidFixture', quality: '320' }],
         ]);
     });

@@ -28,6 +28,7 @@ import {
     hasKugouAuthenticatedSearchSession,
     requestKugouAnonymousSearch,
     requestKugou,
+    requestKugouLyricSearch,
     requestKugouLegacyPlayInfo,
 } from './kugouTransport';
 
@@ -714,10 +715,27 @@ const getKugouLyricCandidate = async (song: SongResult): Promise<any | null> => 
     const albumAudioId = sourceRef?.providerData?.albumAudioId
         ?? sourceRef?.providerData?.mixSongId
         ?? sourceRef?.providerData?.catalogLookupId;
+    const hash = String(song.kgHash ?? song.id).toUpperCase();
+    // LX passes the track title field verbatim as its lyric-search keyword.
+    const keyword = song.name.trim();
+
+    // LX searches KuGou's native lyric endpoint with title + hash + duration.
+    // Keep the provider transport as a compatibility fallback for installations
+    // whose configured KuGou API does not expose lyrics.kugou.com directly.
+    try {
+        const nativeCandidate = await requestKugouLyricSearch(keyword, hash, song.durationMs);
+        if (nativeCandidate) return nativeCandidate;
+    } catch (error) {
+        console.warn('[KugouProvider] Native LX lyric search failed; using provider fallback:', error);
+    }
+
     const response = await requestKugou('search_lyric', {
-        hash: String(song.kgHash ?? song.id).toUpperCase(),
+        keyword,
+        hash,
+        timelength: song.durationMs,
         duration: song.durationMs,
-        man: 'no',
+        lrctxt: '1',
+        man: 'yes',
         ...(albumAudioId !== undefined ? { album_audio_id: String(albumAudioId) } : {}),
     });
     const candidates = (response as any)?.candidates;
@@ -734,7 +752,7 @@ const getKugouLyrics = async (song: SongResult) => {
     const response = await requestKugou('lyric', {
         id: String(candidate.id),
         accesskey: String(candidate.accesskey),
-        fmt: 'krc',
+        fmt: candidate.fmt === 'lrc' ? 'lrc' : 'krc',
         decode: true,
     });
     const lyricText = typeof (response as any)?.decodeContent === 'string'
@@ -743,11 +761,12 @@ const getKugouLyrics = async (song: SongResult) => {
     if (isPureMusicLyricText(lyricText)) {
         return { lyrics: null, mainText: lyricText, wordByWordText: lyricText, isPureMusic: true, chorusRanges: [] };
     }
-    const parsed = lyricText ? parseLyricsByFormat('krc', lyricText, '') : null;
+    const lyricFormat = candidate.fmt === 'lrc' ? 'lrc' : 'krc';
+    const parsed = lyricText ? parseLyricsByFormat(lyricFormat, lyricText, '') : null;
     if (!parsed) {
         return { lyrics: null, mainText: lyricText || null, wordByWordText: lyricText || null, isPureMusic: false, chorusRanges: [] };
     }
-    parsed.isWordByWord = true;
+    parsed.isWordByWord = lyricFormat === 'krc';
     const songId = song.kgHash ?? song.id;
     return {
         lyrics: parsed,
@@ -1137,12 +1156,13 @@ export const kugouProvider: OnlineMusicProvider = {
     auth: {
         async getLoginStatus() {
             const userId = readProviderSessionValue('kugou', 'userid');
-            const hasElectronTransport = typeof window !== 'undefined' && Boolean(window.electron?.kugouRequest);
             console.info('[KugouProvider] login-status:start', {
-                transport: hasElectronTransport ? 'electron' : 'web',
-                hasWebUserId: Boolean(userId),
+                transport: typeof window !== 'undefined' && window.electron?.kugouRequest ? 'electron' : 'web',
+                hasUserId: Boolean(userId),
             });
-            if (!userId && !hasElectronTransport) return null;
+            // The Electron bridge is available even for a guest, but user_detail is an
+            // authenticated operation. Do not turn a normal anonymous startup into a 502.
+            if (!userId) return null;
             try {
                 const response = await requestKugou('user_detail', { userid: userId || undefined });
                 let user = normalizeUser(response);

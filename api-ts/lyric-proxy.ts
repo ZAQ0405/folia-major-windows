@@ -39,6 +39,8 @@ function isAllowedLyricProxyHost(hostname: string): boolean {
   return hostname === 'qq.com' || hostname.endsWith('.qq.com') ||
     hostname === 'y.gtimg.cn' ||
     hostname === 'kugou.com' || hostname.endsWith('.kugou.com') ||
+    hostname === 'kuwo.cn' || hostname.endsWith('.kuwo.cn') ||
+    hostname === 'kuwo.com' || hostname.endsWith('.kuwo.com') ||
     hostname === 'amll-ttml-db.stevexmh.net';
 }
 

@@ -1,4 +1,10 @@
 import { type VisualizerMode } from '../../types';
+import {
+    DEFAULT_VISUALIZER_CATEGORY_ENABLED,
+    VISUALIZER_CATEGORIES,
+    type VisualizerCategory,
+    type VisualizerCategoryEnabledMap,
+} from '../../types/visualizerModes';
 import { BUILTIN_VISUALIZER_MODES, DEFAULT_VISUALIZER_MODE, assertBuiltinModeList } from '../../types/visualizerModes';
 import {
     type VisualizerEntryModule,
@@ -44,6 +50,38 @@ const { entries: VISUALIZER_REGISTRY, byMode: VISUALIZER_REGISTRY_BY_MODE } =
     buildVisualizerRegistry(visualizerEntryModules);
 
 export { VISUALIZER_REGISTRY };
+
+export const getVisualizerCategory = (entry: VisualizerRegistryEntry): VisualizerCategory =>
+    entry.category ?? 'folia';
+
+export const getVisualizerRegistryEntries = (
+    enabledCategories: VisualizerCategoryEnabledMap = DEFAULT_VISUALIZER_CATEGORY_ENABLED,
+) => VISUALIZER_REGISTRY.filter(entry => enabledCategories[getVisualizerCategory(entry)]);
+
+export const getVisualizerCategoryEntries = (category: VisualizerCategory) =>
+    VISUALIZER_REGISTRY.filter(entry => getVisualizerCategory(entry) === category);
+
+/** Folia's selectable lyric-animation modes. JIZURA is a separate MV renderer, not a Folia mode. */
+export const getFoliaVisualizerEntries = () => getVisualizerCategoryEntries('folia');
+
+export const getVisualizerCategoryLabel = (
+    category: VisualizerCategory,
+    t: (key: string) => string,
+) => {
+    const key = category === 'jizura' ? 'options.visualizerCategoryJizura' : 'options.visualizerCategoryFolia';
+    const fallback = category === 'jizura' ? 'JIZURA 文字PV' : 'Folia 内置';
+    const translated = t(key);
+    return !translated || translated === key ? fallback : translated;
+};
+
+export const getVisualizerCategoryDescription = (
+    category: VisualizerCategory,
+    t: (key: string) => string,
+) => t(category === 'jizura'
+    ? 'options.visualizerCategoryJizuraDesc'
+    : 'options.visualizerCategoryFoliaDesc');
+
+export { VISUALIZER_CATEGORIES };
 
 // 只有走 glob 的这一侧知道目录里真正有什么，所以自检放在这里：清单漏了或多了一个模式，
 // 应用启动时就炸，而不是等到某个 store 悄悄把用户的模式重置成 classic。

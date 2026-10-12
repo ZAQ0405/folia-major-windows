@@ -12,16 +12,20 @@ import { isLocalPlaybackSong, isNavidromePlaybackSong, resolveNavidromePlaybackC
 
 type SongLikedSources = {
     isLocalSongLiked: (song: SongResult) => boolean;
+    isPersonalSongLiked?: (song: SongResult) => boolean;
     starredNavidromeSongIds: Set<string>;
     likedSongIds: Set<string | number>;
 };
 
 export const resolveSongLiked = (
     song: SongResult | null,
-    { isLocalSongLiked, starredNavidromeSongIds, likedSongIds }: SongLikedSources,
+    { isLocalSongLiked, isPersonalSongLiked, starredNavidromeSongIds, likedSongIds }: SongLikedSources,
 ): boolean => {
     if (!song) {
         return false;
+    }
+    if (isPersonalSongLiked) {
+        return isPersonalSongLiked(song);
     }
     if (isLocalPlaybackSong(song)) {
         return isLocalSongLiked(song);

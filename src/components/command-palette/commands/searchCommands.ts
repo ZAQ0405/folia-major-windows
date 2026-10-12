@@ -12,6 +12,9 @@ const getSearchSourceLabel = (sourceTab: SearchSource, context: CommandPaletteCo
     if (sourceTab === 'navidrome') {
         return context.shared.t('commandPalette.sourceNavidrome', 'Navidrome');
     }
+    if (sourceTab === 'all') {
+        return context.shared.t('commandPalette.sourceAll', 'All online sources');
+    }
     return context.shared.t('commandPalette.sourceNetease', 'NetEase Cloud Music');
 };
 

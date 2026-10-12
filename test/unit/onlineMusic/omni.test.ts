@@ -21,6 +21,7 @@ vi.mock('@/services/onlineMusic/providerAccountCache', async importOriginal => (
 
 const providerId = 'omni-test';
 const otherProviderId = 'omni-resource-test';
+const healthProviderId = 'omni-health-test';
 const capabilities: ProviderCapabilities = {
     search: true, playback: true, lyrics: false, auth: false, userLibrary: false,
     playlists: false, albums: false, artists: false, recommendations: false,
@@ -50,11 +51,29 @@ const provider = (id: string, search: OnlineMusicProvider['search']): OnlineMusi
 afterEach(() => {
     unregisterOnlineMusicProvider(providerId);
     unregisterOnlineMusicProvider(otherProviderId);
+    unregisterOnlineMusicProvider(healthProviderId);
     useOnlineProviderAccountStore.getState().setActiveProviderId('netease');
     omni.invalidateActiveRequests();
 });
 
 describe('omni routing', () => {
+    it('probes a real provider operation and reports channel health', async () => {
+        const search = vi.fn(async () => ({ items: [], hasMore: false, nextOffset: 1 }));
+        registerOnlineMusicProvider(provider(healthProviderId, { searchSongs: search }));
+
+        await expect(omni.checkProviderChannel(healthProviderId)).resolves.toMatchObject({ status: 'available' });
+        expect(search).toHaveBeenCalledWith('告白气球', 1, 0);
+
+        registerOnlineMusicProvider({
+            ...provider(healthProviderId, { searchSongs: search }),
+            getAvailability: () => ({ configured: false, reason: 'not-configured' }),
+        });
+        await expect(omni.checkProviderChannel(healthProviderId)).resolves.toMatchObject({
+            status: 'unavailable',
+            message: 'not-configured',
+        });
+    });
+
     it('routes ordinary search through the active provider and resources through their owner', async () => {
         const activeSearch = vi.fn(async () => ({ items: [song(providerId)], hasMore: false, nextOffset: 1 }));
         registerOnlineMusicProvider(provider(providerId, { searchSongs: activeSearch }));

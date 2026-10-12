@@ -14,6 +14,9 @@ import { useLyricSettingsStore } from '../../../stores/useLyricSettingsStore';
 import { useAudioSettingsStore } from '../../../stores/useAudioSettingsStore';
 import { useOnlineProviderAccountStore } from '../../../stores/useOnlineProviderAccountStore';
 import { isNeteaseScrobbleReady } from '../../../services/onlineMusic/playbackReportGate';
+import JsMusicSourcesSection from './JsMusicSourcesSection';
+import { usePlaybackModeStore } from '../../../stores/usePlaybackModeStore';
+import type { PlaybackMode } from '../../../types/playbackMode';
 
 // src/components/modal/settings/PlaybackSettingsSubview.tsx
 // Playback behavior and output-device settings extracted from the global settings modal.
@@ -68,6 +71,7 @@ const PlaybackSettingsSubview: React.FC<PlaybackSettingsSubviewProps> = ({
     // two can never disagree about whether the toggle may be flipped.
     useOnlineProviderAccountStore(state => state.accounts.netease?.status);
     const canReportNeteasePlayback = isNeteaseScrobbleReady();
+    const { playbackMode, setPlaybackMode } = usePlaybackModeStore();
     const {
         autoUseBestLyric,
         preferredAlternativeLyricSource,
@@ -213,6 +217,41 @@ const PlaybackSettingsSubview: React.FC<PlaybackSettingsSubviewProps> = ({
                                 </button>
                             );
                         })}
+                    </div>
+                </div>
+            </SettingsAnchor>
+
+            <SettingsAnchor anchorId="playbackModeSettings" label={t('options.playbackModeSettings')}>
+                <SettingsSectionHeading icon={Radio} label={t('options.playbackModeSettings')} />
+                <div className={`p-4 rounded-xl border space-y-4 ${settingsCardClass}`}>
+                    <div className="space-y-1">
+                        <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {t('options.playbackMode')}
+                        </div>
+                        <div className="text-[11px] opacity-50 max-w-[560px]" style={{ color: 'var(--text-secondary)' }}>
+                            {t('options.playbackModeDesc')}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        {([
+                            { value: 'official', label: t('options.playbackModeOfficial'), desc: t('options.playbackModeOfficialDesc') },
+                            { value: 'source', label: t('options.playbackModeSource'), desc: t('options.playbackModeSourceDesc') },
+                        ] as Array<{ value: PlaybackMode; label: string; desc: string }>).map((option) => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => setPlaybackMode(option.value)}
+                                className="rounded-xl border px-3 py-3 text-left transition-colors"
+                                style={getAccentOptionStyle(playbackMode === option.value)}
+                            >
+                                <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                                    {option.label}
+                                </div>
+                                <div className="mt-1 text-[11px] opacity-50" style={{ color: 'var(--text-secondary)' }}>
+                                    {option.desc}
+                                </div>
+                            </button>
+                        ))}
                     </div>
                 </div>
             </SettingsAnchor>
@@ -482,6 +521,8 @@ const PlaybackSettingsSubview: React.FC<PlaybackSettingsSubviewProps> = ({
                     )}
                 </div>
             </SettingsAnchor>
+
+            <JsMusicSourcesSection settingsCardClass={settingsCardClass} />
         </div>
     );
 };

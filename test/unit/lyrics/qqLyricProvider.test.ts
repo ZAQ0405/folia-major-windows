@@ -55,32 +55,57 @@ describe('QQ lyric provider', () => {
     it('keeps QQ lyric searches anonymous', async () => {
         const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
             code: 0,
-            request: { code: 0, data: { body: { item_song: [] } } },
+            'music.search.SearchCgiService': { code: 0, data: { body: { song: { list: [] } } } },
         })));
         vi.stubGlobal('fetch', fetchMock);
 
         await expect(searchQQLyrics('test')).resolves.toEqual([]);
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        const searchRequestBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
-        expect(searchRequestBody.request.method).toBe('DoSearchForQQMusicLite');
+        const proxyRequest = new URL(String(fetchMock.mock.calls[0]?.[0]), 'http://localhost');
+        const searchRequest = new URL(String(proxyRequest.searchParams.get('url')));
+        const searchPayload = JSON.parse(String(searchRequest.searchParams.get('data')));
+        const searchRequestData = searchPayload['music.search.SearchCgiService'];
+        expect(searchRequestData.method).toBe('DoSearchForQQMusicDesktop');
+        expect(searchRequestData.param).toEqual({
+            query: 'test',
+            search_type: 0,
+            num_per_page: 20,
+            page_num: 1,
+        });
+        expect(fetchMock.mock.calls[0]?.[1]?.method).toBe('GET');
+    });
+
+    it('retries a transient QQ search failure before returning results', async () => {
+        const fetchMock = vi.fn()
+            .mockRejectedValueOnce(new Error('temporary network failure'))
+            .mockResolvedValueOnce(new Response(JSON.stringify({
+                code: 0,
+                'music.search.SearchCgiService': { code: 0, data: { body: { song: { list: [] } } } },
+            })));
+        vi.stubGlobal('fetch', fetchMock);
+
+        await expect(searchQQLyrics('test')).resolves.toEqual([]);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
     });
 
     it('normalizes QQ search covers and duration for metadata matching', async () => {
         const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
             code: 0,
-            request: {
+            'music.search.SearchCgiService': {
                 code: 0,
                 data: {
                     body: {
-                        item_song: [{
+                        song: {
+                            list: [{
                             id: 42,
                             mid: 'song-mid',
                             title: 'Test song',
                             interval: 60,
                             singer: [{ id: 1, name: 'Artist' }],
                             album: { id: 2, mid: 'album-mid', name: 'Album' },
-                        }],
+                            }],
+                        },
                     },
                 },
             },

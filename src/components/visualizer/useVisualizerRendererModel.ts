@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { PlayerState, type Theme, type VisualizerMode } from '../../types';
 import type { VisualizerBackgroundConfig } from './backgrounds/definition';
@@ -13,14 +13,17 @@ import { useVisualizerSettingsStore } from '../../stores/useVisualizerSettingsSt
 import { useVisualizerAssetStore } from '../../stores/useVisualizerAssetStore';
 import {
     selectDisplayCoverUrl,
+    selectDisplayDuration,
     selectDisplayLyrics,
     selectDisplayPlayerState,
     selectDisplaySong,
     usePlaybackStore,
 } from '../../stores/usePlaybackStore';
 import { getSongAlbumLabel, getSongArtistLabel } from '../../services/onlineMusic/songMetadata';
+import { getPlaybackSongKey } from '../../utils/appPlaybackGuards';
 import { useVisualizerBackgroundConfig } from './useVisualizerBackgroundConfig';
 import { useVisualizerTunings } from './useVisualizerTunings';
+import { createJizuraRandomVariant } from './jizura/randomVariant';
 
 // src/components/visualizer/useVisualizerRendererModel.ts
 //
@@ -68,7 +71,12 @@ export const useVisualizerRendererModel = ({
     const staticMode = useThemeSettingsStore(state => state.staticMode);
     const alwaysShowPlayerBackButton = usePlayerChromeSettingsStore(state => state.alwaysShowPlayerBackButton);
     const visualizerMode = useVisualizerSettingsStore(state => state.visualizerMode);
+    const jizuraEnabled = useVisualizerSettingsStore(state => state.jizuraEnabled);
+    const globalJizuraStyle = useVisualizerSettingsStore(state => state.jizuraStyle);
+    const globalJizuraSettings = useVisualizerSettingsStore(state => state.jizuraSettings);
     const visualizerOpacity = useVisualizerSettingsStore(state => state.visualizerOpacity);
+    const jizuraRandomNonce = useVisualizerSettingsStore(state => state.jizuraRandomNonce);
+    const handleSetJizuraActiveVariant = useVisualizerSettingsStore(state => state.handleSetJizuraActiveVariant);
     const disableGeometricBackground = useVisualizerSettingsStore(state => state.disableVisualizerGeometricBackground);
     const onMonetTuningChange = useVisualizerSettingsStore(state => state.handleSetMonetTuning);
     const typography = useTypographySettingsStore(useShallow(state => ({
@@ -91,9 +99,57 @@ export const useVisualizerRendererModel = ({
     // The held picture throughout: song, lyrics, cover and transport must describe one track for the
     // whole length of a blend.
     const displaySong = usePlaybackStore(selectDisplaySong);
+    const jizuraSongKey = displaySong ? getPlaybackSongKey(displaySong) : null;
+    const displayPlayerState = usePlaybackStore(selectDisplayPlayerState);
+    const jizuraPlaybackRef = useRef<{ songKey: string | null; playerState: PlayerState; nonce: number }>({
+        songKey: null,
+        playerState: PlayerState.IDLE,
+        nonce: 0,
+    });
+    const previousJizuraPlayback = jizuraPlaybackRef.current;
+    const startedJizuraPlayback = Boolean(
+        jizuraSongKey && (
+            previousJizuraPlayback.songKey !== jizuraSongKey
+            || (previousJizuraPlayback.playerState === PlayerState.IDLE && displayPlayerState === PlayerState.PLAYING)
+        ),
+    );
+    const jizuraPlaybackNonce = previousJizuraPlayback.nonce + (startedJizuraPlayback ? 1 : 0);
+    jizuraPlaybackRef.current = {
+        songKey: jizuraSongKey,
+        playerState: displayPlayerState,
+        nonce: jizuraPlaybackNonce,
+    };
+    const jizuraSongPreset = useVisualizerSettingsStore(state => (
+        jizuraSongKey ? state.jizuraSongPresets[jizuraSongKey] : undefined
+    ));
+    const hasFixedJizuraPreset = Boolean(jizuraSongPreset);
+    const randomJizuraVariant = useMemo(
+        () => createJizuraRandomVariant(
+            globalJizuraStyle,
+            globalJizuraSettings,
+            `${jizuraSongKey ?? 'no-song'}:${jizuraPlaybackNonce}:${jizuraRandomNonce}`,
+        ),
+        [globalJizuraSettings, globalJizuraStyle, jizuraPlaybackNonce, jizuraRandomNonce, jizuraSongKey],
+    );
+    const jizuraStyle = jizuraSongPreset?.style ?? randomJizuraVariant.style;
+    const jizuraSettings = jizuraSongPreset?.settings ?? randomJizuraVariant.settings;
+    const jizuraSeed = hasFixedJizuraPreset
+        ? `${seed ?? 'folia-jizura'}:${jizuraSongKey ?? 'no-song'}:fixed:${jizuraRandomNonce}`
+        : `${seed ?? 'folia-jizura'}:${jizuraSongKey ?? 'no-song'}:random:${jizuraPlaybackNonce}:${jizuraRandomNonce}`;
+    useEffect(() => {
+        if (!jizuraEnabled || !jizuraSongKey || hasFixedJizuraPreset) {
+            handleSetJizuraActiveVariant(null);
+            return;
+        }
+        handleSetJizuraActiveVariant({
+            songKey: jizuraSongKey,
+            style: randomJizuraVariant.style,
+            settings: randomJizuraVariant.settings,
+        });
+    }, [handleSetJizuraActiveVariant, hasFixedJizuraPreset, jizuraEnabled, jizuraSongKey, randomJizuraVariant]);
     const displayLyrics = usePlaybackStore(selectDisplayLyrics);
     const displayCoverUrl = usePlaybackStore(selectDisplayCoverUrl);
-    const displayPlayerState = usePlaybackStore(selectDisplayPlayerState);
+    const displayDuration = usePlaybackStore(selectDisplayDuration);
     const backgroundConfig = useVisualizerBackgroundConfig();
     const visualizerTunings = useVisualizerTunings();
 
@@ -121,6 +177,11 @@ export const useVisualizerRendererModel = ({
 
     return {
         mode,
+        jizuraEnabled,
+        jizuraStyle,
+        jizuraSettings,
+        jizuraSeed,
+        duration: displayDuration,
         currentTime: lyricCurrentTime,
         currentLineIndex,
         lines: displayLyrics?.lines || [],

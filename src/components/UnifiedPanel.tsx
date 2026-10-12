@@ -603,7 +603,7 @@ const UnifiedPanel: React.FC<UnifiedPanelProps> = ({
     return (
         <motion.div
             style={{ bottom: bottomBarBottomPx }}
-            className="absolute right-0 z-[60] flex flex-col items-end gap-4 pointer-events-none"
+            className="folia-unified-panel absolute right-0 z-[60] flex flex-col items-end gap-4 pointer-events-none"
             onClick={(e) => e.stopPropagation()}
         >
             <div className="pr-4 md:pr-8">
@@ -614,7 +614,7 @@ const UnifiedPanel: React.FC<UnifiedPanelProps> = ({
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
                             data-testid="unified-panel-surface"
-                            className={`pointer-events-auto w-80 ${glassBg} backdrop-blur-3xl rounded-3xl shadow-2xl flex flex-col mb-16 md:mb-2 overflow-y-auto hide-scrollbar`}
+                            className={`folia-unified-panel-surface pointer-events-auto w-80 ${glassBg} backdrop-blur-3xl rounded-3xl shadow-2xl flex flex-col mb-16 md:mb-2 overflow-y-auto hide-scrollbar`}
                             style={{ color: theme.primaryColor, maxHeight: panelMaxHeight }}
                         >
                             <div className="p-5 flex flex-col">

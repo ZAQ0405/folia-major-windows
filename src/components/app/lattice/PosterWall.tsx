@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { SongResult } from '../../../types';
 import {
     getLatticeGeometry,
@@ -25,6 +25,7 @@ import { getPlaybackSongKey } from '../../../utils/appPlaybackGuards';
 import { useDevicePixelRatio } from '../../../hooks/useMediaQuery';
 import { useReducedMotionFor } from '../../../hooks/useReducedMotionFor';
 import { EXPANSION_SPAN } from './blockTemplates';
+import { isAndroidCapacitor } from '../../../utils/runtimePlatform';
 
 // Draggable poster field: one greedily packed block template repeats over the queue.
 
@@ -54,7 +55,17 @@ const METRICS: WallMetrics = { cellSize: CELL_SIZE, gap: GAP };
 const EXPANDED_SIZE = EXPANSION_SPAN.cols * (CELL_SIZE + GAP) - GAP;
 
 
-const getScale = (width: number) => width < 640 ? 0.52 : width < 1100 ? 0.64 : 0.76;
+const getScale = (width: number, height: number) => {
+    const widthScale = width < 640 ? 0.52 : width < 1100 ? 0.64 : 0.76;
+    if (!isAndroidCapacitor || height <= 0) return widthScale;
+
+    // The expanded slot is a 6x6 block. On the Android landscape canvas the
+    // height, rather than the width, is the limiting dimension; using width
+    // alone lets the expanded poster run underneath the transport controls.
+    const expandedWorldHeight = EXPANSION_SPAN.rows * (CELL_SIZE + GAP) - GAP;
+    const availableHeight = Math.max(160, height - 18);
+    return Math.min(widthScale, availableHeight / expandedWorldHeight);
+};
 
 const getWorldBounds = (camera: LatticeCamera, viewport: { width: number; height: number }): Bounds => ({
     left: -camera.x / camera.scale,
@@ -91,6 +102,7 @@ export default function PosterWall({
     // Camera scale, mirrored into state only so posters can size their artwork. It follows the
     // width breakpoints, so this settles after the first measure and then only moves on a resize.
     const [cameraScale, setCameraScale] = useState(() => cameraRef.current.scale);
+    const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
     const reducedMotion = useReducedMotionFor('lattice');
     const devicePixelRatio = useDevicePixelRatio();
     const pixelScale = cameraScale * devicePixelRatio;
@@ -125,9 +137,22 @@ export default function PosterWall({
         const container = containerRef.current;
         if (!container) return;
         const observer = new ResizeObserver(([entry]) => {
-            viewportRef.current = { width: entry.contentRect.width, height: entry.contentRect.height };
-            const scale = getScale(entry.contentRect.width);
-            applyCamera({ ...cameraRef.current, scale }, true);
+            const nextViewport = { width: entry.contentRect.width, height: entry.contentRect.height };
+            viewportRef.current = nextViewport;
+            setViewportSize(previous => previous.width === nextViewport.width && previous.height === nextViewport.height
+                ? previous : nextViewport);
+            const scale = getScale(entry.contentRect.width, entry.contentRect.height);
+            const previousCamera = cameraRef.current;
+            // Preserve the point under the viewport centre while changing scale.
+            // Without this correction a height-driven Android scale change keeps
+            // the old pixel offset and throws the expanded poster below the wall.
+            const worldCenterX = (entry.contentRect.width / 2 - previousCamera.x) / previousCamera.scale;
+            const worldCenterY = (entry.contentRect.height / 2 - previousCamera.y) / previousCamera.scale;
+            applyCamera({
+                x: entry.contentRect.width / 2 - worldCenterX * scale,
+                y: entry.contentRect.height / 2 - worldCenterY * scale,
+                scale,
+            }, true);
             setCameraScale(previous => previous === scale ? previous : scale);
             setMeasured(true);
         });
@@ -299,6 +324,17 @@ export default function PosterWall({
         setFocused,
         panTo,
     });
+
+    // A viewport resize changes the camera scale and can leave the opened queue card
+    // outside the short Android landscape frame. Once the new measurement and reflow
+    // have committed, re-centre that card using the actual viewport instead of keeping
+    // the old camera's screen-space offset.
+    useLayoutEffect(() => {
+        if (!measured || !activePoster || viewportSize.width <= 0 || viewportSize.height <= 0) return;
+        const expandedRect = layout.get(activePoster.instance.instanceId);
+        if (expandedRect) panTo(expandedRect, true);
+    }, [activePoster, cameraScale, layout, measured, panTo, viewportSize]);
+
     return (
         <div
             ref={containerRef}

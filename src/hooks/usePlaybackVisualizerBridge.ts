@@ -8,6 +8,9 @@ import { setCurrentLineIndex, setPlayerState } from '../stores/usePlaybackStore'
 import { selectDisplayLyrics, usePlaybackStore } from '../stores/usePlaybackStore';
 import { audioBands, audioPower, currentTime, lyricCurrentTime } from '../stores/motionSignals';
 
+const EMPTY_SPECTRUM = new Uint8Array(new ArrayBuffer(0));
+const MOBILE_ANALYSER_INTERVAL_MS = 1000 / 30;
+
 // src/hooks/usePlaybackVisualizerBridge.ts
 
 type UsePlaybackVisualizerBridgeParams = {
@@ -73,8 +76,15 @@ export function usePlaybackVisualizerBridge({
     const lyrics = usePlaybackStore(selectDisplayLyrics);
 
     const currentLineIndexRef = useRef(-1);
+    const analyserDataRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
+    const lastAnalyserSampleMsRef = useRef(0);
+    const isCoarsePointerRef = useRef(
+        typeof window !== 'undefined'
+        && typeof window.matchMedia === 'function'
+        && window.matchMedia('(pointer: coarse)').matches,
+    );
 
-    const updateLoop = useCallback(() => {
+    const updateLoop = useCallback((timestamp = performance.now()) => {
         // Normally the active deck; the outgoing one for as long as a blend holds the picture on
         // the track it is finishing, so that clock and picture never describe different songs.
         const audioElement = getDisplayElement?.() ?? audioRef.current;
@@ -85,41 +95,52 @@ export function usePlaybackVisualizerBridge({
         const hasAudibleSignal = isActuallyPlaying || isTransitionAudible();
 
         if (hasAudibleSignal && analyserRef.current) {
-            const bufferLength = analyserRef.current.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-            analyserRef.current.getByteFrequencyData(dataArray);
-            audioBands.spectrum?.set(dataArray);
+            const analyser = analyserRef.current;
+            const bufferLength = analyser.frequencyBinCount;
+            if (!analyserDataRef.current || analyserDataRef.current.length !== bufferLength) {
+                analyserDataRef.current = new Uint8Array(new ArrayBuffer(bufferLength));
+                lastAnalyserSampleMsRef.current = 0;
+            }
 
-            const getEnergy = (minHz: number, maxHz: number): number => {
-                const start = Math.floor(minHz / 21.5);
-                const end = Math.floor(maxHz / 21.5);
-                let sum = 0;
-                for (let index = start; index <= end; index += 1) {
-                    sum += dataArray[index];
-                }
-                const count = end - start + 1;
-                return count > 0 ? sum / count : 0;
-            };
+            const sampleInterval = isCoarsePointerRef.current ? MOBILE_ANALYSER_INTERVAL_MS : 0;
+            if (sampleInterval === 0 || lastAnalyserSampleMsRef.current === 0 || timestamp - lastAnalyserSampleMsRef.current >= sampleInterval) {
+                lastAnalyserSampleMsRef.current = timestamp;
+                const dataArray = analyserDataRef.current;
+                analyser.getByteFrequencyData(dataArray);
+                audioBands.spectrum?.set(dataArray);
 
-            const bass = getEnergy(20, 150);
-            const lowMid = getEnergy(150, 400);
-            const mid = getEnergy(400, 1200);
-            const vocal = getEnergy(1000, 3500);
-            const treble = getEnergy(3500, 12000);
+                const getEnergy = (minHz: number, maxHz: number): number => {
+                    const start = Math.floor(minHz / 21.5);
+                    const end = Math.floor(maxHz / 21.5);
+                    let sum = 0;
+                    for (let index = start; index <= end; index += 1) {
+                        sum += dataArray[index] ?? 0;
+                    }
+                    const count = end - start + 1;
+                    return count > 0 ? sum / count : 0;
+                };
 
-            const process = (value: number, boost = 2) => {
-                const normalized = value / 255;
-                return Math.pow(normalized, boost) * 255;
-            };
+                const bass = getEnergy(20, 150);
+                const lowMid = getEnergy(150, 400);
+                const mid = getEnergy(400, 1200);
+                const vocal = getEnergy(1000, 3500);
+                const treble = getEnergy(3500, 12000);
 
-            audioPower.set(process((bass + lowMid) / 2, 3));
-            audioBands.bass.set(process(bass, 1.8));
-            audioBands.lowMid.set(process(lowMid, 2));
-            audioBands.mid.set(process(mid, 2));
-            audioBands.vocal.set(process(vocal, 1.5));
-            audioBands.treble.set(process(treble, 2));
+                const process = (value: number, boost = 2) => {
+                    const normalized = value / 255;
+                    return Math.pow(normalized, boost) * 255;
+                };
+
+                audioPower.set(process((bass + lowMid) / 2, 3));
+                audioBands.bass.set(process(bass, 1.8));
+                audioBands.lowMid.set(process(lowMid, 2));
+                audioBands.mid.set(process(mid, 2));
+                audioBands.vocal.set(process(vocal, 1.5));
+                audioBands.treble.set(process(treble, 2));
+            }
         } else {
-            const time = Date.now() / 2000;
+            lastAnalyserSampleMsRef.current = 0;
+            const time = timestamp / 2000;
             const breath = (Math.sin(time) + 1) * 20;
             audioPower.set(breath);
             audioBands.bass.set(breath);
@@ -127,7 +148,7 @@ export function usePlaybackVisualizerBridge({
             audioBands.mid.set(breath);
             audioBands.vocal.set(breath);
             audioBands.treble.set(breath);
-            audioBands.spectrum?.set(new Uint8Array(0));
+            audioBands.spectrum?.set(EMPTY_SPECTRUM);
         }
 
         if (isActuallyPlaying && audioElement) {

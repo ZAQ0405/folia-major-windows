@@ -179,6 +179,38 @@ describe('KuGou Web transport', () => {
         expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: 'omit' });
     });
 
+    it('matches LX native fuzzy lyric search parameters and candidate format selection', async () => {
+        vi.stubGlobal('window', undefined);
+        const fetchMock = vi.fn().mockResolvedValue(Response.json({
+            candidates: [{ id: 274944371, accesskey: 'lyric-key', krctype: 1, contenttype: 0 }],
+        }));
+        vi.stubGlobal('fetch', fetchMock);
+        const { requestKugouLyricSearch } = await import('@/services/onlineMusic/kugouTransport');
+
+        await expect(requestKugouLyricSearch('告白气球', 'abc123', 239000)).resolves.toMatchObject({
+            id: 274944371,
+            accesskey: 'lyric-key',
+            fmt: 'krc',
+        });
+
+        const proxyUrl = new URL(String(fetchMock.mock.calls[0][0]), 'http://localhost');
+        const targetUrl = new URL(proxyUrl.searchParams.get('url') || '');
+        expect(targetUrl.hostname).toBe('lyrics.kugou.com');
+        expect(targetUrl.pathname).toBe('/search');
+        expect(targetUrl.searchParams.get('ver')).toBe('1');
+        expect(targetUrl.searchParams.get('man')).toBe('yes');
+        expect(targetUrl.searchParams.get('client')).toBe('pc');
+        expect(targetUrl.searchParams.get('keyword')).toBe('告白气球');
+        expect(targetUrl.searchParams.get('hash')).toBe('ABC123');
+        expect(targetUrl.searchParams.get('timelength')).toBe('239000');
+        expect(targetUrl.searchParams.get('lrctxt')).toBe('1');
+        expect(fetchMock.mock.calls[0][1].headers).toMatchObject({
+            'KG-RC': '1',
+            'KG-THash': 'expand_search_manager.cpp:852736169:451',
+            'User-Agent': 'KuGou2012-9020-ExpandSearchManager',
+        });
+    });
+
     it('uses the same anonymous signed search directly in Electron', async () => {
         const kugouRequest = vi.fn();
         vi.stubGlobal('window', { electron: { kugouRequest } });

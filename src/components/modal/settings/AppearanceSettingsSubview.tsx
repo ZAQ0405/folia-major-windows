@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Monitor, Palette, Settings2, LayoutGrid, PanelsTopLeft, Images, Download, Copy, Check, ChevronRight, AlertTriangle, KeyRound, Music2 } from 'lucide-react';
+import { Monitor, Palette, Settings2, Sparkles, LayoutGrid, PanelsTopLeft, Images, Download, Upload, Copy, Check, ChevronRight, AlertTriangle, KeyRound, Music2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useShallow } from 'zustand/react/shallow';
 import {
@@ -20,6 +20,9 @@ import { buildCurrentObsUrl } from '../../../services/obs/currentObsUrl';
 import { ObsCopyUrlButton } from '../../shared/ObsCopyUrlButton';
 import { resolveWebObsTarget, selectWebObsSource } from '../../../services/obs/webObsTarget';
 import { buildVisualSettingsConfig, resolveObsCopyHintKey } from '../../../services/obs/visualSettingsConfig';
+import { downloadSettingsBackup, unwrapSettingsBackup, type SettingsBackupCategory } from '../../../services/settingsBackupService';
+import { downloadPersonalPlaylistsJson, parsePersonalPlaylistsJson } from '../../../services/personalPlaylistFileService';
+import { getPersonalPlaylists, mergePersonalPlaylistBackup } from '../../../services/personalPlaylistService';
 import LatticeSettingsSection from './LatticeSettingsSection';
 import GridViewSettingsSection from './GridViewSettingsSection';
 import NowPlayingCardSettingsSection from './NowPlayingCardSettingsSection';
@@ -133,6 +136,8 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
     const webObsSource = useStageSettingsStore(selectWebObsSource);
     const [importText, setImportText] = useState('');
     const [copiedType, setCopiedType] = useState<'none' | 'shortcode' | 'json' | 'obsurl'>('none');
+    const [playlistBackupBusy, setPlaylistBackupBusy] = useState(false);
+    const backupFileInputRef = React.useRef<HTMLInputElement | null>(null);
     // Parsed config held back until the user confirms which groups to take.
     const [pendingImport, setPendingImport] = useState<{ config: any; plan: ImportPlan; } | null>(null);
 
@@ -206,6 +211,11 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
     })));
     const storeVisualizer = useVisualizerSettingsStore(useShallow(state => ({
         visualizerMode: state.visualizerMode,
+        jizuraEnabled: state.jizuraEnabled,
+        jizuraStyle: state.jizuraStyle,
+        jizuraSettings: state.jizuraSettings,
+        jizuraSongPresets: state.jizuraSongPresets,
+        foliaSongPresets: state.foliaSongPresets,
         randomVisualizerModePerSong: state.randomVisualizerModePerSong,
         visualizerBackgroundMode: state.visualizerBackgroundMode,
         backgroundOpacity: state.backgroundOpacity,
@@ -228,6 +238,13 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
         urlBackgroundList: state.urlBackgroundList,
         urlBackgroundSelectedId: state.urlBackgroundSelectedId,
         handleSetVisualizerMode: state.handleSetVisualizerMode,
+        handleSetFoliaSongPreset: state.handleSetFoliaSongPreset,
+        handleSetFoliaSongPresets: state.handleSetFoliaSongPresets,
+        handleResetFoliaSongPreset: state.handleResetFoliaSongPreset,
+        handleToggleJizuraEnabled: state.handleToggleJizuraEnabled,
+        handleSetJizuraStyle: state.handleSetJizuraStyle,
+        handleSetJizuraSettings: state.handleSetJizuraSettings,
+        handleSetJizuraSongPresets: state.handleSetJizuraSongPresets,
         handleToggleRandomVisualizerModePerSong: state.handleToggleRandomVisualizerModePerSong,
         handleSetVisualizerBackgroundMode: state.handleSetVisualizerBackgroundMode,
         handleSetBackgroundOpacity: state.handleSetBackgroundOpacity,
@@ -269,6 +286,18 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
     );
     const lyricsStyleBorderStart = theme?.accentColor || accentOutlineColor;
     const lyricsStyleBorderEnd = theme?.secondaryColor || theme?.primaryColor || accentOutlineColor;
+    const openFoliaPreview = () => {
+        if (storeVisualizer.jizuraEnabled) {
+            storeVisualizer.handleToggleJizuraEnabled(false);
+        }
+        onOpenVisPlayground();
+    };
+    const openJizuraPreview = () => {
+        if (!storeVisualizer.jizuraEnabled) {
+            storeVisualizer.handleToggleJizuraEnabled(true);
+        }
+        onOpenVisPlayground();
+    };
 
     const buildCurrentConfig = () => {
         let exportTheme: DualTheme | null = null;
@@ -283,6 +312,47 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
             songThemeAutoSwitchEnabled,
             songThemeAutoGenerateEnabled,
         };
+    };
+
+    const handleDownloadSettingsBackup = (category: SettingsBackupCategory) => {
+        try {
+            const config = buildCurrentConfig();
+            downloadSettingsBackup(category, config);
+            const label = category === 'complete'
+                ? '完整设置'
+                : category === 'folia' ? 'Folia 歌词动画' : 'JIZURA 歌词 MV';
+            setStatusMessage({ type: 'success', text: `已导出${label}备份。` });
+        } catch (error) {
+            console.error('Failed to export settings backup:', error);
+            setStatusMessage({ type: 'error', text: '设置备份导出失败。' });
+        }
+    };
+
+    const handleDownloadPlaylistBackup = async () => {
+        setPlaylistBackupBusy(true);
+        try {
+            const playlists = await getPersonalPlaylists();
+            downloadPersonalPlaylistsJson(playlists);
+            setStatusMessage({ type: 'success', text: `已导出 ${playlists.length} 个本地歌单。` });
+        } catch (error) {
+            console.error('Failed to export playlist backup:', error);
+            setStatusMessage({ type: 'error', text: '歌单备份导出失败。' });
+        } finally {
+            setPlaylistBackupBusy(false);
+        }
+    };
+
+    const handleBackupFileSelected = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+        try {
+            setImportText(await file.text());
+            setStatusMessage({ type: 'success', text: `已载入备份文件：${file.name}` });
+        } catch (error) {
+            console.error('Failed to read backup file:', error);
+            setStatusMessage({ type: 'error', text: '无法读取备份文件。' });
+        }
     };
 
     const handleCopyShortcode = async () => {
@@ -339,12 +409,27 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
 
     // Parse and diff only. Applying waits for the confirmation, because a config can change settings
     // it never mentions -- unpinning a custom theme, discarding an uploaded font.
-    const handleImportConfig = () => {
+    const handleImportConfig = async () => {
         if (!importText.trim()) return;
         try {
             // Import accepts a bare shortcode/JSON or a full OBS URL (extracting its cfg param), so a look can be re-tuned from someone's link.
-            const config = decompressConfig(extractCfgFromInput(importText));
-  const uiStoreTypographySettings = useTypographySettingsStore.getState();
+            const rawInput = extractCfgFromInput(importText);
+            const playlistBackup = parsePersonalPlaylistsJson(rawInput);
+            if (playlistBackup) {
+                const imported = await mergePersonalPlaylistBackup(playlistBackup);
+                setImportText('');
+                setStatusMessage({ type: 'success', text: `已合并导入 ${playlistBackup.length} 个歌单，当前共 ${imported.length} 个。` });
+                return;
+            }
+            let decoded: any;
+            try {
+                const parsed = JSON.parse(rawInput) as unknown;
+                decoded = unwrapSettingsBackup(parsed) ?? decompressConfig(rawInput);
+            } catch {
+                decoded = decompressConfig(rawInput);
+            }
+            const config = unwrapSettingsBackup(decoded) ?? decoded;
+            const uiStoreTypographySettings = useTypographySettingsStore.getState();
             const customFont = uiStoreTypographySettings.lyricsCustomFont;
             const plan = buildImportPlan({
                 incoming: config,
@@ -398,6 +483,21 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
             // 2. Restore Visualizer Setup
             if (has('visualizerMode') && config.visualizerMode) {
                 storeVisualizer.handleSetVisualizerMode(config.visualizerMode);
+            }
+            if (has('foliaSongPresets') && config.foliaSongPresets && typeof config.foliaSongPresets === 'object') {
+                storeVisualizer.handleSetFoliaSongPresets(config.foliaSongPresets);
+            }
+            if (has('jizuraStyle') && typeof config.jizuraStyle === 'string') {
+                storeVisualizer.handleSetJizuraStyle(config.jizuraStyle);
+            }
+            if (has('jizuraSettings') && config.jizuraSettings && typeof config.jizuraSettings === 'object') {
+                storeVisualizer.handleSetJizuraSettings(config.jizuraSettings);
+            }
+            if (has('jizuraSongPresets') && config.jizuraSongPresets && typeof config.jizuraSongPresets === 'object') {
+                storeVisualizer.handleSetJizuraSongPresets(config.jizuraSongPresets);
+            }
+            if (has('jizuraEnabled')) {
+                storeVisualizer.handleToggleJizuraEnabled(Boolean(config.jizuraEnabled));
             }
             if (has('randomVisualizerModePerSong')) {
                 storeVisualizer.handleToggleRandomVisualizerModePerSong(Boolean(config.randomVisualizerModePerSong));
@@ -596,10 +696,8 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
                             <span>{t('options.nativeBlurBackgroundNotice')}</span>
                         </div>
                     )}
-                    <button
-                        type="button"
-                        onClick={onOpenVisPlayground}
-                        className="group flex w-full items-center gap-3 rounded-xl border-2 border-transparent p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                    <div
+                        className="group w-full rounded-xl border-2 p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg"
                         style={{
                             color: 'var(--text-primary)',
                             background: [
@@ -608,26 +706,94 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
                             ].join(', '),
                         }}
                     >
-                        <span
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
-                            style={{
-                                color: accentOutlineColor,
-                                borderColor: `${accentOutlineColor}55`,
-                                backgroundColor: `${accentOutlineColor}18`,
-                            }}
-                        >
-                            <Settings2 size={19} />
-                        </span>
-                        <span className="min-w-0 flex-1 space-y-1">
-                            <span className="block text-sm font-semibold">
-                                {t('options.lyricsAnimationAdjust')}
-                            </span>
-                            <span className="block text-xs opacity-55" style={{ color: 'var(--text-secondary)' }}>
-                                {t('options.lyricsRendererDesc')}
-                            </span>
-                        </span>
-                        <ChevronRight size={18} className="shrink-0 opacity-45 transition-transform group-hover:translate-x-0.5 group-hover:opacity-80" />
-                    </button>
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={openFoliaPreview}
+                                className="group flex min-w-0 flex-1 items-center gap-3 text-left"
+                                title={t('options.visualizerCategoryFolia')}
+                            >
+                                <span
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
+                                    style={{
+                                        color: accentOutlineColor,
+                                        borderColor: `${accentOutlineColor}55`,
+                                        backgroundColor: `${accentOutlineColor}18`,
+                                    }}
+                                >
+                                    <Settings2 size={19} />
+                                </span>
+                                <span className="min-w-0 flex-1 space-y-1">
+                                    <span className="block text-sm font-semibold">
+                                        {t('options.visualizerCategoryFolia')}
+                                    </span>
+                                    <span className="block text-xs opacity-55" style={{ color: 'var(--text-secondary)' }}>
+                                        {t('options.visualizerCategoryFoliaDesc')}
+                                    </span>
+                                </span>
+                                <ChevronRight size={18} className="shrink-0 opacity-45 transition-transform group-hover:translate-x-0.5 group-hover:opacity-80" />
+                            </button>
+                            <button
+                                type="button"
+                                aria-label={t('options.visualizerCategoryFolia')}
+                                aria-pressed={!storeVisualizer.jizuraEnabled}
+                                onClick={() => storeVisualizer.handleToggleJizuraEnabled(!storeVisualizer.jizuraEnabled)}
+                                className={`w-12 h-6 rounded-full p-1 transition-colors shrink-0 ${storeVisualizer.jizuraEnabled ? toggleOffBackgroundClass : ''}`}
+                                style={{ backgroundColor: !storeVisualizer.jizuraEnabled ? theme?.secondaryColor || 'rgba(114, 119, 134, 1)' : undefined }}
+                            >
+                                <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${!storeVisualizer.jizuraEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+                    </div>
+                    <div
+                        className="group w-full rounded-xl border-2 p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                        style={{
+                            color: 'var(--text-primary)',
+                            background: [
+                                `linear-gradient(color-mix(in srgb, var(--bg-color) ${isDaylight ? '96%' : '92%'}, ${lyricsStyleBorderStart}), color-mix(in srgb, var(--bg-color) ${isDaylight ? '96%' : '92%'}, ${lyricsStyleBorderStart})) padding-box`,
+                                `linear-gradient(120deg, ${lyricsStyleBorderStart}, ${lyricsStyleBorderEnd}) border-box`,
+                            ].join(', '),
+                        }}
+                    >
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={openJizuraPreview}
+                                className="group flex min-w-0 flex-1 items-center gap-3 text-left"
+                                title={t('options.jizuraOpenPreview')}
+                            >
+                                <span
+                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border"
+                                    style={{
+                                        color: accentOutlineColor,
+                                        borderColor: `${accentOutlineColor}55`,
+                                        backgroundColor: `${accentOutlineColor}18`,
+                                    }}
+                                >
+                                    <Sparkles size={19} />
+                                </span>
+                                <span className="min-w-0 flex-1 space-y-1">
+                                    <span className="block text-sm font-semibold">
+                                        {t('options.jizuraLyricMv')}
+                                    </span>
+                                    <span className="block text-xs opacity-55" style={{ color: 'var(--text-secondary)' }}>
+                                        {t('options.jizuraLyricMvDesc')}
+                                    </span>
+                                </span>
+                                <ChevronRight size={18} className="shrink-0 opacity-45 transition-transform group-hover:translate-x-0.5 group-hover:opacity-80" />
+                            </button>
+                            <button
+                                type="button"
+                                aria-label={t('options.jizuraLyricMv')}
+                                aria-pressed={storeVisualizer.jizuraEnabled}
+                                onClick={() => storeVisualizer.handleToggleJizuraEnabled(!storeVisualizer.jizuraEnabled)}
+                                className={`w-12 h-6 rounded-full p-1 transition-colors shrink-0 ${!storeVisualizer.jizuraEnabled ? toggleOffBackgroundClass : ''}`}
+                                style={{ backgroundColor: storeVisualizer.jizuraEnabled ? theme?.secondaryColor || 'rgba(114, 119, 134, 1)' : undefined }}
+                            >
+                                <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${storeVisualizer.jizuraEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+                    </div>
                     <div className={`p-4 rounded-xl border space-y-4 ${settingsCardClass}`}>
                         <div className="flex items-center justify-between gap-4">
                             <div className="space-y-1">
@@ -972,6 +1138,55 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
                         </div>
                     </div>
 
+                    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-3">
+                        <div className="text-xs font-semibold opacity-60" style={{ color: 'var(--text-secondary)' }}>
+                            {t('options.backupCategories')}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <button
+                                type="button"
+                                onClick={() => handleDownloadSettingsBackup('complete')}
+                                className="px-3 py-2 bg-white/15 hover:bg-white/20 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                                style={{ color: 'var(--text-primary)' }}
+                            >
+                                <Download size={13} /> {t('options.exportCompleteBackup')}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDownloadSettingsBackup('folia')}
+                                className="px-3 py-2 bg-white/10 hover:bg-white/15 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                                style={{ color: 'var(--text-primary)' }}
+                            >
+                                <Download size={13} /> {t('options.exportFoliaBackup')}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleDownloadSettingsBackup('jizura')}
+                                className="px-3 py-2 bg-white/10 hover:bg-white/15 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                                style={{ color: 'var(--text-primary)' }}
+                            >
+                                <Download size={13} /> {t('options.exportJizuraBackup')}
+                            </button>
+                        </div>
+                        <div className="border-t border-white/10 pt-3 space-y-2">
+                            <div className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
+                                {t('options.playlistBackup')}
+                            </div>
+                            <div className="text-xs opacity-50" style={{ color: 'var(--text-secondary)' }}>
+                                {t('options.playlistBackupDesc')}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => void handleDownloadPlaylistBackup()}
+                                disabled={playlistBackupBusy}
+                                className="px-3 py-2 bg-white/10 hover:bg-white/15 disabled:opacity-40 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                                style={{ color: 'var(--text-primary)' }}
+                            >
+                                <Download size={13} /> {t('options.exportPlaylistsBackup')}
+                            </button>
+                        </div>
+                    </div>
+
                     <textarea
                         value={importText}
                         onChange={(e) => setImportText(e.target.value)}
@@ -981,6 +1196,21 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
                     />
 
                     <div className="flex flex-wrap gap-2">
+                        <input
+                            ref={backupFileInputRef}
+                            type="file"
+                            accept=".json,.txt,application/json,text/plain"
+                            className="hidden"
+                            onChange={(event) => void handleBackupFileSelected(event)}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => backupFileInputRef.current?.click()}
+                            className="px-3 py-2 bg-white/10 hover:bg-white/15 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                            style={{ color: 'var(--text-primary)' }}
+                        >
+                            <Upload size={13} /> {t('options.loadBackupFile')}
+                        </button>
                         <button
                             type="button"
                             onClick={handleCopyShortcode}

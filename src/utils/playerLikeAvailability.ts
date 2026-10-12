@@ -1,5 +1,3 @@
-import { getPlaybackSourceRef } from './appPlaybackGuards';
-import { omni } from '../services/onlineMusic/omni';
 import type { SongResult } from '../types';
 
 // src/utils/playerLikeAvailability.ts
@@ -28,17 +26,6 @@ export const resolveLikeAvailability = (
 
     if (playbackControlsDisabled || isStage) {
         return { disabled: true, reason: { key: 'status.stageLikeUnavailable' } };
-    }
-
-    const sourceRef = getPlaybackSourceRef(currentSong);
-    if (sourceRef.kind === 'online' && !omni.canLikeSong(currentSong)) {
-        return {
-            disabled: true,
-            reason: {
-                key: 'status.providerLikeUnavailable',
-                params: { provider: omni.getProviderLabel(sourceRef.providerId) },
-            },
-        };
     }
 
     return { disabled: false, reason: null };

@@ -29,6 +29,13 @@ export function buildVisualSettingsConfig(): Record<string, unknown> {
     themeGenerationSource: readStoredThemeGenerationSource(),
     followSystemTheme: storeThemeSettings.followSystemTheme,
     visualizerMode: storeVisualizer.visualizerMode,
+    // JIZURA is a separate lyric-MV renderer, so its active state, global plan and per-song
+    // overrides travel with the same backup/config payload as the Folia renderer settings.
+    jizuraEnabled: storeVisualizer.jizuraEnabled,
+    jizuraStyle: storeVisualizer.jizuraStyle,
+    jizuraSettings: storeVisualizer.jizuraSettings,
+    jizuraSongPresets: storeVisualizer.jizuraSongPresets,
+    foliaSongPresets: storeVisualizer.foliaSongPresets,
     randomVisualizerModePerSong: storeVisualizer.randomVisualizerModePerSong,
     visualizerBackgroundMode: storeVisualizer.visualizerBackgroundMode,
     backgroundOpacity: storeVisualizer.backgroundOpacity,

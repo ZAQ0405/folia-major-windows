@@ -1,5 +1,5 @@
 import type React from 'react';
-import { LocalLibraryGroup, LocalSong, SongResult } from '../../../types';
+import { LocalLibraryGroup, LocalSong, PersonalPlaylist, SongResult } from '../../../types';
 import { navidromeApi, getNavidromeConfig } from '../../../services/navidromeService';
 import { LIST_ROW_COVER_SIZE, buildLocalQueue, buildNavidromeQueue } from '../../../services/playbackAdapters';
 import { SubsonicSong } from '../../../types/navidrome';
@@ -13,11 +13,12 @@ import type {
 } from '../../../types/onlineMusic';
 import { buildLocalLibraryIndex, followEntityRedirect } from '../../../utils/localLibraryIndex';
 import { getLocalCoverAssetUrl } from '../../../services/localCoverAssetUrl';
+import { getSongCoverUrl } from '../../../services/onlineMusic/songMetadata';
 
 // src/components/app/home/gridViewCollectionAdapters.ts
 // Converts home-surface collections into small GridView descriptors and resolves non-Netease tracks outside GridView.
 
-export type GridViewCollectionSource = 'online' | 'local' | 'navidrome';
+export type GridViewCollectionSource = 'online' | 'local' | 'navidrome' | 'personal';
 export type NavidromeGridViewCollectionType = 'album' | 'playlist' | 'artist' | 'random' | 'favorites';
 
 export interface BaseGridViewCollectionDescriptor {
@@ -65,6 +66,13 @@ export interface NavidromeGridViewCollectionDescriptor extends BaseGridViewColle
     editable?: boolean;
 }
 
+export interface PersonalGridViewCollectionDescriptor extends BaseGridViewCollectionDescriptor {
+    source: 'personal';
+    type: 'playlist';
+    id: string;
+    playlistId: string;
+}
+
 export interface OnlineGridViewCollectionDescriptor extends BaseGridViewCollectionDescriptor {
     source: 'online';
     providerId: OnlineProviderId;
@@ -74,7 +82,18 @@ export interface OnlineGridViewCollectionDescriptor extends BaseGridViewCollecti
 export type GridViewCollectionDescriptor =
     | OnlineGridViewCollectionDescriptor
     | LocalGridViewCollectionDescriptor
-    | NavidromeGridViewCollectionDescriptor;
+    | NavidromeGridViewCollectionDescriptor
+    | PersonalGridViewCollectionDescriptor;
+
+export const createPersonalGridViewCollection = (playlist: PersonalPlaylist): PersonalGridViewCollectionDescriptor => ({
+    source: 'personal',
+    id: playlist.id,
+    playlistId: playlist.id,
+    name: playlist.name,
+    type: 'playlist',
+    coverUrl: playlist.songs[0] ? getSongCoverUrl(playlist.songs[0]) : undefined,
+    trackCount: playlist.songs.length,
+});
 
 const getDisplayName = (name: React.ReactNode) => (
     typeof name === 'string' || typeof name === 'number'

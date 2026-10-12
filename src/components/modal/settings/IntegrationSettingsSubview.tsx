@@ -158,7 +158,7 @@ const IntegrationSettingsSubview: React.FC<IntegrationSettingsSubviewProps> = ({
         if (status === 'connected') return t('status.connected');
         if (status === 'connecting') return t('status.connecting');
         if (status === 'error') return t('status.disconnected');
-        return t('options.updateCheckDisabled');
+        return t('status.disconnected');
     };
     const [obsAddressCopied, setObsAddressCopied] = useState(false);
     const [lyricApiAddressCopied, setLyricApiAddressCopied] = useState(false);
@@ -196,7 +196,7 @@ const IntegrationSettingsSubview: React.FC<IntegrationSettingsSubviewProps> = ({
             case 'probing': return t('status.connecting');
             case 'disconnected':
             case 'unreachable': return t('status.disconnected');
-            default: return t('options.updateCheckDisabled');
+            default: return t('status.disconnected');
         }
     })();
     const commitPlayerCapHost = () => setPlayerCapHost(playerCapHostDraft.trim() || 'localhost:8765');

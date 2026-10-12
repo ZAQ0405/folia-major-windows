@@ -1,31 +1,24 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import {
-    AlertCircle,
     AppWindow,
     Check,
     Cpu,
-    Download,
-    ExternalLink,
     EyeOff,
     Globe,
     KeyRound,
     Loader2,
     Minimize2,
     Monitor,
-    RefreshCw,
     ShieldAlert,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { Theme } from '../../../types';
-import { CustomSelect } from '../../shared/CustomSelect';
 import { SettingsAnchor } from './navigation/SettingsAnchorContext';
 import SettingsSectionHeading from './navigation/SettingsSectionHeading';
 
 // src/components/modal/settings/DesktopSettingsSubview.tsx
-// Desktop-only tray, update, and AI settings separated from the global settings modal.
-
-const AUR_PACKAGE_URL = 'https://aur.archlinux.org/packages/folia-major-bin';
+// Desktop-only tray and AI settings separated from the global settings modal.
 
 type ElectronSettingsState = {
     GEMINI_API_KEY: string;
@@ -35,9 +28,6 @@ type ElectronSettingsState = {
     OPENAI_API_TEMPERATURE: string;
     AI_PROVIDER: string;
     USE_SYSTEM_PROXY_FOR_AI: boolean;
-    ENABLE_UPDATE_CHECK: boolean;
-    ENABLE_AUTO_UPDATE: boolean;
-    UPDATE_CHANNEL: 'realeco' | 'limo' | 'cielo' | 'internal';
     STAGE_MODE_SOURCE: string;
     DISCORD_RICH_PRESENCE_ENABLED: boolean;
 };
@@ -69,23 +59,10 @@ export type DesktopSettingsPreferences = {
 };
 
 export type DesktopSettingsModel = {
-    canDownloadUpdate: boolean;
-    canEnableAutoUpdate: boolean;
     electronSaveStatus: 'idle' | 'saving' | 'saved';
     electronSettings: ElectronSettingsState;
-    onCheckForUpdates: () => Promise<void> | void;
-    onDownloadUpdate: () => Promise<void> | void;
-    onInstallUpdate: () => Promise<void> | void;
-    onOpenBaiduDownload: () => Promise<void> | void;
-    onOpenChinaDownload: () => Promise<void> | void;
-    onUpdateChannelChange: (channel: 'realeco' | 'limo' | 'cielo') => Promise<void> | void;
     onSaveElectronSettings: () => Promise<void> | void;
-    onToggleAutoUpdate: () => Promise<void> | void;
-    onToggleUpdateCheck: () => Promise<void> | void;
     setElectronSettings: React.Dispatch<React.SetStateAction<ElectronSettingsState>>;
-    updateBadgeIcon: React.ReactNode;
-    updateBadgeLabel: string;
-    updateStatus: ElectronUpdateStatus | null;
 };
 
 type DesktopSettingsSubviewProps = {
@@ -127,23 +104,10 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
     const isWindows = isElectron && window.electron?.platform === 'win32';
     const isMac = isElectron && window.electron?.platform === 'darwin';
     const {
-        canDownloadUpdate,
-        canEnableAutoUpdate,
         electronSaveStatus,
         electronSettings,
-        onCheckForUpdates,
-        onDownloadUpdate,
-        onInstallUpdate,
-        onOpenBaiduDownload,
-        onOpenChinaDownload,
-        onUpdateChannelChange,
         onSaveElectronSettings,
-        onToggleAutoUpdate,
-        onToggleUpdateCheck,
         setElectronSettings,
-        updateBadgeIcon,
-        updateBadgeLabel,
-        updateStatus,
     } = model;
     const { t } = useTranslation();
 
@@ -307,261 +271,6 @@ const DesktopSettingsSubview: React.FC<DesktopSettingsSubviewProps> = ({
                     )}
                 </SettingsAnchor>
             )}
-
-            <SettingsAnchor anchorId="updateCheck" label={t('options.updateCheck') || 'Update Check'} className="space-y-4">
-                <h3 className="text-sm font-bold uppercase tracking-wider mb-4 flex items-center justify-between gap-3 opacity-50" style={{ color: 'var(--text-secondary)' }}>
-                    <span className="flex items-center gap-2">
-                        <RefreshCw size={14} className="opacity-70" /> {t('options.updateCheck') || 'Update Check'}
-                    </span>
-                    <button
-                        type="button"
-                        onClick={onCheckForUpdates}
-                        disabled={!electronSettings.ENABLE_UPDATE_CHECK || !updateStatus?.updateCheckSupported || updateStatus?.status === 'checking'}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium transition-all hover:bg-white/10 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-                        style={{ color: 'var(--text-primary)' }}
-                    >
-                        {updateBadgeIcon}
-                        <span>{updateBadgeLabel}</span>
-                    </button>
-                </h3>
-
-                <div className={`border rounded-2xl overflow-hidden ${borderColor} ${settingsCardClass}`}>
-                    <div className={`flex items-center justify-between p-4 gap-4 hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors border-b ${borderColor}`}>
-                        <div className="flex items-start gap-3 min-w-0">
-                            <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${settingsIconClass}`} style={{ color: 'var(--text-primary)' }}>
-                                <Globe size={16} />
-                            </div>
-                            <div className="space-y-0.5 text-left">
-                                <h4 className="text-sm font-semibold leading-none" style={{ color: 'var(--text-primary)' }}>
-                                    {t('options.enableUpdateCheck') || 'Enable Update Check'}
-                                </h4>
-                                <p className="text-xs opacity-50 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                                    {t('options.enableUpdateCheckDesc') || 'Check GitHub releases through the system proxy when the desktop app starts.'}
-                                </p>
-                            </div>
-                        </div>
-                        {renderToggle(electronSettings.ENABLE_UPDATE_CHECK, onToggleUpdateCheck, !updateStatus?.updateCheckSupported)}
-                    </div>
-
-                    <div className={`flex items-center justify-between p-4 gap-4 hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors border-b ${borderColor}`}>
-                        <div className="flex items-start gap-3 min-w-0">
-                            <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${settingsIconClass}`} style={{ color: 'var(--text-primary)' }}>
-                                <RefreshCw size={16} />
-                            </div>
-                            <div className="space-y-0.5 text-left">
-                                <h4 className="text-sm font-semibold leading-none" style={{ color: 'var(--text-primary)' }}>
-                                    {t('options.updateChannel') || 'Update Channel'}
-                                </h4>
-                                <p className="text-xs opacity-50 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                                    {t('options.updateChannelDesc') || 'Choose which release lane this desktop app follows.'}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="w-44 shrink-0">
-                            <CustomSelect
-                                value={electronSettings.UPDATE_CHANNEL}
-                                onChange={(value) => void onUpdateChannelChange(value as 'realeco' | 'limo' | 'cielo')}
-                                disabled={electronSettings.UPDATE_CHANNEL === 'internal'}
-                                isDaylight={isDaylight}
-                                theme={theme}
-                                ariaLabel={t('options.updateChannel')}
-                                options={electronSettings.UPDATE_CHANNEL === 'internal'
-                                    ? [{ value: 'internal', label: t('options.updateChannelInternal') }]
-                                    : [
-                                        { value: 'realeco', label: t('options.updateChannelRealeco') },
-                                        { value: 'limo', label: t('options.updateChannelLimo') },
-                                        { value: 'cielo', label: t('options.updateChannelCielo') },
-                                    ]}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 gap-4 hover:bg-black/[0.01] dark:hover:bg-white/[0.01] transition-colors">
-                        <div className="flex items-start gap-3 min-w-0">
-                            <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${settingsIconClass}`} style={{ color: 'var(--text-primary)' }}>
-                                <Download size={16} />
-                            </div>
-                            <div className="space-y-0.5 text-left">
-                                <h4 className="text-sm font-semibold leading-none" style={{ color: 'var(--text-primary)' }}>
-                                    {updateStatus?.autoUpdateSupported
-                                        ? t('options.enableAutoUpdate') || 'Enable Auto Update'
-                                        : t('options.autoUpdateUnavailable')}
-                                </h4>
-                                <p className="text-xs opacity-50 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                                    {updateStatus?.autoUpdateSupported
-                                        ? t('options.enableAutoUpdateDesc') || 'Automatically download updates after a new version is found.'
-                                        : t('options.manualUpdateOnlyDesc')}
-                                </p>
-                            </div>
-                        </div>
-                        {renderToggle(
-                            electronSettings.ENABLE_AUTO_UPDATE && Boolean(updateStatus?.autoUpdateSupported),
-                            onToggleAutoUpdate,
-                            !canEnableAutoUpdate,
-                        )}
-                    </div>
-                </div>
-
-                {updateStatus?.autoUpdateSupportReason === 'system' && (
-                    <div className="px-1 text-xs leading-relaxed text-left text-amber-500">
-                        {t('options.updateUnsupportedSystem') || 'Automatic updates are unavailable on the current system.'}
-                    </div>
-                )}
-
-                {updateStatus?.updateCheckSupportReason === 'channel' && (
-                    <div className="px-1 text-xs leading-relaxed text-left text-amber-500">
-                        {t('options.updateUnsupportedChannel') || 'Automatic updates are unavailable for this internal build.'}
-                    </div>
-                )}
-
-                <div className="text-[10px] opacity-45 px-1 leading-relaxed text-left" style={{ color: 'var(--text-secondary)' }}>
-                    {updateStatus?.autoUpdateSupported
-                        ? t('options.autoUpdateGithubNotice') || 'Auto update needs access to GitHub; if the network is unstable, keep a system proxy enabled.'
-                        : t('options.updateCheckGithubNotice')}
-                </div>
-
-                {updateStatus?.availableVersion && (
-                    <div className={`p-4 rounded-2xl border ${borderColor} ${settingsCardClass} space-y-3`}>
-                        <div className="flex items-center gap-2">
-                            <AlertCircle size={16} className="text-amber-500 shrink-0" />
-                            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                                {t('options.newVersionFound', { version: updateStatus.availableVersion })}
-                            </span>
-                        </div>
-
-                        {/* 多平台 / 手动下载时的提示 */}
-                        {updateStatus.platform === 'darwin' ? (
-                            <div className="text-xs text-left text-amber-400 font-medium opacity-90">
-                                {t('options.macManualUpdateNotice')}
-                            </div>
-                        ) : updateStatus.platform === 'linux' ? (
-                            <div className="text-xs text-left text-amber-400 font-medium opacity-90">
-                                {t('options.linuxManualUpdateNotice')}
-                            </div>
-                        ) : !updateStatus.autoUpdateSupported ? (
-                            <div className="text-xs text-left text-amber-400 font-medium opacity-90">
-                                {t('options.manualUpdateNotice')}
-                            </div>
-                        ) : (
-                            electronSettings.ENABLE_AUTO_UPDATE && updateStatus.status === 'downloading' && (
-                                <div className="text-xs text-left text-zinc-400">
-                                    {t('options.autoUpdateGithubNotice')}
-                                </div>
-                            )
-                        )}
-
-                        {/* 下载进度条 */}
-                        {updateStatus.autoUpdateSupported && updateStatus.status === 'downloading' && updateStatus.downloadProgress && (
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-xs font-mono">
-                                    <span className="opacity-60 text-left" style={{ color: 'var(--text-secondary)' }}>
-                                        {t('options.downloadUpdate')}
-                                    </span>
-                                    <span className="font-semibold text-emerald-400">
-                                        {Math.round(updateStatus.downloadProgress.percent)}%
-                                    </span>
-                                </div>
-                                <div className="w-full h-1.5 rounded-full overflow-hidden bg-white/10">
-                                    <div
-                                        className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-[width] duration-300 ease-out"
-                                        style={{ width: `${updateStatus.downloadProgress.percent}%` }}
-                                    />
-                                </div>
-                                {updateStatus.downloadProgress.transferred !== undefined && updateStatus.downloadProgress.total !== undefined && (
-                                    <div className="text-[10px] opacity-40 text-right font-mono" style={{ color: 'var(--text-secondary)' }}>
-                                        {(updateStatus.downloadProgress.transferred / 1024 / 1024).toFixed(1)} MB / {(updateStatus.downloadProgress.total / 1024 / 1024).toFixed(1)} MB
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        <div className="flex flex-wrap gap-2">
-                            {updateStatus.autoUpdateSupported && !electronSettings.ENABLE_AUTO_UPDATE && (
-                                <button
-                                    type="button"
-                                    onClick={onDownloadUpdate}
-                                    disabled={!canDownloadUpdate}
-                                    className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/15 px-3.5 py-2 text-xs font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-                                    style={{ color: 'var(--text-primary)' }}
-                                >
-                                    <Download size={14} />
-                                    {t('options.downloadUpdate') || 'Download Update'}
-                                </button>
-                            )}
-                            {updateStatus.autoUpdateSupported && updateStatus.status === 'downloaded' && (
-                                <button
-                                    type="button"
-                                    onClick={onInstallUpdate}
-                                    className="inline-flex items-center gap-1.5 rounded-xl bg-green-500/20 hover:bg-green-500/30 text-green-400 px-3.5 py-2 text-xs font-semibold transition-all hover:scale-[1.02] active:scale-[0.98]"
-                                >
-                                    <RefreshCw size={14} className="animate-spin-slow" />
-                                    {t('options.restartToInstallUpdate') || 'Restart to Install'}
-                                </button>
-                            )}
-                        </div>
-
-                        {/* 备用下载入口收拢成可换行的小组，避免与更新主操作争抢视觉层级。 */}
-                        <div
-                            className="flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1.5"
-                            aria-label={t('options.downloadSources')}
-                        >
-                            <span className="px-1.5 text-[11px] opacity-50" style={{ color: 'var(--text-secondary)' }}>
-                                {t('options.downloadSources')}
-                            </span>
-                            {electronSettings.UPDATE_CHANNEL === 'realeco' && updateStatus.platform !== 'linux' && (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={onOpenChinaDownload}
-                                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-70 transition-colors hover:bg-white/10 hover:opacity-100"
-                                        style={{ color: 'var(--text-primary)' }}
-                                    >
-                                        <ExternalLink size={12} />
-                                        {t('options.quarkDrive')}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={onOpenBaiduDownload}
-                                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-70 transition-colors hover:bg-white/10 hover:opacity-100"
-                                        style={{ color: 'var(--text-primary)' }}
-                                    >
-                                        <ExternalLink size={12} />
-                                        {t('options.baiduDrive')}
-                                    </button>
-                                </>
-                            )}
-                            <button
-                                type="button"
-                                onClick={() => window.electron?.openUpdateReleasePage(updateStatus.availableVersion)}
-                                className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-70 transition-colors hover:bg-white/10 hover:opacity-100"
-                                style={{ color: 'var(--text-primary)' }}
-                            >
-                                <ExternalLink size={12} />
-                                {updateStatus.autoUpdateSupported
-                                    ? t('options.githubRelease')
-                                    : t('options.fullInstallerGithub')}
-                            </button>
-                            {updateStatus.platform === 'linux' && electronSettings.UPDATE_CHANNEL === 'realeco' && (
-                                <button
-                                    type="button"
-                                    onClick={() => window.electron?.openExternalUrl(AUR_PACKAGE_URL)}
-                                    className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-70 transition-colors hover:bg-white/10 hover:opacity-100"
-                                    style={{ color: 'var(--text-primary)' }}
-                                >
-                                    <ExternalLink size={12} />
-                                    {t('options.aurPackage')}
-                                </button>
-                            )}
-                        </div>
-
-                        {updateStatus.platform !== 'linux' && (
-                            <div className="text-xs opacity-50 pt-1 text-left" style={{ color: 'var(--text-secondary)' }}>
-                                {t('options.chinaDownloadHint')}
-                            </div>
-                        )}
-                    </div>
-                )}
-            </SettingsAnchor>
 
             <SettingsAnchor anchorId="electronSettings" label={t('options.electronSettings') || 'Desktop App Settings'} className="space-y-4">
                 <SettingsSectionHeading icon={Cpu} label={t('options.electronSettings') || 'Desktop App Settings'} />

@@ -16,7 +16,13 @@ import { toSafePlaybackUrl } from '../../utils/appPlaybackHelpers';
 import { fetchQQLyrics, searchQQLyrics } from '../../utils/lyrics/providers/qqLyricProvider';
 import { writeProviderSessionValue } from './providerStorage';
 import { normalizeQqCollection, normalizeQqSong, normalizeQqUser } from './qqNormalize';
-import { clearQqSession, getQqTransportAvailability, hasQqSession, requestQq } from './qqTransport';
+import {
+    clearQqSession,
+    getQqTransportAvailability,
+    hasQqSession,
+    isEmbeddedQqTransport,
+    requestQq,
+} from './qqTransport';
 
 // src/services/onlineMusic/qqProvider.ts
 
@@ -277,7 +283,26 @@ const getAudioSource = async (song: SongResult, quality: AudioQualityPreference)
     const sourceRef = song.sourceRef?.kind === 'online' && song.sourceRef.providerId === 'qq'
         ? song.sourceRef
         : undefined;
-    const mediaId = String(sourceRef?.providerData?.mediaMid || '').trim();
+    let mediaId = String(sourceRef?.providerData?.mediaMid || '').trim();
+
+    // LX's QQ search historically returned songmid but dropped file.media_mid. The authenticated
+    // vkey endpoint can answer with an empty play link for that otherwise valid song. Hydrate the
+    // provider detail once so the official path sends the second file identity required by QQ.
+    if (!mediaId) {
+        try {
+            const detail = await requestQqSongDetail(songmid);
+            mediaId = String(
+                detail?.sourceRef?.kind === 'online' && detail.sourceRef.providerId === 'qq'
+                    ? detail.sourceRef.providerData?.mediaMid || ''
+                    : '',
+            ).trim();
+        } catch (error) {
+            console.warn('[QQProvider] playback:media-mid-hydration-failed', {
+                songmid,
+                ...errorFields(error),
+            });
+        }
+    }
 
     // The backend answers HTTP 200 with an empty `url` plus an `error` string when the account may
     // not stream the song (membership, region, takedown). Without keeping that apart from a request
@@ -403,6 +428,7 @@ const CHANNEL_PROBE_RETRY_DELAY_MS = 30_000;
  * 探测无论如何都不该把异常抛回渲染路径。
  */
 const refreshDeclaredChannels = (forceRetry = false): Promise<void> => {
+    if (isEmbeddedQqTransport()) return Promise.resolve();
     if (channelProbe) return channelProbe;
     if (!forceRetry && Date.now() < channelProbeRetryAt) return Promise.resolve();
     channelProbe = Promise.resolve()

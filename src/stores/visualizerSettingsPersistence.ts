@@ -4,10 +4,12 @@ import { DEFAULT_CADENZA_TUNING, DEFAULT_CAPPELLA_TUNING, DEFAULT_CLADDAGH_TUNIN
 // mod 模式在启动时本来就看不到——bootstrap.tsx 的 restoreStoredModVisualizer 在 mods 注册完
 // 之后专门补一次，行为不变。
 import {
+    DEFAULT_VISUALIZER_CATEGORY_ENABLED,
     DEFAULT_VISUALIZER_BACKGROUND_MODE,
     DEFAULT_VISUALIZER_MODE,
     isBuiltinVisualizerBackgroundMode,
     isBuiltinVisualizerMode,
+    type VisualizerCategoryEnabledMap,
 } from '../types/visualizerModes';
 import { resolveDioramaMoteCircumference, resolveDioramaMoteRadial } from '../components/visualizer/diorama/dioramaMoteField';
 import { parseVisualizerFrameRate, VISUALIZER_FRAME_RATE_STORAGE_KEY } from '../utils/frameRateLimiter';
@@ -53,6 +55,46 @@ export const readStoredVisualizerMode = (): VisualizerMode => {
     }
 
     return isBuiltinVisualizerMode(saved) ? saved : DEFAULT_VISUALIZER_MODE;
+};
+
+/** Whether the independent JIZURA lyric-MV renderer is active. */
+export const readStoredJizuraEnabled = () => {
+    if (typeof window === 'undefined') {
+        return false;
+    }
+
+    return localStorage.getItem('jizura_enabled') === 'true';
+};
+
+export const readStoredJizuraStyle = () => {
+    if (typeof window === 'undefined') {
+        return 'noir';
+    }
+
+    const saved = localStorage.getItem('jizura_style');
+    return saved?.trim() || 'noir';
+};
+
+export const readStoredVisualizerCategoryEnabled = (): VisualizerCategoryEnabledMap => {
+    if (typeof window === 'undefined') {
+        return { ...DEFAULT_VISUALIZER_CATEGORY_ENABLED };
+    }
+
+    const saved = localStorage.getItem('visualizer_category_enabled');
+    if (!saved) {
+        return { ...DEFAULT_VISUALIZER_CATEGORY_ENABLED };
+    }
+
+    try {
+        const parsed = JSON.parse(saved) as Partial<VisualizerCategoryEnabledMap>;
+        const next = {
+            folia: parsed.folia !== false,
+            jizura: parsed.jizura !== false,
+        };
+        return next.folia || next.jizura ? next : { ...DEFAULT_VISUALIZER_CATEGORY_ENABLED };
+    } catch {
+        return { ...DEFAULT_VISUALIZER_CATEGORY_ENABLED };
+    }
 };
 
 export const readStoredVisualizerFrameRate = (): VisualizerFrameRate => {

@@ -15,6 +15,7 @@ export const buildVisualizerCommandContext = (
     const visualizer = useVisualizerSettingsStore.getState();
     return {
         visualizerMode: visualizer.visualizerMode,
+        enabledVisualizerCategories: visualizer.enabledVisualizerCategories,
         visualizerBackgroundMode: visualizer.visualizerBackgroundMode,
         setVisualizerMode: visualizer.handleSetVisualizerMode,
         toggleRandomVisualizerModePerSong: () => visualizer.handleToggleRandomVisualizerModePerSong(

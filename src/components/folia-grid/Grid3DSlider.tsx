@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { formatGridMapFolderTitle } from '../../utils/gridMapFolderPath';
 import { getSizedCoverUrl } from '../../utils/coverUrl';
 import { useHomeLayoutSettingsStore } from '../../stores/useHomeLayoutSettingsStore';
+import { isAndroidCapacitor } from '../../utils/runtimePlatform';
 
 // src/components/folia-grid/Grid3DSlider.tsx
 // Controlled desktop Grid3D slider shared by Netease, local music, and Navidrome overview surfaces.
@@ -30,6 +31,7 @@ interface Grid3DSliderProps {
     emptyMessage?: string;
     isDaylight: boolean;
     hasFloatingPlayer?: boolean;
+    fitAllOnAndroid?: boolean;
 }
 
 const compactDescription = (description?: string, maxLength = 72) => {
@@ -145,9 +147,11 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
     emptyMessage,
     isDaylight,
     hasFloatingPlayer = false,
+    fitAllOnAndroid = false,
 }) => {
     const { t } = useTranslation();
     const grid3dCardStyle = useHomeLayoutSettingsStore(state => state.grid3dCardStyle);
+    const useAndroidFitLayout = isAndroidCapacitor && fitAllOnAndroid;
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -162,6 +166,7 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
     const momentumVelocityRef = useRef(0);
     const momentumRafRef = useRef<number | null>(null);
     const wheelSmoothingRafRef = useRef<number | null>(null);
+    const scrollUpdateRafRef = useRef<number | null>(null);
     const wheelSmoothingTargetRef = useRef<number | null>(null);
     const wheelSmoothingLastTimeRef = useRef(0);
     const wheelSmoothingStartedAtRef = useRef(0);
@@ -174,6 +179,12 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
 
     const [containerSize, setContainerSize] = useState(() => {
         if (typeof window === 'undefined') {
+            return { width: 0, height: 0 };
+        }
+        // Android's WebView viewport is larger than the measured home canvas on
+        // the first render. Start unmeasured so the card never renders once at
+        // a desktop-sized width and then shrinks after ResizeObserver runs.
+        if (isAndroidCapacitor) {
             return { width: 0, height: 0 };
         }
         return { width: window.innerWidth, height: window.innerHeight };
@@ -226,10 +237,44 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
         && containerSize.width >= 2000
         && containerSize.height >= (hasFloatingPlayer ? 780 : 720);
 
-    const coverSize = useCompactMetrics
+    // Android's landscape stage can be much shorter than a desktop window.
+    // Size the cards from the actual slider box so the card, gap and title all
+    // fit together instead of relying on the browser's mobile breakpoint.
+    const androidCoverSize = isAndroidCapacitor && containerSize.width > 0 && containerSize.height > 0
+        ? Math.max(
+            grid3dCardStyle === 'card' ? 148 : 132,
+            Math.min(
+                grid3dCardStyle === 'card' ? 224 : 208,
+                Math.floor(Math.min(containerSize.width * 0.34, containerSize.height * 0.72)),
+            ),
+        )
+        : null;
+    const coverSize = androidCoverSize ?? (useCompactMetrics
         ? (isDesktopWidth ? 208 : 192)
-        : (isDesktopWidth ? (isUltraDesktop ? 360 : isLargeDesktop ? 312 : 218) : 224);
+        : (isDesktopWidth ? (isUltraDesktop ? 360 : isLargeDesktop ? 312 : 218) : 224));
     const edgePadding = Math.max(0, (containerSize.width - coverSize) / 2);
+
+    // Albums and radio feeds are small overview collections on Android. Show the
+    // complete set in a bounded tile wall instead of making the user sweep a
+    // carousel to discover the remaining items.
+    const fitGridGap = 12;
+    const fitGridItemCount = items.length > 0 ? items.length : (isLoading ? 5 : 1);
+    const fitGridColumns = Math.min(fitGridItemCount, Math.max(1, Math.min(6, Math.ceil(Math.sqrt(
+        fitGridItemCount * Math.max(containerSize.width, 1) / Math.max(containerSize.height, 1),
+    )))));
+    const fitGridRows = Math.max(1, Math.ceil(fitGridItemCount / fitGridColumns));
+    const fitGridWidth = Math.max(0, containerSize.width - 24);
+    const fitGridHeight = Math.max(0, containerSize.height - (hasFloatingPlayer ? 28 : 16));
+    const fitCellWidth = Math.max(44, Math.floor((fitGridWidth - (fitGridColumns - 1) * fitGridGap) / fitGridColumns));
+    const fitCellHeight = Math.max(44, Math.floor((fitGridHeight - (fitGridRows - 1) * fitGridGap) / fitGridRows));
+    const fitCardSize = Math.max(
+        44,
+        Math.min(
+            grid3dCardStyle === 'card' ? 180 : 196,
+            fitCellWidth,
+            grid3dCardStyle === 'card' ? Math.max(44, fitCellHeight - 54) : Math.max(44, fitCellHeight - 34),
+        ),
+    );
 
     const safeFocusedIndex = clampFocusedIndex(focusedIndex, items.length);
     const itemsSignature = useMemo(() => items.map(item => item.id).join(','), [items]);
@@ -254,17 +299,31 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
     const updateCardTransforms = useCallback(() => {
         const container = scrollContainerRef.current;
         if (!container) return undefined;
-        const maxDist = 600;
-        const isImage = grid3dCardStyle === 'image';
-        const peakScale = isImage ? 1.25 : 1.2;
-        const minScale = 0.5;
         const cards = container.querySelectorAll<HTMLElement>('[data-grid3d-index]');
+        const maxDist = 600;
         const viewportWidth = container.clientWidth;
         const containerCenter = container.scrollLeft + viewportWidth / 2;
         const closestIndex = clampFocusedIndex(
             Math.round((containerCenter - edgePadding - coverSize / 2) / cardPitch),
             items.length,
         );
+
+        // Android's playlist cards are intentionally static. Clear any inline
+        // styles left by the desktop coverflow implementation instead of
+        // repeatedly writing a neutral transform during scroll/RAF updates.
+        if (isAndroidCapacitor) {
+            cards.forEach((el) => {
+                el.style.transform = 'none';
+                el.style.opacity = '1';
+                el.style.zIndex = '1';
+            });
+            return closestIndex;
+        }
+
+        const isImage = grid3dCardStyle === 'image';
+        // The desktop carousel uses depth scaling to create a 3D coverflow.
+        const peakScale = isImage ? 1.25 : 1.2;
+        const minScale = 0.5;
         for (let i = 0; i < cards.length; i++) {
             const el = cards[i];
             const itemIndex = Number(el.dataset.grid3dIndex);
@@ -436,7 +495,7 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
         if (!isInteractive) return;
         stopKineticScroll();
         reportFocusedIndex(index);
-        centerIndex(index);
+        centerIndex(index, isAndroidCapacitor ? 'auto' : undefined);
     }, [centerIndex, isInteractive, reportFocusedIndex, stopKineticScroll]);
 
     useEffect(() => {
@@ -461,12 +520,7 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
         return () => cancelAnimationFrame(frameId);
     }, [centerIndex, focusedIndex, isLoading, items.length, itemsSignature, updateCardTransforms]);
 
-    const handleScroll = useCallback(() => {
-        if (!isInteractive) {
-            updateCardTransforms();
-            return;
-        }
-
+    const runScrollUpdate = useCallback(() => {
         const container = scrollContainerRef.current;
         if (!container) return;
 
@@ -492,8 +546,21 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
         if (closestIndex !== undefined) {
             reportFocusedIndex(closestIndex);
         }
+    }, [reportFocusedIndex, updateCardTransforms]);
 
-    }, [isInteractive, reportFocusedIndex, updateCardTransforms]);
+    // Scroll events can arrive several times inside one refresh interval on a trackpad. Coalesce
+    // them so DOM reads/writes happen once per compositor frame instead of once per event.
+    const handleScroll = useCallback(() => {
+        if (scrollUpdateRafRef.current !== null) return;
+        scrollUpdateRafRef.current = requestAnimationFrame(() => {
+            scrollUpdateRafRef.current = null;
+            if (!isInteractive) {
+                updateCardTransforms();
+                return;
+            }
+            runScrollUpdate();
+        });
+    }, [isInteractive, runScrollUpdate, updateCardTransforms]);
 
     const handleMouseDown = (event: React.MouseEvent) => {
         if (!isInteractive || !scrollContainerRef.current || event.button !== 0) return;
@@ -621,6 +688,7 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
         return () => {
             if (programmaticScrollTimeoutRef.current) clearTimeout(programmaticScrollTimeoutRef.current);
             if (wheelIdleTimerRef.current) clearTimeout(wheelIdleTimerRef.current);
+            if (scrollUpdateRafRef.current !== null) cancelAnimationFrame(scrollUpdateRafRef.current);
             stopWheelSmoothing();
             stopMomentum();
         };
@@ -629,9 +697,84 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
     const focusedItem = items[safeFocusedIndex];
     const focusedDisplayName = focusedItem ? getGrid3DSliderDisplayName(focusedItem) : '';
     const focusedSecondaryText = focusedItem ? getGrid3DSliderSecondaryText(focusedItem) : '';
+    const androidLayoutReady = !isAndroidCapacitor || (containerSize.width > 0 && containerSize.height > 0);
+
+    const renderAndroidFitCard = (item: Grid3DSliderItem, index: number) => {
+        const displayName = getGrid3DSliderDisplayName(item);
+        const secondaryText = getGrid3DSliderSecondaryText(item);
+        const folderPath = getLocalFolderPath(item);
+        const imageSource = item.coverUrl ? getSizedCoverUrl(item.coverUrl, fitCardSize) : '';
+
+        return (
+            <button
+                key={item.id}
+                type="button"
+                className={`folia-android-fit-card ${grid3dCardStyle === 'card' ? 'folia-android-fit-card--card' : 'folia-android-fit-card--image'}`}
+                style={{ maxWidth: fitCardSize }}
+                onClick={() => {
+                    onFocusedIndexChange(index);
+                    onSelect(item, index);
+                }}
+            >
+                <span className="folia-android-fit-card__cover">
+                    {imageSource ? (
+                        <img
+                            src={imageSource}
+                            alt={typeof displayName === 'string' ? displayName : ''}
+                            loading="eager"
+                            decoding="async"
+                            className="w-full h-full object-cover pointer-events-none select-none"
+                        />
+                    ) : (
+                        <Disc className="opacity-25" size={Math.min(52, fitCardSize * 0.42)} />
+                    )}
+                </span>
+                <span className="folia-android-fit-card__details">
+                    <span className="folia-android-fit-card__title">{displayName}</span>
+                    {secondaryText && (
+                        <span className={`folia-android-fit-card__secondary ${folderPath ? 'line-clamp-2 break-words' : 'truncate'}`}>
+                            {secondaryText}
+                        </span>
+                    )}
+                </span>
+            </button>
+        );
+    };
 
     return (
-        <div ref={containerRef} className="w-full flex-1 flex flex-col justify-center relative min-h-0 select-none">
+        <div
+            ref={containerRef}
+            className={`folia-grid3d-slider w-full flex-1 flex flex-col justify-center relative min-h-0 select-none ${
+                grid3dCardStyle === 'image' ? 'folia-grid3d-slider--image' : 'folia-grid3d-slider--card'
+            } ${useAndroidFitLayout ? 'folia-grid3d-slider--fit' : ''} ${!androidLayoutReady ? 'folia-grid3d-slider--measure-pending' : ''}`}
+        >
+            {useAndroidFitLayout ? (
+                <div
+                    className="folia-android-fit-grid"
+                    style={{
+                        gridTemplateColumns: `repeat(${fitGridColumns}, minmax(0, 1fr))`,
+                        gap: fitGridGap,
+                    }}
+                >
+                    {isLoading ? (
+                        Array.from({ length: Math.min(fitGridItemCount, 12) }).map((_, index) => (
+                            <div key={`fit-skeleton-${index}`} className="folia-android-fit-card folia-android-fit-card--skeleton">
+                                <div className="folia-android-fit-card__cover animate-pulse" />
+                                <div className="folia-android-fit-card__details gap-1">
+                                    <span className="h-2.5 w-3/4 rounded bg-white/10 animate-pulse" />
+                                    <span className="h-2 w-1/2 rounded bg-white/10 animate-pulse" />
+                                </div>
+                            </div>
+                        ))
+                    ) : items.length === 0 ? (
+                        <div className="folia-android-fit-empty">
+                            {emptyMessage || t('ui.noItemsFound')}
+                        </div>
+                    ) : (
+                        items.map(renderAndroidFitCard)
+                    )}
+                </div>
+            ) : (
             <div
                 ref={scrollContainerRef}
                 data-grid3d-slider
@@ -641,7 +784,7 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUpOrLeave}
                 onMouseLeave={handleMouseUpOrLeave}
-                className={`w-full flex items-center overflow-x-auto overflow-y-hidden py-24 custom-scrollbar focus:outline-none ${
+                className={`folia-grid3d-scroll w-full flex items-center overflow-x-auto overflow-y-hidden py-24 custom-scrollbar focus:outline-none ${
                     isInteractive ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'
                 }`}
                 style={{ scrollbarWidth: 'none' }}
@@ -691,7 +834,10 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
                                     key={item.id}
                                     data-grid3d-index={index}
                                     className="shrink-0 cursor-pointer pointer-events-auto select-none"
-                                    style={{ marginRight: index < items.length - 1 ? GRID3D_CARD_GAP : 0 }}
+                                    style={{
+                                        marginRight: index < items.length - 1 ? GRID3D_CARD_GAP : 0,
+                                        contain: 'layout paint',
+                                    }}
                                     onClick={() => {
                                         if (!isInteractive || dragDistanceRef.current >= 8) return;
                                         if (isFocused) {
@@ -708,8 +854,8 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
                                             }`}
                                             style={{ width: coverSize, height: coverSize }}
                                         >
-                                            {item.coverUrl && loadedIndices.has(index) ? (
-                                                <img src={getSizedCoverUrl(item.coverUrl, coverSize)} alt={typeof displayName === 'string' ? displayName : ''} loading="lazy" decoding="async" className="w-full h-full object-cover pointer-events-none select-none" />
+                                            {item.coverUrl && (isAndroidCapacitor || loadedIndices.has(index)) ? (
+                                                <img src={getSizedCoverUrl(item.coverUrl, coverSize)} alt={typeof displayName === 'string' ? displayName : ''} loading={isAndroidCapacitor ? 'eager' : 'lazy'} decoding="async" className="w-full h-full object-cover pointer-events-none select-none" />
                                             ) : (
                                                 <div className="w-full h-full bg-zinc-800/20 flex items-center justify-center">
                                                     <Disc size={64} className="opacity-20" />
@@ -719,18 +865,18 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
                                         </div>
                                     ) : (
                                         <div
-                                            className="rounded-xl border p-4 flex flex-col items-center backdrop-blur-md shadow-lg hover:shadow-2xl theme-polaroid-card"
+                                            className="folia-grid3d-card rounded-xl border p-4 flex flex-col items-center backdrop-blur-md shadow-lg hover:shadow-2xl theme-polaroid-card"
                                             style={{ width: coverSize }}
                                         >
-                                            <div className="w-full aspect-square rounded-lg overflow-hidden bg-zinc-800/20 relative shadow-inner mb-4 flex items-center justify-center">
-                                                {item.coverUrl && loadedIndices.has(index) ? (
-                                                    <img src={getSizedCoverUrl(item.coverUrl, coverSize)} alt={typeof displayName === 'string' ? displayName : ''} loading="lazy" decoding="async" className="w-full h-full object-cover pointer-events-none select-none" />
+                                            <div className="folia-grid3d-card-cover w-full aspect-square rounded-lg overflow-hidden bg-zinc-800/20 relative shadow-inner mb-4 flex items-center justify-center">
+                                                {item.coverUrl && (isAndroidCapacitor || loadedIndices.has(index)) ? (
+                                                    <img src={getSizedCoverUrl(item.coverUrl, coverSize)} alt={typeof displayName === 'string' ? displayName : ''} loading={isAndroidCapacitor ? 'eager' : 'lazy'} decoding="async" className="w-full h-full object-cover pointer-events-none select-none" />
                                                 ) : (
                                                     <Disc size={64} className="opacity-20" />
                                                 )}
                                             </div>
 
-                                            <div className="w-full text-left pt-2 min-w-0">
+                                            <div className="folia-grid3d-card-details w-full text-left pt-2 min-w-0">
                                                 <h3 className="font-bold text-sm truncate max-w-full tracking-tight">
                                                     {displayName}
                                                 </h3>
@@ -760,10 +906,11 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
                     )}
                 </div>
             </div>
+            )}
 
             {!isLoading && focusedItem && (
                 <div
-                    className={`relative shrink-0 text-center z-10 px-8 pointer-events-none ${
+                    className={`folia-grid3d-focused-info relative shrink-0 text-center z-10 px-8 pointer-events-none ${
                         hasFloatingPlayer ? 'pt-6 md:pt-8 pb-0 -mb-4 md:-mb-6' : 'pt-5 md:pt-6 pb-4'
                     }`}
                 >

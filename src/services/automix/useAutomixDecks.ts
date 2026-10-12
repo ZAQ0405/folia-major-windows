@@ -22,6 +22,7 @@ import { usePlaybackStore, type TransitionDisplay } from '../../stores/usePlayba
 import { useAudioSettingsStore } from '../../stores/useAudioSettingsStore';
 import { getPlaybackRepresentation } from '../playbackRecovery/representationRegistry';
 import { buildNavidromeSourceRevision } from '../playbackRecovery/sourceRevision';
+import { isSourcePlaybackMode } from '../../stores/usePlaybackModeStore';
 
 export type { TransitionDisplay };
 
@@ -585,7 +586,7 @@ export function useAutomixDecks({
             )
             ? recoveredRepresentation.url
             : null;
-        const nextWarmSrc = recoveredWarmSrc || (prefetched?.audioUrl && prefetched.audioUrl !== 'CACHED_IN_DB'
+        const nextWarmSrc = recoveredWarmSrc || (isSourcePlaybackMode() && prefetched?.audioUrl && prefetched.audioUrl !== 'CACHED_IN_DB'
             ? prefetched.audioUrl
             : null);
         const idleDeck = activeDeck === 'A' ? 'B' : 'A';
@@ -755,7 +756,7 @@ export function useAutomixDecks({
             void ensureStems({
                 song: next,
                 role: 'head',
-                audioUrl: prefetched?.audioUrl && prefetched.audioUrl !== 'CACHED_IN_DB'
+                audioUrl: isSourcePlaybackMode() && prefetched?.audioUrl && prefetched.audioUrl !== 'CACHED_IN_DB'
                     ? prefetched.audioUrl
                     : null,
                 stillWanted: stillPaired(next, 'to'),

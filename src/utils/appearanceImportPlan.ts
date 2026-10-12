@@ -17,9 +17,9 @@ import type { UrlBackgroundItem } from '../types';
 // auto-switch value can also flip "prefer custom theme" — a setting that is not in the config at
 // all and would otherwise change with no warning.
 
-export type ImportGroup = 'theme' | 'visualizer' | 'fonts' | 'background' | 'songTheme' | 'trackCard';
+export type ImportGroup = 'theme' | 'visualizer' | 'jizura' | 'fonts' | 'background' | 'songTheme' | 'trackCard';
 
-export const IMPORT_GROUPS: ImportGroup[] = ['theme', 'visualizer', 'fonts', 'background', 'songTheme', 'trackCard'];
+export const IMPORT_GROUPS: ImportGroup[] = ['theme', 'visualizer', 'jizura', 'fonts', 'background', 'songTheme', 'trackCard'];
 
 export interface ImportChange {
     group: ImportGroup;
@@ -69,6 +69,7 @@ export const ACTIVATE_CUSTOM_THEME_KEY = 'activateCustomTheme';
 // plan can never promise a change that will not happen.
 const FIELD_GROUPS: Record<string, ImportGroup> = {
     visualizerMode: 'visualizer',
+    foliaSongPresets: 'visualizer',
     randomVisualizerModePerSong: 'visualizer',
     visualizerOpacity: 'visualizer',
     hidePlayerTranslationSubtitle: 'visualizer',
@@ -92,6 +93,11 @@ const FIELD_GROUPS: Record<string, ImportGroup> = {
     pendoloTuning: 'visualizer',
     sonnetTuning: 'visualizer',
     temperaTuning: 'visualizer',
+
+    jizuraEnabled: 'jizura',
+    jizuraStyle: 'jizura',
+    jizuraSettings: 'jizura',
+    jizuraSongPresets: 'jizura',
 
     lyricsFontStyle: 'fonts',
     lyricsFontScale: 'fonts',

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { MediaId, OnlineProviderId, ProviderCollection, ProviderUser } from '../types/onlineMusic';
+import { isProviderLikedCollection } from '../utils/providerCollection';
 
 // src/stores/useOnlineProviderAccountStore.ts
 
@@ -104,7 +105,9 @@ export const useOnlineProviderAccountStore = create<OnlineProviderAccountStore>(
                 ...patch,
                 collections: reconcileProviderCollections(
                     previous.collections,
-                    placeCloudCollectionSecond(patch.collections),
+                    placeCloudCollectionSecond(
+                        patch.collections.filter(collection => !isProviderLikedCollection(collection)),
+                    ),
                 ),
             };
         return {

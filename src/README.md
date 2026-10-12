@@ -110,7 +110,7 @@ App.tsx
 ## External and server boundaries
 
 - Stage：`hooks/useStagePlaybackController.ts`、`utils/appStageHelpers.ts`、`utils/stageClientDemo.ts`、`utils/stagePlayerSnapshot.ts`、`electron/stageApi.cjs`。
-- Electron：`electron/main.cjs`、`preload.cjs`、`kugouApiBridge.cjs`、`updateChannels.cjs`、`windowPlaybackHandoff.cjs`。
+- Electron：`electron/main.cjs`、`preload.cjs`、`kugouApiBridge.cjs`、`windowPlaybackHandoff.cjs`。
 - Web API handlers：`api/`（部署入口）与 `api-ts/`（TypeScript 源码）；主题/代理公共代码在 `shared/`。
 - Sync Server：`sync-server/src/app.ts`（路由与协议）、`src/node.ts`、`src/cloudflare.ts`、`src/d1-emulator.ts`；Worker 包装在根 `worker/index.ts`。
 

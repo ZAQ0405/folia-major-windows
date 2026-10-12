@@ -18,7 +18,7 @@ describe('Kugou lyric provider', () => {
         vi.unstubAllGlobals();
     });
 
-    it('uses the provider album audio id instead of the hash song identity', async () => {
+    it('uses LX native fuzzy lyric search with the concrete song hash', async () => {
         const fetchMock = vi.fn()
             .mockResolvedValueOnce(new Response(JSON.stringify({
                 candidates: [{ id: 'lyric-id', accesskey: 'lyric-key' }],
@@ -47,8 +47,18 @@ describe('Kugou lyric provider', () => {
         await expect(fetchKugouLyrics(song)).resolves.not.toBeNull();
 
         const searchUrl = getProxiedTarget(String(fetchMock.mock.calls[0][0]));
-        expect(searchUrl.searchParams.get('album_audio_id')).toBe('500617606');
+        expect(searchUrl.hostname).toBe('lyrics.kugou.com');
+        expect(searchUrl.pathname).toBe('/search');
+        expect(searchUrl.searchParams.get('keyword')).toBe(song.name);
         expect(searchUrl.searchParams.get('hash')).toBe(song.kgHash);
+        expect(searchUrl.searchParams.get('timelength')).toBe('239000');
+        expect(searchUrl.searchParams.get('man')).toBe('yes');
+        expect(searchUrl.searchParams.get('lrctxt')).toBe('1');
+        expect(fetchMock.mock.calls[0][1].headers).toMatchObject({
+            'KG-RC': '1',
+            'KG-THash': 'expand_search_manager.cpp:852736169:451',
+            'User-Agent': 'KuGou2012-9020-ExpandSearchManager',
+        });
     });
 
     it('does not infer album_audio_id from a numeric song id', async () => {

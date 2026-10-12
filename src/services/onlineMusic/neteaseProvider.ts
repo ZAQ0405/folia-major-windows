@@ -15,7 +15,7 @@ import { getPersonalFmRequestOptions } from '../../stores/usePersonalFmModeStore
 import { parseNeteaseChorusRanges, processNeteaseLyrics } from '../../utils/lyrics/neteaseProcessing';
 import { toFiniteNumber } from '../../utils/replayGain';
 import { createProviderSongMetadata } from '../../utils/songMetadata';
-import { isSongMarkedUnavailable, neteaseApi } from '../netease';
+import { getNeteaseTransportAvailability, isSongMarkedUnavailable, neteaseApi } from '../netease';
 import { writeProviderSessionValue } from './providerStorage';
 
 // src/services/onlineMusic/neteaseProvider.ts
@@ -231,7 +231,7 @@ export const neteaseProvider: OnlineMusicProvider = {
     id: 'netease',
     displayName: 'NetEase Cloud Music',
     shortName: '网易云',
-    getAvailability: () => ({ configured: true }),
+    getAvailability: getNeteaseTransportAvailability,
     capabilities: {
         search: true,
         playback: true,

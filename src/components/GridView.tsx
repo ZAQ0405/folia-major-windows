@@ -1,6 +1,6 @@
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useMotionValue, animate, AnimatePresence, useDragControls } from 'framer-motion';
-import { ChevronLeft, Disc, Download, Play, Plus, Loader2, Heart, ListPlus, Pencil, RefreshCw, Trash2, Star, Tags } from 'lucide-react';
+import { ChevronLeft, Disc, Download, PanelsTopLeft, Play, Plus, Loader2, Heart, ListPlus, Pencil, RefreshCw, Trash2, Star, Tags } from 'lucide-react';
 import GridPanelToggleIndicator from './folia-grid/GridPanelToggleIndicator';
 import { useTranslation } from 'react-i18next';
 import { SongResult, type LocalSong, type StatusMessage, Theme, type UnifiedSong } from '../types';
@@ -70,6 +70,12 @@ export interface GridViewSourceActions {
         onDeletePlaylist?: (playlistId: string) => Promise<void> | void;
         onRemovePlaylistSongs?: (playlistId: string, songIndexes: number[]) => Promise<void> | void;
     };
+    personal?: {
+        onRenamePlaylist?: (playlistId: string, name: string) => Promise<void> | void;
+        onDeletePlaylist?: (playlistId: string) => Promise<void> | void;
+        onExportPlaylist?: (playlistId: string) => Promise<void> | void;
+        onRemovePlaylistSongs?: (playlistId: string, songKeys: string[]) => Promise<void> | void;
+    };
 }
 
 interface GridViewProps {
@@ -88,6 +94,7 @@ interface GridViewProps {
     // Optional self-contained collection props
     collection?: any;
     onPlayAll?: (songs: SongResult[]) => void;
+    onPlayInLattice?: (songs: SongResult[]) => void;
     onAddAllToQueue?: (songs: SongResult[]) => void;
     onSelectAlbum?: (albumId: number | string, album?: any, track?: SongResult) => void;
     onSelectArtist?: (artistId: number | string, artist?: any, track?: SongResult) => void;
@@ -231,6 +238,7 @@ export const GridView: React.FC<GridViewProps> = ({
     isDaylight,
     collection,
     onPlayAll,
+    onPlayInLattice,
     onAddAllToQueue,
     onSelectAlbum,
     onSelectArtist,
@@ -453,6 +461,7 @@ export const GridView: React.FC<GridViewProps> = ({
     const [collectionDetail, setCollectionDetail] = useState<ProviderCollection | null>(null);
     const isLocalCollection = collectionSource === 'local';
     const isNavidromeCollection = collectionSource === 'navidrome';
+    const isPersonalCollection = collectionSource === 'personal';
     const isAlbumCollection = collection?.type === 'album';
     const isDailyRecommendationsCollection = collectionSource === 'online' && collection?.type === 'daily_recommendations';
     const isLocalFolderCollection = isLocalCollection && collection?.type === 'folder' && !collection?.isVirtual;
@@ -461,6 +470,7 @@ export const GridView: React.FC<GridViewProps> = ({
     const isLocalPlaylistCollection = isLocalCollection && collection?.type === 'playlist' && Boolean(collection?.playlistId) && !collection?.isVirtual;
     const isLocalEntityCollection = isLocalCollection && Boolean(collection?.entityId);
     const isNavidromePlaylistCollection = isNavidromeCollection && collection?.type === 'playlist' && Boolean(collection?.editable);
+    const isPersonalPlaylistCollection = isPersonalCollection && collection?.type === 'playlist' && Boolean(collection?.playlistId);
     const canAddNavidromeToPlaylist = isNavidromeCollection
         && collection?.type !== 'playlist'
         && Boolean(sourceActions?.navidrome?.onAddToPlaylist || sourceActions?.navidrome?.onCreatePlaylist);
@@ -621,6 +631,8 @@ export const GridView: React.FC<GridViewProps> = ({
                     await sourceActions?.local?.onRenamePlaylist?.(collection.playlistId, nextTitle);
                 } else if (isNavidromePlaylistCollection) {
                     await sourceActions?.navidrome?.onRenamePlaylist?.(String(collection.id), nextTitle);
+                } else if (isPersonalPlaylistCollection && collection.playlistId) {
+                    await sourceActions?.personal?.onRenamePlaylist?.(collection.playlistId, nextTitle);
                 }
                 collection.name = nextTitle;
             }
@@ -633,6 +645,7 @@ export const GridView: React.FC<GridViewProps> = ({
         editableTitle,
         isEditMode,
         isLocalPlaylistCollection,
+        isPersonalPlaylistCollection,
         isNavidromePlaylistCollection,
         sourceActions,
         title,
@@ -649,6 +662,8 @@ export const GridView: React.FC<GridViewProps> = ({
                 await sourceActions?.local?.onDeletePlaylist?.(collection.playlistId);
             } else if (isNavidromePlaylistCollection) {
                 await sourceActions?.navidrome?.onDeletePlaylist?.(String(collection.id));
+            } else if (isPersonalPlaylistCollection && collection.playlistId) {
+                await sourceActions?.personal?.onDeletePlaylist?.(collection.playlistId);
             }
             onBack();
         } finally {
@@ -658,6 +673,7 @@ export const GridView: React.FC<GridViewProps> = ({
         collection,
         isLocalFolderCollection,
         isLocalPlaylistCollection,
+        isPersonalPlaylistCollection,
         isNavidromePlaylistCollection,
         onBack,
         sourceActions,
@@ -691,6 +707,17 @@ export const GridView: React.FC<GridViewProps> = ({
         setIsSourceActionPending(true);
         try {
             await sourceActions?.local?.onExportPlaylist?.(collection.playlistId);
+        } finally {
+            setIsSourceActionPending(false);
+        }
+    }, [collection, sourceActions]);
+
+    const handleExportPersonalPlaylist = useCallback(async () => {
+        if (!collection?.playlistId || collection.source !== 'personal' || collection.type !== 'playlist') return;
+
+        setIsSourceActionPending(true);
+        try {
+            await sourceActions?.personal?.onExportPlaylist?.(collection.playlistId);
         } finally {
             setIsSourceActionPending(false);
         }
@@ -948,6 +975,7 @@ export const GridView: React.FC<GridViewProps> = ({
         || canEditProviderPlaylist
         || (isDailyRecommendationsCollection && !selectedDailyRecommendationDate)
         || isLocalPlaylistCollection
+        || isPersonalPlaylistCollection
         || isNavidromePlaylistCollection
     );
 
@@ -1097,6 +1125,15 @@ export const GridView: React.FC<GridViewProps> = ({
                 return;
             }
 
+            if (isPersonalPlaylistCollection && collection.playlistId && sourceActions?.personal?.onRemovePlaylistSongs) {
+                await sourceActions.personal.onRemovePlaylistSongs(collection.playlistId, [getPlaybackSongKey(track)]);
+                commitAfterTrackRemovalAnimation(trackKey, () => {
+                    const playbackKey = getPlaybackSongKey(track);
+                    setRemovedExternalTrackKeys(prev => new Set(prev).add(playbackKey).add(`${playbackKey}-${trackIndex}`));
+                });
+                return;
+            }
+
             if (isNavidromePlaylistCollection && sourceActions?.navidrome?.onRemovePlaylistSongs) {
                 await sourceActions.navidrome.onRemovePlaylistSongs(String(collection.id), [trackIndex]);
                 commitAfterTrackRemovalAnimation(trackKey, () => {
@@ -1134,6 +1171,7 @@ export const GridView: React.FC<GridViewProps> = ({
         commitAfterTrackRemovalAnimation,
         dailyRecommendationDislikeLimitReached,
         isLocalPlaylistCollection,
+        isPersonalPlaylistCollection,
         isDailyRecommendationsCollection,
         isNavidromePlaylistCollection,
         onPlaylistMutated,
@@ -1897,9 +1935,33 @@ export const GridView: React.FC<GridViewProps> = ({
                     backgroundColor: 'color-mix(in srgb, var(--bg-color) 20%, transparent)',
                     color: 'var(--text-primary)',
                 }}
-            >
-                <h2 className="text-lg font-bold tracking-tight flex items-center gap-1.5 justify-center">
-                    {infoCollection?.name || collection?.name || title}
+                >
+                <h2 className="text-lg font-bold tracking-tight flex items-center gap-2 justify-center">
+                    {collection?.type === 'playlist' && onPlayInLattice && (
+                        <button
+                            type="button"
+                            data-testid="playlist-play-in-lattice"
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                if (contextActionTracks.length > 0) {
+                                    onPlayInLattice(contextActionTracks);
+                                }
+                            }}
+                            disabled={contextActionTracks.length === 0}
+                            aria-label={t('playlist.playInLattice')}
+                            className="h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-lg transition-all hover:scale-[1.08] hover:bg-white/10 active:scale-[0.92] disabled:cursor-not-allowed disabled:opacity-40"
+                            style={{
+                                color: 'var(--text-primary)',
+                                backgroundColor: 'color-mix(in srgb, var(--text-primary) 10%, transparent)',
+                            }}
+                            title={t('playlist.playInLattice')}
+                        >
+                            <PanelsTopLeft size={14} strokeWidth={2.2} />
+                        </button>
+                    )}
+                    <span className="min-w-0 truncate">
+                        {infoCollection?.name || collection?.name || title}
+                    </span>
                     {hasCutInPanel && <GridPanelToggleIndicator isOpen={showCutInPanel} />}
                 </h2>
                 {(infoCollection?.description || subtitle) && (
@@ -2037,7 +2099,7 @@ export const GridView: React.FC<GridViewProps> = ({
                             {/* Title & Creator */}
                             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain custom-scrollbar pr-1 space-y-4 text-left min-w-0">
                                 <div>
-                                    {(isLocalPlaylistCollection || isNavidromePlaylistCollection) && isEditMode ? (
+                                    {(isLocalPlaylistCollection || isNavidromePlaylistCollection || isPersonalPlaylistCollection) && isEditMode ? (
                                         <input
                                             value={editableTitle}
                                             onChange={(event) => setEditableTitle(event.target.value)}
@@ -2249,6 +2311,16 @@ export const GridView: React.FC<GridViewProps> = ({
                                         {t('localMusic.exportPlaylist')}
                                     </button>
                                 )}
+                                {isPersonalPlaylistCollection && collection.playlistId && sourceActions?.personal?.onExportPlaylist && (
+                                    <button
+                                        onClick={() => void handleExportPersonalPlaylist()}
+                                        disabled={isSourceActionPending}
+                                        className="w-full py-2.5 rounded-full text-xs font-semibold bg-zinc-800/10 dark:bg-zinc-100/10 hover:bg-zinc-900 hover:text-zinc-100 dark:hover:bg-zinc-100 dark:hover:text-zinc-900 transition-all flex items-center justify-center gap-1.5 disabled:opacity-40 cursor-pointer"
+                                    >
+                                        {isSourceActionPending ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                                        {t('localMusic.exportPlaylistData')}
+                                    </button>
+                                )}
                                 {isLocalEntityCollection && sourceActions?.local?.onEditEntity && (
                                     <button
                                         onClick={() => void sourceActions.local?.onEditEntity?.(String(collection.entityId))}
@@ -2262,7 +2334,7 @@ export const GridView: React.FC<GridViewProps> = ({
                                         })}
                                     </button>
                                 )}
-                                {(isLocalFolderCollection || isLocalPlaylistCollection || isNavidromePlaylistCollection) && (
+                                {(isLocalFolderCollection || isLocalPlaylistCollection || isPersonalPlaylistCollection || isNavidromePlaylistCollection) && (
                                     <button
                                         onClick={() => isLocalFolderCollection ? setIsDeleteFolderOpen(true) : void handleDeleteSourceCollection()}
                                         disabled={isSourceActionPending}

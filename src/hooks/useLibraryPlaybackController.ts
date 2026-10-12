@@ -37,7 +37,14 @@ import { getPlaybackRepresentationForRevision } from '../services/playbackRecove
 import { getProviderCacheKey } from '../services/onlineMusic/providerStorage';
 import { getNavidromeConfig, navidromeApi } from '../services/navidromeService';
 import { PlayerState } from '../types';
-import type { LyricData, LocalPlaylist, LocalSong, OnlineLyricsState, QueueAddBehavior, SongResult, StatusMessage } from '../types';
+import type { LyricData, LocalPlaylist, LocalSong, OnlineLyricsState, PersonalPlaylist, QueueAddBehavior, SongResult, StatusMessage } from '../types';
+import {
+    addSongsToPersonalPlaylist,
+    createPersonalPlaylist,
+    getPersonalPlaylists,
+    isSongInPersonalFavorite,
+    removeSongsFromPersonalPlaylist,
+} from '../services/personalPlaylistService';
 import type { AudioQualityPreference, MediaId, ProviderCollection } from '../types/onlineMusic';
 import type { PlaybackSnapshot, PlaybackNavigationOptions } from '../types/appPlayback';
 import type { NavidromeSong } from '../types/navidrome';
@@ -82,11 +89,9 @@ const isBlobObjectUrl = (url: string | null | undefined): url is string => (
 );
 
 type UseLibraryPlaybackControllerParams = {
-    likedSongIds: Set<MediaId>;
     userId?: MediaId;
     setLyrics: (nextLyrics: LyricData | null) => void;
     setIsLyricsLoading: SetState<boolean>;
-    setLikedSongIds: Dispatch<SetStateAction<Set<MediaId>>>;
     navigateToPlaybackView: () => void;
     persistLastPlaybackCache: (song: SongResult | null, queue: SongResult[]) => Promise<void>;
     restoreCachedThemeForSong: (songOrId: ThemeCacheSongKey | SongResult, options?: {
@@ -102,11 +107,9 @@ type UseLibraryPlaybackControllerParams = {
 
 // Owns local and Navidrome playback helpers so App.tsx can stay focused on assembly.
 export function useLibraryPlaybackController({
-    likedSongIds,
     userId,
     setLyrics,
     setIsLyricsLoading,
-    setLikedSongIds,
     navigateToPlaybackView,
     persistLastPlaybackCache,
     restoreCachedThemeForSong,
@@ -123,11 +126,10 @@ export function useLibraryPlaybackController({
     const currentSong = usePlaybackStore(state => state.currentSong);
     const lyrics = usePlaybackStore(state => state.lyrics);
     const playQueue = usePlaybackStore(state => state.playQueue);
-    const starredNavidromeSongIds = useLibraryStore(state => state.starredNavidromeSongIds);
-    const setStarredNavidromeSongIds = useLibraryStore(state => state.setStarredNavidromeSongIds);
 
     const [localSongs, setLocalSongs] = useState<LocalSong[]>([]);
     const [localPlaylists, setLocalPlaylists] = useState<LocalPlaylist[]>([]);
+    const [personalPlaylists, setPersonalPlaylists] = useState<PersonalPlaylist[]>([]);
     const [showLyricMatchModal, setShowLyricMatchModal] = useState(false);
     const [showNaviLyricMatchModal, setShowNaviLyricMatchModal] = useState(false);
     const [showOnlineLyricMatchModal, setShowOnlineLyricMatchModal] = useState(false);
@@ -201,6 +203,22 @@ export function useLibraryPlaybackController({
             console.error('Failed to load local playlists:', error);
         }
     }, []);
+
+    const loadPersonalPlaylists = useCallback(async () => {
+        try {
+            setPersonalPlaylists(await getPersonalPlaylists());
+        } catch (error) {
+            console.error('Failed to load personal playlists:', error);
+        }
+    }, []);
+
+    const isPersonalSongLiked = useCallback((song: SongResult | null) => (
+        isSongInPersonalFavorite(personalPlaylists, song)
+    ), [personalPlaylists]);
+
+    useEffect(() => {
+        void loadPersonalPlaylists();
+    }, [loadPersonalPlaylists]);
 
     const onRefreshLocalSongs = useCallback(async () => {
         const [songs, catalog] = await Promise.all([
@@ -309,6 +327,25 @@ export function useLibraryPlaybackController({
         await loadLocalPlaylists();
         setStatusMsg({ type: 'success', text: t('status.playlistUpdated') || '' });
     }, [currentSong, loadLocalPlaylists, resolveLocalSongRecord, setStatusMsg, t]);
+
+    const addCurrentSongToPersonalPlaylist = useCallback(async (playlistId: string, selectedSong?: SongResult) => {
+        const song = selectedSong ?? currentSong;
+        if (!song) throw new Error('No current song');
+        const updated = await addSongsToPersonalPlaylist(playlistId, [song]);
+        if (!updated) throw new Error('Personal playlist not found');
+        await loadPersonalPlaylists();
+        setStatusMsg({ type: 'success', text: t('status.playlistUpdated') || '' });
+    }, [currentSong, loadPersonalPlaylists, setStatusMsg, t]);
+
+    const createCurrentPersonalPlaylist = useCallback(async (name: string, selectedSong?: SongResult) => {
+        const trimmedName = name.trim();
+        if (!trimmedName) throw new Error('Playlist name is empty');
+        const song = selectedSong ?? currentSong;
+        if (!song) throw new Error('No current song');
+        await createPersonalPlaylist(trimmedName, [song]);
+        await loadPersonalPlaylists();
+        setStatusMsg({ type: 'success', text: t('status.playlistUpdated') || '' });
+    }, [currentSong, loadPersonalPlaylists, setStatusMsg, t]);
 
     const addCurrentSongToOnlinePlaylist = useCallback(async (playlist: ProviderCollection) => {
         if (!currentSong) throw new Error('No current song');
@@ -1366,97 +1403,29 @@ export function useLibraryPlaybackController({
             return;
         }
 
-        const localSong = resolveLocalSongRecord(currentSong);
-        if (isLocalPlaybackSong(currentSong) && localSong) {
-            const nextLiked = !isLocalSongLiked(currentSong);
-            try {
-                await setLocalSongFavorite(localSong, nextLiked);
-                await loadLocalPlaylists();
-                setStatusMsg({ type: 'success', text: nextLiked ? t('status.liked') : (t('status.unliked') || '') });
-            } catch (error) {
-                console.error('Failed to update local favorite playlist', error);
-                setStatusMsg({ type: 'error', text: t('status.likeFailed') });
-            }
-            return;
-        }
-
-        if (isNavidromePlaybackSong(currentSong)) {
-            const navidromeSong = resolveNavidromePlaybackCarrier(currentSong);
-            if (!navidromeSong) return;
-
-            const config = getNavidromeConfig();
-            if (!config) {
-                setStatusMsg({ type: 'error', text: t('navidrome.notConfigured') || '' });
-                return;
-            }
-
-            const songId = navidromeSong.navidromeData.id;
-            const nextStarred = !starredNavidromeSongIds.has(songId);
-
-            try {
-                const success = nextStarred
-                    ? await navidromeApi.star(config, songId)
-                    : await navidromeApi.unstar(config, songId);
-
-                if (success) {
-                    setStarredNavidromeSongIds(prev => {
-                        const next = new Set(prev);
-                        if (nextStarred) next.add(songId);
-                        else next.delete(songId);
-                        return next;
-                    });
-                    setStatusMsg({
-                        type: 'success',
-                        text: nextStarred ? t('status.liked') : (t('status.unliked') || ''),
-                    });
-                } else {
-                    setStatusMsg({ type: 'error', text: t('status.likeFailed') || '' });
-                }
-            } catch (error) {
-                console.error('[Navidrome Favorite] Failed to toggle favorite:', error);
-                setStatusMsg({ type: 'error', text: t('status.likeFailed') || '' });
-            }
-            return;
-        }
-
-        const sourceRef = getPlaybackSourceRef(currentSong);
-        if (sourceRef.kind !== 'online') {
-            setStatusMsg({ type: 'error', text: t('status.likeFailed') });
-            return;
-        }
-        if (!omni.canLikeSong(currentSong)) {
-            setStatusMsg({
-                type: 'info',
-                text: t('status.providerLikeUnavailable')
-                    .replace('{{provider}}', omni.getProviderLabel(sourceRef.providerId)),
-            });
-            return;
-        }
+        // The red heart is the account-independent LX-style local "我喜欢" playlist.
         try {
-            const nextLiked = await omni.toggleSongLike(currentSong, likedSongIds);
-            if (sourceRef.providerId === 'netease') {
-                setLikedSongIds(prev => {
-                    const next = new Set(prev);
-                    for (const id of next) {
-                        if (String(id) === String(sourceRef.mediaId)) next.delete(id);
-                    }
-                    if (nextLiked) next.add(sourceRef.mediaId);
-                    return next;
-                });
+            const playlists = await getPersonalPlaylists();
+            const favorite = playlists.find(playlist => playlist.isFavorite);
+            if (!favorite) throw new Error('Personal favorite playlist is unavailable');
+            const nextLiked = !isSongInPersonalFavorite(playlists, currentSong);
+            if (nextLiked) {
+                const updated = await addSongsToPersonalPlaylist(favorite.id, [currentSong]);
+                if (!updated) throw new Error('Personal favorite playlist was not found');
+            } else {
+                const updated = await removeSongsFromPersonalPlaylist(favorite.id, [getPlaybackSongKey(currentSong)]);
+                if (!updated) throw new Error('Personal favorite playlist was not found');
             }
-            setStatusMsg({ type: 'success', text: nextLiked ? t('status.liked') : t('status.unliked') || 'Removed from Liked' });
+            await loadPersonalPlaylists();
+            setStatusMsg({ type: 'success', text: nextLiked ? t('status.liked') : (t('status.unliked') || '') });
         } catch (error) {
-            console.error('Like failed', error);
+            console.error('[Personal Favorite] Failed to toggle local favorite:', error);
             setStatusMsg({ type: 'error', text: t('status.likeFailed') });
         }
+        return;
     }, [
         currentSong,
-        isLocalSongLiked,
-        likedSongIds,
-        starredNavidromeSongIds,
-        loadLocalPlaylists,
-        setLikedSongIds,
-        setStarredNavidromeSongIds,
+        loadPersonalPlaylists,
         setStatusMsg,
         t,
     ]);
@@ -1467,6 +1436,8 @@ export function useLibraryPlaybackController({
     return useStableActionSurface({
         localSongs,
         localPlaylists,
+        personalPlaylists,
+        isPersonalSongLiked,
         showLyricMatchModal,
         setShowLyricMatchModal,
         showNaviLyricMatchModal,
@@ -1475,12 +1446,15 @@ export function useLibraryPlaybackController({
         setShowOnlineLyricMatchModal,
         loadLocalSongs,
         loadLocalPlaylists,
+        loadPersonalPlaylists,
         onRefreshLocalSongs,
         getFavoriteLocalPlaylist,
         isLocalSongLiked,
         saveCurrentQueueAsLocalPlaylist,
         addCurrentSongToLocalPlaylist,
         createCurrentLocalPlaylist,
+        addCurrentSongToPersonalPlaylist,
+        createCurrentPersonalPlaylist,
         addCurrentSongToOnlinePlaylist,
         addCurrentSongToNavidromePlaylist,
         createCurrentNavidromePlaylist,

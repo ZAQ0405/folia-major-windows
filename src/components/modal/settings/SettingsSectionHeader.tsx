@@ -25,11 +25,11 @@ export const SettingsSectionHeader: React.FC<SettingsSectionHeaderProps> = ({
 }) => (
     <div className="mb-4 md:mb-6 border-b border-white/10 pb-3 md:pb-4">
         <div className="flex items-start justify-between gap-4">
-            <div>
-                <h2 className="text-lg md:text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+            <div className="min-w-0">
+                <h2 className="truncate text-lg md:text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                     {title}
                 </h2>
-                <p className="text-xs opacity-50 mt-1" style={{ color: 'var(--text-secondary)' }}>
+                <p className="mt-1 line-clamp-2 text-xs leading-relaxed opacity-50" style={{ color: 'var(--text-secondary)' }}>
                     {description}
                 </p>
             </div>
