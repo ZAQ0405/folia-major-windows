@@ -39,6 +39,8 @@
 
 ![歌词动画模式设置](docs/screenshots/03-settings.png)
 
+![Folia 与 JIZURA 歌词动画开关](docs/screenshots/04-lyrics-animation.png)
+
 ### JIZURA 歌词 MV 定制
 
 JIZURA 拥有独立的预览与编排工作台，可以分别调整风格、配色、氛围、编排和歌词组件。
