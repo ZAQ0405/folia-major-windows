@@ -17,6 +17,34 @@
 - 歌单、收藏、外观设置、Folia 歌词动画配置和 JIZURA 定制配置可以在“设置 → 备份与导入”中分别导出和导入。
 - 支持本地音乐、封面、LRC/TTML 等歌词数据以及播放队列管理。
 
+## 界面截图
+
+以下截图来自当前 Windows 桌面版的本地运行界面。
+
+### 本地歌单与“我喜欢”
+
+未登录时也可以使用本地“我喜欢”和本地歌单。
+
+![本地我喜欢歌单](docs/screenshots/01-home.png)
+
+### LX 多平台搜索
+
+搜索页可以使用 LX 音源进行多平台搜索，并在结果中显示对应的平台来源。
+
+![LX 多平台搜索](docs/screenshots/02-search.png)
+
+### Folia 与 JIZURA 独立切换
+
+视觉设置中可以分别控制 Folia 内置歌词动画和 JIZURA 歌词 MV。
+
+![歌词动画模式设置](docs/screenshots/03-settings.png)
+
+### JIZURA 歌词 MV 定制
+
+JIZURA 拥有独立的预览与编排工作台，可以分别调整风格、配色、氛围、编排和歌词组件。
+
+![JIZURA 歌词 MV 定制工作台](docs/screenshots/05-jizura-workbench.png)
+
 ## 播放模式说明
 
 播放模式由用户手动选择：
