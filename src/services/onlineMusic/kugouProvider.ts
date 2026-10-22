@@ -15,9 +15,11 @@ import {
 import { getSizedCoverUrl } from '../../utils/coverUrl';
 import { parseLyricsByFormat } from '../../utils/lyrics/parserCore';
 import { isPureMusicLyricText } from '../../utils/lyrics/pureMusic';
+import { fetchKugouLyrics } from '../../utils/lyrics/providers/kugouLyricProvider';
 import { getPlaybackSongKey } from '../../utils/appPlaybackGuards';
 import { decibelsToLinearPeak, toFiniteNumber } from '../../utils/replayGain';
 import { createProviderSongMetadata } from '../../utils/songMetadata';
+import { isAndroidCapacitor } from '../../utils/runtimePlatform';
 import {
     buildKugouLyricSearchQuery,
     normalizeSongTitleForLyricSearch,
@@ -744,6 +746,13 @@ const getKugouLyricCandidate = async (song: SongResult): Promise<any | null> => 
 
 // Fetches the server-decoded KRC payload exposed by the current KuGou provider API.
 const getKugouLyrics = async (song: SongResult) => {
+    // LX's mobile path searches and downloads KRC/LRC directly from KuGou. Reuse the same
+    // in-app implementation on Android instead of requiring the desktop-only provider bridge.
+    if (isAndroidCapacitor) {
+        const lyrics = await fetchKugouLyrics(song);
+        return { lyrics, isPureMusic: false, chorusRanges: [] };
+    }
+
     const candidate = await getKugouLyricCandidate(song);
     if (!candidate?.id || !candidate?.accesskey) {
         return { lyrics: null, isPureMusic: false, chorusRanges: [] };

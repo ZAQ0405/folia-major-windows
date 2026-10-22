@@ -2,9 +2,9 @@ import React, { useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Boxes, Check, ChevronLeft, ChevronsLeftRight, Cpu, GamepadDirectional, Gauge, Mic, Monitor, Moon, Play, PlayCircle, RotateCcw, Settings2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { isAndroidCapacitor } from '../../../utils/runtimePlatform';
 import { useShallow } from 'zustand/react/shallow';
-import type { Theme, VisualizerFrameRate } from '../../../types';
-import { VISUALIZER_FRAME_RATE_OPTIONS } from '../../../utils/frameRateLimiter';
+import type { Theme } from '../../../types';
 import ThemedDialog from '../../shared/ThemedDialog';
 import { SettingsAnchor } from './navigation/SettingsAnchorContext';
 import SettingsSectionHeading from './navigation/SettingsSectionHeading';
@@ -37,8 +37,6 @@ const panelMotion = {
     animate: { opacity: 1, scale: 1, y: 0 },
     exit: { opacity: 0, scale: 0.98, y: 18 },
 };
-
-const getFrameRateLabel = (frameRate: VisualizerFrameRate) => `${frameRate} FPS`;
 
 const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
     isOpen,
@@ -124,8 +122,6 @@ const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
     })));
     const autoPlayOnLaunch = useAudioSettingsStore(state => state.autoPlayOnLaunch);
     const onToggleAutoPlayOnLaunch = useAudioSettingsStore(state => state.handleToggleAutoPlayOnLaunch);
-    const visualizerFrameRate = useVisualizerSettingsStore(state => state.visualizerFrameRate);
-    const onVisualizerFrameRateChange = useVisualizerSettingsStore(state => state.handleSetVisualizerFrameRate);
     const borderColor = isDaylight ? 'border-zinc-300/70' : 'border-white/10';
     const overlayBackground = isDaylight ? 'rgba(0,0,0,0.32)' : 'rgba(0,0,0,0.5)';
     const subviewPanelBg = isDaylight ? 'bg-zinc-200' : 'bg-zinc-900';
@@ -139,13 +135,6 @@ const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
     const utilityGhostButtonClass = isDaylight
         ? 'border-zinc-300 bg-white/50 hover:bg-white/80'
         : 'border-white/10 bg-white/5 hover:bg-white/10';
-    const rangeInputClass = [
-        'w-full accent-current',
-        isDaylight ? 'text-zinc-900' : 'text-white',
-    ].join(' ');
-    const isVisualizerFrameRateLimiterEnabled = visualizerFrameRate !== 'off';
-    const selectedVisualizerFrameRate = isVisualizerFrameRateLimiterEnabled ? visualizerFrameRate : 120;
-    const selectedVisualizerFrameRateIndex = VISUALIZER_FRAME_RATE_OPTIONS.indexOf(selectedVisualizerFrameRate);
     const isLinux = typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('linux');
     const isElectron = typeof window !== 'undefined' && Boolean(window.electron);
     const isMacElectron = window.electron?.platform === 'darwin';
@@ -175,14 +164,6 @@ const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
         </button>
     );
 
-    const handleToggleVisualizerFrameRateLimiter = () => {
-        onVisualizerFrameRateChange(isVisualizerFrameRateLimiterEnabled ? 'off' : selectedVisualizerFrameRate);
-    };
-
-    const handleFrameRateSliderChange = (value: string) => {
-        const nextIndex = Math.min(VISUALIZER_FRAME_RATE_OPTIONS.length - 1, Math.max(0, Number(value)));
-        onVisualizerFrameRateChange(VISUALIZER_FRAME_RATE_OPTIONS[nextIndex]);
-    };
     const handleOverlayMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
         isMouseDownOnOverlayRef.current = event.target === event.currentTarget;
     };
@@ -229,50 +210,6 @@ const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
                                         </div>
                                     </div>
                                     {renderToggle(disableHomeDynamicBackground, () => onToggleDisableHomeDynamicBackground(!disableHomeDynamicBackground))}
-                                </div>
-
-                                <div className={`p-4 rounded-xl border space-y-4 ${settingsCardClass}`}>
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="space-y-1">
-                                            <div className="text-sm font-medium flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                                                <Cpu size={14} />
-                                                {t('options.visualizerFrameRate')}
-                                            </div>
-                                            <div className="text-xs opacity-50 max-w-[420px]" style={{ color: 'var(--text-secondary)' }}>
-                                                {t('options.visualizerFrameRateDesc')}
-                                            </div>
-                                        </div>
-                                        {renderToggle(isVisualizerFrameRateLimiterEnabled, handleToggleVisualizerFrameRateLimiter)}
-                                    </div>
-                                    <div className={`space-y-3 transition-opacity ${isVisualizerFrameRateLimiterEnabled ? 'opacity-100' : 'opacity-45 pointer-events-none'}`}>
-                                        <div className="flex items-center justify-between text-sm" style={{ color: 'var(--text-primary)' }}>
-                                            <span>{t('options.visualizerFrameRateValue')}</span>
-                                            <span className="font-mono opacity-70" style={{ color: 'var(--text-secondary)' }}>
-                                                {getFrameRateLabel(selectedVisualizerFrameRate)}
-                                            </span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max={VISUALIZER_FRAME_RATE_OPTIONS.length - 1}
-                                            step="1"
-                                            value={Math.max(0, selectedVisualizerFrameRateIndex)}
-                                            onChange={(event) => handleFrameRateSliderChange(event.target.value)}
-                                            className={rangeInputClass}
-                                            aria-label={t('options.visualizerFrameRateValue')}
-                                            disabled={!isVisualizerFrameRateLimiterEnabled}
-                                        />
-                                        <div className="grid grid-cols-3 text-[11px] font-mono opacity-60" style={{ color: 'var(--text-secondary)' }}>
-                                            {VISUALIZER_FRAME_RATE_OPTIONS.map((frameRate, index) => (
-                                                <span
-                                                    key={frameRate}
-                                                    className={index === 1 ? 'text-center' : index === 2 ? 'text-right' : ''}
-                                                >
-                                                    {frameRate}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
                                 </div>
 
                 </SettingsAnchor>
@@ -396,7 +333,7 @@ const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
                                     {renderToggle(autoPlayOnLaunch, () => onToggleAutoPlayOnLaunch(!autoPlayOnLaunch))}
                                 </div>
 
-                                <div className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${settingsCardClass}`}>
+                                {!isAndroidCapacitor && <div className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${settingsCardClass}`}>
                                     <div className="space-y-1">
                                         <div className="text-sm font-medium flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                                             <Monitor size={14} />
@@ -407,7 +344,7 @@ const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
                                         </div>
                                     </div>
                                     {renderToggle(alwaysShowMainWindowTitlebar, () => onToggleAlwaysShowMainWindowTitlebar(!alwaysShowMainWindowTitlebar))}
-                                </div>
+                                </div>}
 
                                 {isMacElectron && (
                                     <div className={`p-4 rounded-xl border flex items-center justify-between gap-4 ${settingsCardClass}`}>
@@ -466,7 +403,7 @@ const LabSettingsModal: React.FC<LabSettingsModalProps> = ({
                                     </div>
                                 )}
 
-                                {!isLinux && (
+                                {!isLinux && !isAndroidCapacitor && (
                                     <div className={`flex items-center justify-between p-4 rounded-xl border transition-colors hover:bg-white/8 ${settingsCardInteractiveClass}`} onClick={handleNativeBlurToggle}>
                                         <div className="flex flex-col pr-8">
                                             <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>

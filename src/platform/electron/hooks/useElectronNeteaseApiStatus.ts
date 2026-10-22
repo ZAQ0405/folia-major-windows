@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { TFunction } from 'i18next';
-import type { StatusMessage } from '../types';
-import { setStatusMessage as setStatusMsg } from '../stores/useStatusMessageStore';
-import { useNeteaseApiStatusStore } from '../stores/useNeteaseApiStatusStore';
+import type { StatusMessage } from '../../../types';
+import { setStatusMessage as setStatusMsg } from '../../../stores/useStatusMessageStore';
+import { useNeteaseApiStatusStore } from '../../../stores/useNeteaseApiStatusStore';
 
-// src/hooks/useElectronNeteaseApiStatus.ts
+// src/platform/electron/hooks/useElectronNeteaseApiStatus.ts
 
 type StatusSetter = Dispatch<SetStateAction<StatusMessage | null>>;
 

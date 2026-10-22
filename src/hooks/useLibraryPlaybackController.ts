@@ -29,7 +29,8 @@ import { autoMatchBestLyric } from '../utils/lyrics/autoMatchBestLyric';
 import { resolveExplicitFileTimedLyricFormat } from '../utils/lyrics/formatDetection';
 import { applyUploadedLocalLyrics } from '../utils/lyrics/localLyricsUpload';
 import { omni } from '../services/onlineMusic/omni';
-import { getProviderSongMetadata } from '../services/onlineMusic/songMetadata';
+import { getProviderSongMetadata, getSongCoverUrl } from '../services/onlineMusic/songMetadata';
+import { resolveNeteaseSearchCover } from '../services/onlineMusic/luoxueSearch';
 import { getSongResourceCacheKey } from '../services/onlineMusic/resourceKeys';
 import { getSongCacheWithLegacyMigration } from '../services/onlineMusic/resourceCache';
 import { buildLocalSourceRevision, buildNavidromeSourceRevision } from '../services/playbackRecovery/sourceRevision';
@@ -1405,12 +1406,40 @@ export function useLibraryPlaybackController({
 
         // The red heart is the account-independent LX-style local "我喜欢" playlist.
         try {
+            if (isLocalPlaybackSong(currentSong)) {
+                const localSongId = currentSong.localRef.songId;
+                const [playlists, localSongs] = await Promise.all([
+                    getLocalPlaylists(),
+                    getLocalSongs(),
+                ]);
+                const localSong = localSongs.find(song => song.id === localSongId);
+                if (!localSong) throw new Error('Local favorite song is unavailable');
+                const favorite = playlists.find(playlist => playlist.isFavorite);
+                const canonicalSongId = buildCanonicalLocalSongIdIndex(localSongs).get(localSong.id) || localSong.id;
+                const nextLiked = !favorite?.songIds.includes(canonicalSongId);
+                const updated = await setLocalSongFavorite(localSong, nextLiked);
+                if (!updated) throw new Error('Local favorite playlist is unavailable');
+                await loadLocalPlaylists();
+                setStatusMsg({ type: 'success', text: nextLiked ? t('status.liked') : (t('status.unliked') || '') });
+                return;
+            }
+
             const playlists = await getPersonalPlaylists();
             const favorite = playlists.find(playlist => playlist.isFavorite);
             if (!favorite) throw new Error('Personal favorite playlist is unavailable');
             const nextLiked = !isSongInPersonalFavorite(playlists, currentSong);
             if (nextLiked) {
-                const updated = await addSongsToPersonalPlaylist(favorite.id, [currentSong]);
+                let songToSave = currentSong;
+                const sourceRef = currentSong.sourceRef;
+                const providerData = sourceRef?.kind === 'online' ? sourceRef.providerData : undefined;
+                const picId = String(providerData?.pic_id || '');
+                if (sourceRef?.kind === 'online' && sourceRef.providerId === 'netease' && picId && !getSongCoverUrl(currentSong)) {
+                    const coverUrl = await resolveNeteaseSearchCover(picId, String(sourceRef.mediaId));
+                    if (coverUrl) {
+                        songToSave = { ...currentSong, album: { ...currentSong.album, coverUrl } };
+                    }
+                }
+                const updated = await addSongsToPersonalPlaylist(favorite.id, [songToSave]);
                 if (!updated) throw new Error('Personal favorite playlist was not found');
             } else {
                 const updated = await removeSongsFromPersonalPlaylist(favorite.id, [getPlaybackSongKey(currentSong)]);

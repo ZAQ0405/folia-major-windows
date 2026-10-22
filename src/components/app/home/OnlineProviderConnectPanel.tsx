@@ -40,14 +40,16 @@ const OnlineProviderConnectPanel = ({
     const { t } = useTranslation();
     const channelLabel = (provider: ProviderAccountSummary): string => {
         const status = channelHealth[provider.providerId]?.status;
+        // The account API controls login and personal libraries; it does not gate Android's
+        // anonymous search channel. Show the measured channel result before account setup state.
+        if (status === 'available') return t('home.providerChannelAvailable');
+        if (status === 'unavailable') return t('home.providerChannelUnavailable');
         if (!provider.availability.configured) {
             if (!isAndroidCapacitor) return t('home.providerNotConfigured');
             return provider.availability.reason === 'runtime-unavailable'
                 ? t('home.providerRuntimeUnavailable')
                 : t('home.providerAudioApiNotConfigured');
         }
-        if (status === 'available') return t('home.providerChannelAvailable');
-        if (status === 'unavailable') return t('home.providerChannelUnavailable');
         return t('home.providerChannelChecking');
     };
     return (

@@ -411,6 +411,32 @@
    in PosterWall; these controls keep the expanded poster's touch targets usable
    after that smaller world scale is applied. */
 @media (orientation: landscape) {
+    /* The infinite wall can span many virtual screens. Pre-promoting its entire plane reserves
+       too many Chromium compositor tiles on Android and makes visible poster regions go black.
+       The active transform still animates normally; let WebView choose a smaller layer budget. */
+    .folia-android-shell .lattice-root .lattice-world {
+        will-change: auto;
+    }
+
+    /* The full-screen SVG turbulence + blend pass and per-card blur shadows are expensive on
+       WebView. Keep the poster art and a single readability gradient, reserving depth effects for
+       the one expanded/focused card. This reduces draw submissions without shrinking preload. */
+    .folia-android-shell .lattice-root::after {
+        display: none;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster:not(.is-expanded):not(.is-focused):not(.is-current) {
+        box-shadow: none;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster:not(.is-expanded) .lattice-poster-shade {
+        display: none;
+    }
+
+    .folia-android-shell .lattice-root .lattice-poster.is-expanded .lattice-poster-shade {
+        display: block;
+    }
+
     .folia-android-shell .lattice-root .lattice-chrome {
         width: min(100%, 640px);
         gap: 8px;
@@ -485,9 +511,7 @@
         z-index: 1;
         border-radius: 18px !important;
         opacity: 1;
-        background:
-            linear-gradient(180deg, rgb(255 255 255 / 8%), transparent 30%),
-            linear-gradient(180deg, transparent 36%, rgb(0 0 0 / 7%) 54%, rgb(0 0 0 / 72%) 100%);
+        background: linear-gradient(180deg, transparent 40%, rgb(0 0 0 / 66%) 100%);
         transition: none;
     }
 

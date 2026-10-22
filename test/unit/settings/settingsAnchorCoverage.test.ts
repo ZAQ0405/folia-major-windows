@@ -49,6 +49,7 @@ describe('settings section anchors', () => {
         const renderedOrder = [
             ['queueSettings', 'anchorId="queueSettings"'],
             ['playbackModeSettings', 'anchorId="playbackModeSettings"'],
+            ['providerPlaybackModes', '<ProviderPlaybackModesSection'],
             ['scrobbleSettings', 'anchorId="scrobbleSettings"'],
             ['transitionSettings', '<TransitionSettingsSection'],
             ['replayGainSettings', 'anchorId="replayGainSettings"'],

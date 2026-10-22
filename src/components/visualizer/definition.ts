@@ -79,6 +79,8 @@ export interface VisualizerSharedProps {
     /** The display-track duration in seconds, used to keep the MV alive after the final lyric line. */
     duration?: number;
     onBack?: () => void;
+    /** Toggle playback when the active player lyric stage itself is tapped. */
+    onTogglePlayback?: () => void;
     isPanelOpen?: boolean;
     alwaysShowBackButton?: boolean;
     onPlayerPanelGuideHotspotChange?: (isActive: boolean) => void;

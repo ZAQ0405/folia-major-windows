@@ -1,0 +1,3226 @@
+/* Android-only styles extracted from the shared desktop stylesheet. */
+.folia-android-shell .folia-settings-modal__options {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  gap: 0.25rem !important;
+  min-height: 0;
+  height: 100%;
+}
+
+.folia-android-shell .folia-settings-modal__options > .settings-nav-chips {
+  position: relative;
+  flex: 0 0 auto;
+  align-self: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0.2rem 0 0.35rem;
+}
+
+.folia-android-shell .folia-settings-modal__options > .folia-settings-modal__content {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+}
+
+.folia-android-stage-viewport {
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.folia-android-shell .folia-home-header-row {
+  padding-top: max(0.75rem, var(--safe-area-inset-top, 0px)) !important;
+}
+
+.folia-android-shell .folia-settings-modal {
+  padding-top: max(0.5rem, var(--safe-area-inset-top, 0px)) !important;
+}
+
+.folia-android-shell .folia-settings-modal__content {
+  min-width: 0;
+  width: 100%;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+@media (max-width: 640px) {
+  .folia-android-shell .folia-grid-cut-in-info-panel {
+    left: 12px;
+    right: 12px;
+    top: 64px;
+    bottom: auto !important;
+    width: auto;
+    height: min(320px, calc(100dvh - 88px));
+    padding: 12px;
+    overflow: hidden;
+    border-radius: 18px;
+  }
+
+  .folia-android-shell .folia-grid-cut-in-info-cover {
+    display: none;
+  }
+
+  .folia-android-shell .folia-grid-cut-in-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 8px;
+  }
+
+  .folia-android-shell .folia-grid-cut-in-actions > * {
+    min-width: 0;
+    min-height: 36px;
+    margin-top: 0;
+    padding: 8px 6px;
+    line-height: 1.2;
+  }
+
+  .folia-android-shell .folia-grid-cut-in-info-title {
+    padding-right: 36px;
+  }
+}
+
+@media (orientation: landscape) and (max-width: 900px) and (max-height: 420px) {
+  .folia-android-shell .folia-grid3d-map-button {
+    left: 0.75rem;
+    transform: none;
+    translate: none !important;
+  }
+
+  .folia-android-shell:has(.folia-floating-player-card) .folia-grid3d-slider {
+    margin-bottom: 44px;
+  }
+
+  .folia-android-shell .folia-grid3d-slider--card .folia-grid3d-card {
+    padding: 0.4rem;
+  }
+
+  .folia-android-shell .folia-grid3d-slider--card .folia-grid3d-card-cover {
+    margin-bottom: 0.35rem;
+  }
+
+  .folia-android-shell .folia-grid3d-slider--card .folia-grid3d-card-details p {
+    margin-top: 0.15rem;
+    font-size: 0.62rem;
+  }
+  .folia-android-shell:has(.folia-floating-player-card[data-expanded="true"]) .folia-grid-track-viewport {
+    margin-bottom: 112px;
+  }
+
+  .folia-android-shell .folia-grid-cut-in-info-panel {
+    left: 56px;
+    right: auto;
+    top: 12px;
+    bottom: auto !important;
+    width: min(300px, calc(100vw - 72px));
+    height: min(208px, calc(100dvh - 24px));
+  }
+}
+.folia-android-stage-viewport {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: inherit;
+}
+
+.folia-android-stage {
+  position: relative;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+.folia-android-stage .folia-settings-modal {
+  align-items: center;
+  padding: 3rem 1.25rem;
+}
+
+.folia-android-stage .folia-settings-modal__panel {
+  border-left: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-right: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+}
+
+.folia-android-stage .folia-settings-modal__decoration {
+  display: block;
+}
+
+.folia-android-stage .folia-settings-modal__content,
+.folia-android-stage .folia-settings-modal .custom-scrollbar {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.folia-android-shell .folia-home-root {
+  min-width: 0;
+  min-height: 0;
+}
+
+.folia-android-shell .folia-home-header {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.folia-android-shell .folia-home-header-row {
+  grid-template-columns: minmax(6.5rem, 0.85fr) minmax(0, 1.25fr) minmax(10.5rem, 1fr);
+  column-gap: 0.75rem;
+  row-gap: 0;
+  max-width: none;
+  padding: 0.75rem 1rem;
+}
+
+.folia-android-shell .folia-home-header-left,
+.folia-android-shell .folia-home-header-tabs,
+.folia-android-shell .folia-home-header-search {
+  min-width: 0;
+  order: initial;
+}
+
+.folia-android-shell .folia-home-header-left {
+  grid-column: 1;
+  grid-row: 1;
+  overflow: hidden;
+}
+
+.folia-android-shell .folia-home-header-left h1 {
+  min-width: 0;
+  font-size: clamp(1rem, 3.2vw, 1.5rem);
+  white-space: nowrap;
+}
+
+.folia-android-shell .folia-home-header-tabs {
+  grid-column: 2;
+  grid-row: 1;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.folia-android-shell .folia-home-header-tabs > div {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.folia-android-shell .folia-home-header-tabs > div::-webkit-scrollbar {
+  display: none;
+}
+
+.folia-android-shell .folia-home-header-tabs button {
+  flex: 0 0 auto;
+  padding-inline: 0.7rem;
+}
+
+.folia-android-shell .folia-home-header-search {
+  grid-column: 3;
+  grid-row: 1;
+  justify-content: stretch;
+}
+
+.folia-android-shell .folia-home-header-search form {
+  width: 100%;
+  min-width: 0;
+}
+
+.folia-android-shell .folia-home-canvas {
+  min-width: 0;
+  min-height: 0;
+  padding: 0 0.75rem 0.75rem;
+}
+
+.folia-android-shell .folia-grid3d-slider {
+  min-height: 0;
+}
+.folia-android-shell .folia-grid3d-slider--measure-pending {
+  visibility: hidden;
+}
+
+.folia-android-shell .folia-grid3d-scroll {
+  min-height: 0;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+  scroll-behavior: auto !important;
+  scroll-snap-type: none !important;
+  overscroll-behavior-x: none;
+  -webkit-overflow-scrolling: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.folia-android-shell .folia-grid3d-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.folia-android-shell .folia-grid3d-focused-info {
+  min-height: 0;
+  margin-bottom: 0;
+  padding: 0.35rem 0.75rem 0.5rem;
+}
+
+.folia-android-shell .folia-grid3d-focused-info h3 {
+  font-size: clamp(1rem, 3.6vw, 1.5rem);
+  line-height: 1.2;
+}
+.folia-android-shell .folia-grid3d-slider--card .folia-grid3d-focused-info {
+  display: none;
+}
+
+.folia-android-shell .folia-grid3d-slider--card .folia-grid3d-card {
+  padding: 0.7rem;
+  border-radius: 1rem;
+}
+
+.folia-android-shell .folia-grid3d-slider--card .folia-grid3d-card-cover {
+  margin-bottom: 0.7rem;
+  border-radius: 0.8rem;
+}
+
+.folia-android-shell .folia-grid3d-slider--card .folia-grid3d-card-details {
+  padding-top: 0.05rem;
+}
+
+.folia-android-shell .folia-grid3d-slider--card .folia-grid3d-card-details h3 {
+  font-size: clamp(0.82rem, 2.4vw, 1rem);
+  line-height: 1.25;
+}
+
+.folia-android-shell .folia-grid3d-slider--card .folia-grid3d-card-details p {
+  line-height: 1.25;
+}
+.folia-android-shell .folia-grid3d-slider [data-grid3d-index],
+.folia-android-shell .folia-grid3d-slider [data-grid3d-index] *,
+.folia-android-shell .folia-grid3d-slider .theme-polaroid-card {
+  transition: none !important;
+  animation: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  /* A translucent blur over the animated app background forces the WebView to
+     repaint the whole card on every background frame, which looks like a
+     card flash on Android. Keep the card surface opaque and stable. */
+  background: var(--bg-color) !important;
+}
+
+.folia-android-shell .folia-grid3d-slider [data-grid3d-index] {
+  transform: none !important;
+  opacity: 1 !important;
+}
+.folia-android-shell .folia-grid3d-slider--fit {
+  justify-content: center;
+}
+
+.folia-android-shell .folia-grid3d-slider--fit .folia-grid3d-focused-info {
+  display: none;
+}
+
+.folia-android-shell .folia-android-fit-grid {
+  display: grid;
+  align-content: center;
+  align-items: center;
+  justify-items: center;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 0.5rem 0.75rem;
+}
+
+.folia-android-shell .folia-android-fit-card {
+  min-width: 0;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  padding: 0;
+  border: 0;
+  color: var(--text-primary);
+  text-align: left;
+  background: transparent;
+  cursor: pointer;
+}
+
+.folia-android-shell .folia-android-fit-card:active {
+  transform: none;
+}
+
+.folia-android-shell .folia-android-fit-card__cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  aspect-ratio: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 0.8rem;
+  background: color-mix(in srgb, var(--bg-color) 72%, var(--text-primary) 8%);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+}
+
+.folia-android-shell .folia-android-fit-card--card {
+  padding: 0.45rem;
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--bg-color) 92%, var(--text-primary) 4%);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 9%, transparent);
+}
+
+.folia-android-shell .folia-android-fit-card--card .folia-android-fit-card__cover {
+  border-radius: 0.6rem;
+  box-shadow: none;
+}
+
+.folia-android-shell .folia-android-fit-card__details {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0 0.1rem 0.1rem;
+}
+
+.folia-android-shell .folia-android-fit-card__title,
+.folia-android-shell .folia-android-fit-card__secondary {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.folia-android-shell .folia-android-fit-card__title {
+  font-size: clamp(0.62rem, 1.8vw, 0.86rem);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.folia-android-shell .folia-android-fit-card__secondary {
+  font-size: clamp(0.52rem, 1.45vw, 0.68rem);
+  line-height: 1.2;
+  opacity: 0.54;
+}
+
+.folia-android-shell .folia-android-fit-card--skeleton {
+  pointer-events: none;
+}
+
+.folia-android-shell .folia-android-fit-card--skeleton .folia-android-fit-card__cover {
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  border-color: transparent;
+}
+
+.folia-android-shell .folia-android-fit-empty {
+  grid-column: 1 / -1;
+  width: 100%;
+  padding: 2rem 1rem;
+  text-align: center;
+  font-size: 0.8rem;
+  opacity: 0.55;
+}
+.folia-android-shell .folia-provider-switcher {
+  top: 4.25rem;
+  right: 0.75rem;
+  bottom: auto;
+}
+
+.folia-android-shell .folia-provider-switcher-menu {
+  position: fixed;
+  top: 3.5rem;
+  right: 0.75rem;
+  bottom: auto;
+  width: min(28rem, calc(100vw - 1.5rem));
+  max-height: calc(100dvh - 4rem) !important;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 0.4rem;
+  transform-origin: top right;
+}
+
+.folia-android-shell .folia-provider-switcher-menu > div:first-child,
+.folia-android-shell .folia-provider-switcher-menu > button {
+  grid-column: 1 / -1;
+}
+
+.folia-android-shell .folia-provider-switcher-menu > div:first-child {
+  padding: 0.1rem 0.35rem 0;
+}
+
+.folia-android-shell .folia-provider-switcher-menu > button {
+  margin-bottom: 0;
+  padding: 0.45rem 0.5rem;
+}
+
+.folia-android-shell .folia-provider-switcher-menu .folia-provider-row {
+  min-width: 0;
+  margin-bottom: 0;
+  gap: 0.35rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.9rem;
+}
+
+.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button {
+  min-width: 0;
+  gap: 0.4rem;
+}
+
+.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > img,
+.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > span:first-child {
+  width: 1.9rem;
+  height: 1.9rem;
+}
+
+.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > span {
+  line-height: 1.15;
+}
+
+.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > span > span {
+  margin-top: 0.12rem;
+  font-size: 0.62rem;
+  line-height: 1.15;
+}
+
+.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > span > span:nth-child(2) {
+  display: none;
+}
+
+.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > span > span:nth-child(3),
+.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > span > span:nth-child(4) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > svg,
+.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button + button {
+  flex: 0 0 auto;
+}
+
+.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button + button {
+  width: 1.7rem;
+  height: 1.7rem;
+}
+
+.folia-android-shell .folia-provider-row {
+  gap: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 1rem;
+}
+
+.folia-android-shell .folia-provider-row > button {
+  gap: 0.5rem;
+}
+
+.folia-android-shell .folia-provider-row > button > img,
+.folia-android-shell .folia-provider-row > button > span:first-child {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.folia-android-shell .folia-provider-connect-panel {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  row-gap: 0.4rem;
+  overflow: hidden;
+  padding-inline: 0.75rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.35rem;
+}
+
+.folia-android-shell .folia-provider-connect-panel > :not(:first-child) {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.folia-android-shell .folia-provider-connect-panel > div:first-child {
+  display: none;
+}
+
+.folia-android-shell .folia-provider-connect-panel > div:nth-child(2) {
+  max-width: 36rem;
+  gap: 0.25rem;
+}
+
+.folia-android-shell .folia-provider-connect-panel > div:nth-child(2) h2 {
+  font-size: clamp(0.9rem, 3vw, 1.2rem);
+  line-height: 1.2;
+}
+
+.folia-android-shell .folia-provider-connect-panel > div:nth-child(2) p {
+  font-size: 0.64rem;
+  line-height: 1.2;
+}
+
+.folia-android-shell .folia-provider-connect-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+  max-width: 42rem;
+  padding-top: 0;
+}
+
+.folia-android-shell .folia-provider-connect-actions > button {
+  min-width: 0;
+  min-height: 2.4rem;
+  padding: 0.45rem 0.6rem;
+  gap: 0.4rem;
+  border-radius: 0.9rem;
+  overflow: hidden;
+  font-size: 0.68rem;
+  white-space: nowrap;
+}
+
+.folia-android-shell .folia-provider-connect-actions > button > span:first-child {
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: 0 0 auto;
+}
+
+.folia-android-shell .folia-provider-connect-actions > button > span:nth-child(2) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folia-android-shell .folia-provider-connect-actions > button > span:last-child {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 0.58rem;
+}
+.folia-android-shell .folia-settings-modal {
+  padding: 0.25rem;
+}
+
+.folia-android-shell .folia-settings-modal__panel {
+  width: min(94%, 56rem);
+  height: min(100%, 48rem) !important;
+  max-height: calc(100% - 0.5rem) !important;
+  padding: 1rem;
+  border-radius: 1.5rem;
+}
+
+.folia-android-shell .folia-settings-modal__options {
+  flex-direction: row;
+  gap: 1rem;
+}
+
+.folia-android-shell .folia-settings-modal__content {
+  min-width: 0;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+.folia-android-shell .folia-unified-panel-surface {
+  width: min(20rem, calc(100vw - 1.5rem));
+  max-height: calc(100dvh - 3.5rem) !important;
+  margin-bottom: 0.5rem;
+  border-radius: 1.25rem;
+}
+@media (orientation: landscape) and (max-height: 360px) {
+  .folia-android-shell .folia-unified-panel {
+    top: 0.5rem;
+    bottom: auto !important;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface {
+    width: min(24rem, calc(100vw - 1rem));
+    max-width: calc(100vw - 1rem);
+    height: min(13rem, calc(100dvh - 1rem));
+    max-height: 13rem !important;
+    overflow: hidden;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[class*="bg-black/40"] {
+    background-color: rgb(10 12 18 / 26%) !important;
+    border: 1px solid rgb(255 255 255 / 14%);
+    backdrop-filter: blur(6px) saturate(1.15) !important;
+    -webkit-backdrop-filter: blur(6px) saturate(1.15) !important;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[class*="bg-white/60"] {
+    background-color: rgb(255 255 255 / 38%) !important;
+    border: 1px solid rgb(0 0 0 / 12%);
+    backdrop-filter: blur(6px) saturate(1.15) !important;
+    -webkit-backdrop-filter: blur(6px) saturate(1.15) !important;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface > div:first-child {
+    display: grid;
+    grid-template-columns: 3.25rem minmax(0, 1fr);
+    grid-template-rows: 3.25rem 2.75rem minmax(0, 1fr);
+    gap: 0.375rem;
+    height: 100%;
+    min-height: 0;
+    padding: 0.625rem;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface > div:first-child > div:first-child {
+    grid-column: 1;
+    grid-row: 1;
+    width: 3.25rem;
+    aspect-ratio: 1;
+    margin: 0;
+  }
+
+  .folia-android-shell .folia-unified-panel-cover-action {
+    top: 0.25rem;
+    right: 0.25rem;
+    bottom: auto;
+    left: auto;
+  }
+
+  .folia-android-shell .folia-unified-panel-cover-action--left {
+    right: auto;
+    left: 0.25rem;
+  }
+
+  .folia-android-shell .folia-unified-panel-cover-action--bottom {
+    top: auto;
+    bottom: 0.25rem;
+  }
+
+  .folia-android-shell .folia-unified-panel-cover-action button {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .folia-android-shell .folia-unified-panel-cover-action button svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface > div:first-child > div:nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+    margin: 0;
+    height: 2.75rem;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface > div:first-child > div:nth-child(3) {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 0.125rem;
+  }
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="cover"] {
+    max-height: calc(100dvh - 1rem) !important;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="cover"] > div:first-child {
+    height: 100%;
+    min-height: 0;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    grid-template-rows: 2.75rem minmax(0, 1fr);
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="cover"] > div:first-child > div:first-child {
+    grid-column: 1;
+    grid-row: 2;
+    width: 7rem;
+    height: 7rem;
+    margin: 0;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="cover"] > div:first-child > div:nth-child(2) {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-width: 0;
+    height: 2.75rem;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="cover"] > div:first-child > div:nth-child(3) {
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="cover"] > div:first-child > div:nth-child(3) > div {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0;
+    text-align: center;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="cover"] > div:first-child > div:nth-child(3) > div > div > div:first-child {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="cover"] > div:first-child > div:nth-child(3) h2 {
+    font-size: 1.25rem;
+    line-height: 1.25;
+    text-align: center;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="cover"] > div:first-child > div:nth-child(3) > div > div > div:nth-child(2) {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.35rem;
+    opacity: 1;
+    text-align: center;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="cover"] > div:first-child > div:nth-child(3) > div > div > div:nth-child(2) > div:first-child {
+    max-width: 100%;
+    overflow: hidden;
+    color: rgb(255 255 255 / 82%);
+    font-size: 0.875rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="cover"] > div:first-child > div:nth-child(3) > div > div > div:nth-child(2) > div:nth-child(2) {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    color: rgb(255 255 255 / 54%);
+    font-size: 0.8125rem;
+    line-height: 1.25;
+    opacity: 1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="cover"] > div:first-child > div:nth-child(3) > div > div > div:nth-child(2) > div:nth-child(2)::before {
+    content: none;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface:not([data-panel-tab="cover"]) > div:first-child {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 2.75rem minmax(0, 1fr);
+  }
+
+  .folia-android-shell .folia-unified-panel-surface:not([data-panel-tab="cover"]) > div:first-child > div:first-child {
+    display: none;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface:not([data-panel-tab="cover"]) > div:first-child > div:nth-child(2) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface:not([data-panel-tab="cover"]) > div:first-child > div:nth-child(3) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="cover"] > div:first-child > div:nth-child(3),
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="controls"] > div:first-child > div:nth-child(3),
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="account"] > div:first-child > div:nth-child(3),
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="onlineLyrics"] > div:first-child > div:nth-child(3),
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="local"] > div:first-child > div:nth-child(3),
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="navi"] > div:first-child > div:nth-child(3) {
+    overflow: hidden;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface[data-panel-tab="queue"] > div:first-child > div:nth-child(3) {
+    overflow-x: hidden;
+    min-width: 0;
+  }
+
+  .folia-android-shell .folia-unified-panel-tabs {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) 1.75rem;
+    align-content: stretch;
+    gap: 0.25rem;
+    height: 100%;
+    margin: 0;
+  }
+
+  .folia-android-shell .folia-unified-panel-tab {
+    min-width: 0;
+    min-height: 0;
+    padding: 0.25rem 0.125rem;
+    flex-direction: column;
+    gap: 0.25rem;
+    border-radius: 0.625rem;
+  }
+
+  .folia-android-shell .folia-unified-panel-tab svg {
+    width: 0.8125rem;
+    height: 0.8125rem;
+    flex: none;
+  }
+
+  .folia-android-shell .folia-unified-panel-tab-label {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 0.625rem;
+    line-height: 0.8125rem;
+    text-overflow: ellipsis;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface:not([data-panel-tab="cover"]) .folia-unified-panel-tabs {
+    height: 2.75rem;
+  }
+
+  .folia-android-shell .folia-unified-panel-collapse-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    min-width: 1.75rem;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0.625rem;
+    background: rgb(255 255 255 / 8%);
+    color: inherit;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface--compact {
+    width: min(22rem, calc(100vw - 1rem));
+    height: auto !important;
+    min-height: 0;
+    max-height: none !important;
+    overflow: visible;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface--compact > div:first-child {
+    display: block;
+    height: auto;
+    min-height: 0;
+    padding: 0.375rem;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface--compact > div:first-child > div:first-child,
+  .folia-android-shell .folia-unified-panel-surface--compact > div:first-child > div:nth-child(3) {
+    display: none !important;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface--compact > div:first-child > div:nth-child(2) {
+    width: 100%;
+    height: 2.75rem;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface--compact .folia-unified-panel-tab {
+    flex-direction: row;
+    gap: 0.25rem;
+    padding: 0.25rem 0.125rem;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface--compact .folia-unified-panel-tab-label {
+    font-size: 0.5625rem;
+    line-height: 0.75rem;
+  }
+
+  .folia-android-shell .folia-panel-controls-stack {
+    display: grid;
+    grid-template-columns: 6rem minmax(0, 1fr);
+    grid-template-rows: 2rem 2.5rem minmax(0, 1fr);
+    gap: 0.25rem 0.5rem;
+    align-content: start;
+  }
+
+  .folia-android-shell .folia-panel-controls-stack > .folia-panel-song-actions {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .folia-android-shell .folia-panel-controls-section {
+    display: contents;
+  }
+
+  .folia-android-shell .folia-panel-controls-section > .folia-panel-volume-row {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .folia-android-shell .folia-panel-controls-section > .folia-panel-appearance {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+  }
+
+  .folia-android-shell .folia-panel-song-actions {
+    gap: 0.375rem;
+  }
+
+  .folia-android-shell .folia-panel-song-actions > button {
+    height: 2rem;
+  }
+
+  .folia-android-shell .folia-panel-song-actions svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .folia-android-shell .folia-panel-controls-section {
+    padding-top: 0.25rem;
+    gap: 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-volume-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: 1rem 1rem;
+    gap: 0.125rem 0.25rem;
+    padding: 0.125rem 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-volume-row > button:first-of-type {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .folia-android-shell .folia-panel-volume-row > span {
+    display: none;
+  }
+
+  .folia-android-shell .folia-panel-volume-row > input[type="range"] {
+    grid-column: 2 / -1;
+    grid-row: 1;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .folia-android-shell .folia-panel-volume-row > button:nth-of-type(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .folia-android-shell .folia-panel-volume-row > button:nth-of-type(3) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .folia-android-shell .folia-panel-controls-stack > .folia-panel-controls-footer {
+    grid-column: 1;
+    grid-row: 3;
+    min-width: 0;
+    padding-top: 0.125rem;
+  }
+
+  .folia-android-shell .folia-panel-appearance {
+    gap: 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-appearance > div {
+    min-height: 0;
+  }
+
+  .folia-android-shell .folia-panel-appearance [class*="h-8"] {
+    height: 1.5rem;
+  }
+
+  .folia-android-shell .folia-panel-appearance [class*="pt-1"] {
+    padding-top: 0;
+  }
+
+  .folia-android-shell .folia-panel-appearance > div:first-child button {
+    height: 1.375rem;
+    padding-right: 0.25rem;
+    padding-left: 0.25rem;
+    font-size: 0.5625rem;
+  }
+
+  .folia-android-shell .folia-panel-appearance > div:last-child button {
+    padding-top: 0.125rem;
+    padding-bottom: 0.125rem;
+  }
+
+  .folia-android-shell .folia-panel-jizura-quick-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 1.5rem 1.625rem;
+    gap: 0.125rem;
+    padding: 0.125rem 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-jizura-quick-row > button:first-child {
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    height: 1.5rem;
+    padding: 0 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-jizura-quick-actions {
+    display: grid;
+    grid-column: 1;
+    grid-row: 2;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    gap: 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-jizura-quick-actions > button {
+    min-width: 0;
+    height: 1.625rem;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0 0.25rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .folia-android-shell .folia-panel-account-root {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    grid-template-rows: auto auto;
+    align-content: start;
+    gap: 0.375rem;
+  }
+
+  .folia-android-shell .folia-panel-account-info {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    padding: 0.375rem;
+    gap: 0.375rem;
+  }
+
+  .folia-android-shell .folia-panel-account-info img,
+  .folia-android-shell .folia-panel-account-info > div > div:first-child {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .folia-android-shell .folia-panel-account-quality {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    padding: 0.375rem;
+  }
+
+  .folia-android-shell .folia-panel-account-quality > div:first-child {
+    margin-bottom: 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-account-quality > div:last-child {
+    gap: 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-account-quality button {
+    min-height: 1.5rem;
+    padding: 0.125rem 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-account-sync {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 1.75rem;
+    padding: 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-lyrics-root {
+    gap: 0.375rem;
+    padding: 0;
+  }
+
+  .folia-android-shell .folia-panel-replaygain-control {
+    display: grid;
+    grid-template-columns: 5.5rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+  }
+
+  .folia-android-shell .folia-panel-replaygain-control > div:first-child {
+    min-width: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.125rem;
+  }
+
+  .folia-android-shell .folia-panel-replaygain-control > div:first-child h3,
+  .folia-android-shell .folia-panel-replaygain-control > div:first-child span {
+    font-size: 0.5625rem;
+    line-height: 0.75rem;
+  }
+
+  .folia-android-shell .folia-panel-replaygain-control > div:last-child {
+    gap: 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-replaygain-control button {
+    min-width: 0;
+    padding: 0.125rem 0.25rem;
+    font-size: 0.5625rem;
+  }
+
+  .folia-android-shell .folia-panel-online-lyrics-settings {
+    gap: 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-online-lyrics-settings > div:first-child {
+    min-height: 1.25rem;
+  }
+
+  .folia-android-shell .folia-panel-online-lyrics-settings > div:nth-child(2) {
+    padding: 0.25rem 0.375rem 0.25rem 0.5rem;
+  }
+
+  .folia-android-shell .folia-panel-online-lyrics-settings > div:nth-child(3) {
+    min-height: 1.25rem;
+  }
+
+  .folia-android-shell .folia-panel-local-root,
+  .folia-android-shell .folia-panel-navi-root {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    align-content: start;
+    gap: 0.375rem;
+    min-height: 0;
+    height: 100%;
+    padding: 0;
+  }
+
+  .folia-android-shell .folia-panel-local-file-info,
+  .folia-android-shell .folia-panel-navi-info {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .folia-android-shell .folia-panel-local-root > .folia-panel-replaygain-control,
+  .folia-android-shell .folia-panel-navi-root > .folia-panel-replaygain-control {
+    grid-column: 2;
+    grid-row: 1;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-local-lyrics,
+  .folia-android-shell .folia-panel-navi-lyrics {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    min-width: 0;
+    gap: 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-local-file-info > :not([hidden]) ~ :not([hidden]),
+  .folia-android-shell .folia-panel-navi-info > :not([hidden]) ~ :not([hidden]),
+  .folia-android-shell .folia-panel-local-lyrics > :not([hidden]) ~ :not([hidden]),
+  .folia-android-shell .folia-panel-navi-lyrics > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-local-file-info h3,
+  .folia-android-shell .folia-panel-navi-info h3,
+  .folia-android-shell .folia-panel-local-lyrics h3,
+  .folia-android-shell .folia-panel-navi-lyrics h3 {
+    font-size: 0.625rem;
+    line-height: 0.875rem;
+  }
+
+  .folia-android-shell .folia-panel-local-file-info h3,
+  .folia-android-shell .folia-panel-navi-info h3 {
+    display: none;
+  }
+
+  .folia-android-shell .folia-panel-local-file-info > div,
+  .folia-android-shell .folia-panel-navi-info > div,
+  .folia-android-shell .folia-panel-local-lyrics > div:nth-child(2),
+  .folia-android-shell .folia-panel-navi-lyrics > div:nth-child(2) {
+    padding: 0.375rem;
+  }
+
+  .folia-android-shell .folia-panel-local-file-info > div > div,
+  .folia-android-shell .folia-panel-navi-info > div > div {
+    min-height: 0;
+    font-size: 0.625rem;
+    line-height: 0.8rem;
+  }
+
+  .folia-android-shell .folia-panel-local-file-info > div > :not([hidden]) ~ :not([hidden]),
+  .folia-android-shell .folia-panel-navi-info > div > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.25rem;
+  }
+
+  .folia-android-shell .folia-panel-local-lyrics button,
+  .folia-android-shell .folia-panel-navi-lyrics button {
+    min-height: 1.5rem;
+    padding-top: 0.125rem;
+    padding-bottom: 0.125rem;
+    font-size: 0.5625rem;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface > div:first-child > div:nth-child(3) > div {
+    gap: 0.375rem;
+    margin-top: 0;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface > div:first-child > div:nth-child(3) h2 {
+    font-size: 1.125rem;
+    line-height: 1.35;
+  }
+
+  .folia-android-shell .folia-unified-panel-surface > div:first-child > div:nth-child(3) .text-sm {
+    font-size: 0.75rem;
+    line-height: 1.25;
+  }
+}
+
+.folia-android-shell .folia-search-workspace {
+  padding: 0.75rem;
+}
+
+.folia-android-shell .folia-search-workspace header,
+.folia-android-shell .folia-search-workspace > div {
+  max-width: none;
+}
+
+.folia-android-shell .folia-search-workspace header > div:first-child {
+  gap: 0.5rem;
+}
+
+.folia-android-shell .folia-search-workspace header input {
+  min-width: 0;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
+}
+
+.folia-android-shell .folia-floating-player-controls {
+  max-width: calc(100% - 1.5rem);
+}
+
+.folia-android-shell .folia-floating-player-card {
+  width: 100% !important;
+  max-width: 34rem;
+}
+@media (orientation: landscape) and (max-height: 240px) {
+  .folia-android-shell .folia-home-header-row {
+    grid-template-columns: 4.5rem minmax(0, 1fr) 8.5rem;
+    column-gap: 0.25rem;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .folia-android-shell .folia-home-header-left {
+    gap: 0.1rem;
+  }
+
+  .folia-android-shell .folia-home-header-left h1 {
+    font-size: 0.9rem;
+  }
+
+  .folia-android-shell .folia-home-header-left > button {
+    margin-left: 0.15rem !important;
+    padding: 0.3rem;
+  }
+
+  .folia-android-shell .folia-home-header-tabs {
+    justify-content: flex-start;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .folia-android-shell .folia-home-header-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .folia-android-shell .folia-home-header-tabs > div {
+    width: max-content;
+    max-width: none;
+    overflow: visible;
+    transform: none;
+  }
+
+  .folia-android-shell .folia-home-header-tabs button {
+    padding-inline: 0.5rem;
+    font-size: 0.65rem;
+  }
+
+  .folia-android-shell .folia-home-header-search input {
+    padding-left: 1.9rem;
+    padding-right: 0.45rem;
+    font-size: 0.68rem;
+  }
+
+  .folia-android-shell .folia-home-root {
+    padding-bottom: 0 !important;
+  }
+
+  .folia-android-shell .folia-home-canvas {
+    padding-bottom: 5.25rem;
+  }
+
+  .folia-android-shell .folia-provider-connect-panel {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    grid-template-areas: "title refresh" "actions actions";
+    justify-items: stretch;
+    align-content: start;
+    column-gap: 0.4rem;
+    row-gap: 0.25rem;
+    padding: 0.15rem 0.5rem 0;
+    padding-bottom: 0;
+  }
+
+  .folia-android-shell .folia-provider-connect-panel > div:nth-child(2) {
+    grid-area: title;
+    align-self: center;
+    gap: 0;
+  }
+
+  .folia-android-shell .folia-provider-connect-panel > div:nth-child(2) h2 {
+    font-size: 0.76rem;
+    line-height: 1.05;
+    text-align: left;
+  }
+
+  .folia-android-shell .folia-provider-connect-panel > div:nth-child(2) p {
+    display: none;
+  }
+
+  .folia-android-shell .folia-provider-connect-panel > button:last-child {
+    grid-area: refresh;
+    align-self: center;
+    min-height: 1.5rem;
+    font-size: 0.55rem;
+  }
+
+  .folia-android-shell .folia-provider-connect-actions {
+    grid-area: actions;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.25rem;
+    padding-top: 0;
+  }
+
+  .folia-android-shell .folia-provider-connect-actions > button {
+    min-height: 2rem;
+    padding: 0.2rem 0.25rem;
+    gap: 0.2rem;
+    border-radius: 0.6rem;
+    font-size: 0.56rem;
+  }
+
+  .folia-android-shell .folia-provider-connect-actions > button > span:first-child {
+    width: 1.25rem;
+    height: 1.25rem;
+    font-size: 0.5rem;
+  }
+
+  .folia-android-shell .folia-provider-connect-actions > button > span:nth-child(2) {
+    font-size: 0.52rem;
+  }
+
+  .folia-android-shell .folia-provider-connect-actions > button > span:last-child {
+    display: none;
+  }
+  .folia-android-shell .folia-settings-modal {
+    padding: 0;
+  }
+
+  .folia-android-shell .folia-settings-modal__panel {
+    width: 100%;
+    height: 100% !important;
+    max-height: 100% !important;
+    padding: 0.3rem;
+    border-radius: 0.65rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__panel > button {
+    top: 0.15rem;
+    right: 0.15rem;
+    width: 2rem;
+    height: 2rem;
+    display: grid;
+    place-items: center;
+  }
+
+  .folia-android-shell .folia-settings-modal__tabs {
+    margin-bottom: 0.25rem;
+    padding-right: 2rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__tabs > div {
+    gap: 0.85rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__tabs button {
+    font-size: 1rem;
+    padding-bottom: 0.25rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__options {
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content {
+    width: 100%;
+    padding: 0 0 0.25rem;
+  }
+
+  .folia-android-shell .settings-nav-chips {
+    gap: 0.25rem;
+    padding: 0 0 0.25rem;
+    margin: 0 0 0.25rem;
+  }
+
+  .folia-android-shell .settings-nav-chips button {
+    min-height: 2rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.6rem;
+  }
+
+  .folia-android-shell .settings-nav-chips button > div,
+  .folia-android-shell .settings-nav-chips button > div > div {
+    gap: 0.3rem;
+  }
+
+  .folia-android-shell .settings-nav-chips button > div > div:last-child {
+    font-size: 0.65rem;
+  }
+
+  .folia-android-shell .folia-settings-section-header {
+    display: none;
+  }
+
+  .folia-android-shell .folia-settings-section-header h2 {
+    font-size: 0.9rem;
+    line-height: 1.1;
+  }
+
+  .folia-android-shell .folia-settings-section-header p {
+    display: none;
+  }
+
+  .folia-android-shell .settings-nav-chips {
+    padding-bottom: 0.1rem;
+    margin-bottom: 0.1rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content > .space-y-8 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.75rem;
+  }
+
+  .folia-android-shell .folia-player-home-anchor {
+    width: min(13rem, calc(100vw - 1rem));
+  }
+
+  .folia-android-shell .folia-player-home-anchor .folia-floating-player-card[data-expanded="true"] {
+    padding: 0.25rem 0.4rem 0.2rem;
+  }
+
+  .folia-android-shell .folia-android-home-player-expanded {
+    position: relative;
+    height: 2rem;
+    gap: 0;
+  }
+
+  .folia-android-shell .folia-android-home-player-heading {
+    height: 100%;
+    padding-bottom: 0.25rem;
+  }
+
+  .folia-android-shell .folia-android-home-player-play,
+  .folia-android-shell .folia-android-home-player-collapse {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .folia-android-shell .folia-android-home-player-title {
+    font-size: 0.65rem;
+  }
+
+  .folia-android-shell .folia-android-player-progress {
+    position: absolute;
+    left: 2rem;
+    right: 2rem;
+    bottom: 0;
+    height: 0.25rem;
+  }
+
+  .folia-android-shell .folia-android-player-progress > div {
+    height: 0.25rem;
+    gap: 0;
+  }
+
+  .folia-android-shell .folia-android-player-progress > div > span {
+    display: none;
+  }
+
+  .folia-android-shell .folia-android-player-progress > div > div:nth-child(2) {
+    height: 0.25rem !important;
+    min-height: 0;
+  }
+
+  .folia-android-shell .folia-android-player-progress > div > div:nth-child(2) > div:first-child {
+    top: calc(50% - 1px);
+    height: 2px !important;
+  }
+  .folia-android-shell:has(.folia-provider-connect-panel) .folia-provider-switcher {
+    display: none !important;
+  }
+}
+
+@media (orientation: landscape) and (max-width: 380px) and (max-height: 240px) {
+  .folia-android-shell .folia-home-header-row {
+    grid-template-columns: 4.25rem minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    row-gap: 0.15rem;
+  }
+
+  .folia-android-shell .folia-home-header-left {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .folia-android-shell .folia-home-header-search {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .folia-android-shell .folia-home-header-tabs {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-content: center;
+  }
+
+  .folia-android-shell .folia-home-header-tabs > div {
+    max-width: 100%;
+  }
+
+  .folia-android-shell .folia-provider-connect-panel {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas: "actions";
+  }
+
+  .folia-android-shell .folia-provider-connect-panel > div:nth-child(2),
+  .folia-android-shell .folia-provider-connect-panel > button:last-child {
+    display: none;
+  }
+
+  .folia-android-shell .folia-provider-connect-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .folia-android-shell .folia-provider-connect-actions > button {
+    min-height: 1.85rem;
+    justify-content: flex-start;
+    padding-inline: 0.4rem;
+    font-size: 0.62rem;
+  }
+
+  .folia-android-shell .folia-provider-connect-actions > button > span:nth-child(2) {
+    font-size: 0.62rem;
+  }
+}
+@media (orientation: landscape) and (max-width: 767px) {
+  .folia-android-shell .folia-settings-modal__options {
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .folia-android-shell .settings-nav-chips {
+    width: 100%;
+    max-width: 100%;
+    min-height: 0;
+    flex: 0 0 auto;
+  }
+
+  .folia-android-shell .folia-settings-modal__content {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+}
+@media (orientation: landscape) and (min-width: 381px) and (max-height: 320px) {
+  .folia-android-shell .folia-player-home-anchor .folia-floating-player-card[data-expanded="false"] {
+    padding: 0.2rem 0.65rem 0.15rem;
+  }
+
+  .folia-android-shell .folia-player-collapsed-view {
+    height: 1.7rem;
+  }
+}
+@media (orientation: landscape) and (max-height: 320px) {
+  .folia-android-shell .folia-settings-modal__panel {
+    padding: 0.3rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__tabs {
+    margin-bottom: 0.18rem;
+    padding-right: 1.7rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__tabs > div {
+    gap: 0.55rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__tabs button {
+    font-size: 0.95rem;
+    padding-bottom: 0.08rem;
+  }
+
+  .folia-android-shell .settings-nav-chips {
+    gap: 0.15rem;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+
+  .folia-android-shell .settings-nav-chips button {
+    min-height: 1.75rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.5rem;
+  }
+
+  .folia-android-shell .settings-nav-chips button > div,
+  .folia-android-shell .settings-nav-chips button > div > div {
+    gap: 0.3rem;
+  }
+
+  .folia-android-shell .settings-nav-chips button > div > div:first-child svg {
+    width: 0.78rem;
+    height: 0.78rem;
+  }
+
+  .folia-android-shell .settings-nav-chips button > div > div:last-child {
+    font-size: 0.66rem;
+  }
+
+  .folia-android-shell .folia-settings-section-header {
+    display: none;
+  }
+
+  .folia-android-shell .folia-settings-modal__content {
+    padding-bottom: 0.35rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.4rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content .space-y-5 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.35rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.4rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.3rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content .space-y-2 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.2rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content .p-4 {
+    padding: 0.45rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content .p-3 {
+    padding: 0.5rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [class~="text-sm"] {
+    font-size: 0.82rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [class~="text-xs"] {
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor] > h3 {
+    margin-bottom: 0.18rem;
+    font-size: 0.68rem;
+    letter-spacing: 0.025em;
+  }
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="languageSettings"] > .rounded-xl.border {
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(9rem, 1.2fr);
+    align-items: center;
+    column-gap: 0.5rem;
+    row-gap: 0.2rem;
+    padding: 0.35rem 0.45rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="languageSettings"] > .rounded-xl.border > .space-y-1 {
+    min-width: 0;
+    gap: 0;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="languageSettings"] > .rounded-xl.border > .space-y-1 > :first-child {
+    font-size: 0.74rem;
+    line-height: 1.2;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="languageSettings"] > .rounded-xl.border > .space-y-1 > :last-child,
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="languageSettings"] > .rounded-xl.border > .text-\[11px\] {
+    display: none;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="languageSettings"] > .rounded-xl.border button {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 0.65rem;
+    font-size: 0.75rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="homeTabsVisibility"] > .rounded-xl.border {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="homeTabsVisibility"] > .rounded-xl.border > div {
+    min-width: 0;
+    min-height: 2.15rem;
+    padding: 0.25rem 0.4rem !important;
+    border-bottom: 0;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="homeTabsVisibility"] > .rounded-xl.border > div:nth-child(odd) {
+    border-right: 1px solid rgb(255 255 255 / 8%);
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="homeTabsVisibility"] > .rounded-xl.border > div:nth-child(-n+2) {
+    border-bottom: 1px solid rgb(255 255 255 / 8%);
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="homeTabsVisibility"] > .rounded-xl.border > div > button {
+    width: 2.5rem;
+    height: 1.3rem;
+    padding: 0.2rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="homeTabsVisibility"] > .rounded-xl.border > div > button > div {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="homeTabsVisibility"] > .rounded-xl.border > div > button > div.translate-x-6 {
+    translate: 1.1rem 0;
+  }
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="playbackEntryView"] .grid.grid-cols-2 {
+    gap: 0.35rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="playbackEntryView"] .grid.grid-cols-2 > button {
+    display: grid;
+    grid-template-columns: 3.25rem minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 0.45rem;
+    padding: 0.4rem;
+    border-radius: 0.75rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="playbackEntryView"] .grid.grid-cols-2 > button > svg {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    width: 3.25rem;
+    height: auto;
+    max-height: 2.1rem;
+    align-self: center;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="playbackEntryView"] .grid.grid-cols-2 > button > div:nth-of-type(1) {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+    font-size: 0.73rem;
+    line-height: 1.15;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="playbackEntryView"] .grid.grid-cols-2 > button > div:nth-of-type(2) {
+    grid-column: 2;
+    grid-row: 2;
+    display: -webkit-box;
+    margin-top: 0.15rem;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 0.62rem;
+    line-height: 1.2;
+  }
+
+@media (orientation: landscape) and (min-width: 560px) and (max-height: 320px) {
+  .folia-android-shell .folia-settings-modal__content > .space-y-8 > .space-y-5:has(> [data-settings-anchor="languageSettings"]) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 0.35rem 0.5rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content > .space-y-8 > .space-y-5:has(> [data-settings-anchor="languageSettings"]) > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+
+  .folia-android-shell .folia-settings-modal__content > .space-y-8 > .space-y-5:has(> [data-settings-anchor="languageSettings"]) > [data-settings-anchor] {
+    min-width: 0;
+  }
+
+  .folia-android-shell .folia-settings-modal__content > .space-y-8 > .space-y-5:has(> [data-settings-anchor="languageSettings"]) > .space-y-5:has(> [data-settings-anchor="gridActionButton"]) {
+    display: contents;
+  }
+
+  .folia-android-shell .folia-settings-modal__content > .space-y-8 > .space-y-5:has(> [data-settings-anchor="languageSettings"]) > [data-settings-anchor="playbackEntryView"],
+  .folia-android-shell .folia-settings-modal__content > .space-y-8 > .space-y-5:has(> [data-settings-anchor="languageSettings"]) > [data-settings-anchor="bottomUiSettings"],
+  .folia-android-shell .folia-settings-modal__content > .space-y-8 > .space-y-5:has(> [data-settings-anchor="languageSettings"]) > [data-settings-anchor="pinnedCommands"] {
+    grid-column: 1 / -1;
+  }
+}
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] > .space-y-3 {
+    gap: 0.25rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options {
+    gap: 0.25rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options > .group {
+    padding: 0.3rem 0.45rem;
+    border-width: 1px;
+    border-radius: 0.7rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options > .group > div {
+    gap: 0.5rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options > .group > div > button:first-child {
+    gap: 0.5rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options > .group > div > button:first-child > span:first-child {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.65rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options > .group > div > button:first-child > span:first-child svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options > .group > div > button:first-child > span:nth-child(2) > span:first-child {
+    font-size: 0.8rem;
+    line-height: 1.1;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options > .group > div > button:first-child > span:nth-child(2) > span:last-child {
+    font-size: 0.67rem;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] > .space-y-3 > .rounded-xl.border.space-y-4 {
+    padding: 0.4rem;
+    gap: 0.35rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] > .space-y-3 > .rounded-xl.border.space-y-4 .text-xs {
+    font-size: 0.66rem;
+    line-height: 1.2;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] > .space-y-3 > .rounded-xl.border.space-y-4 .space-y-1 {
+    gap: 0.15rem;
+  }
+}
+
+@media (orientation: landscape) and (min-width: 340px) and (max-height: 320px) {
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] > .space-y-3 > .rounded-xl.border.space-y-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] > .space-y-3 > .rounded-xl.border.space-y-4 > div:last-child {
+    padding: 0 0 0 0.7rem;
+    border-top: 0;
+    border-left: 1px solid rgb(255 255 255 / 8%);
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] > .space-y-3 > .rounded-xl.border.space-y-4 > div > div {
+    min-width: 0;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] > .space-y-3 > .rounded-xl.border.space-y-4 > div > div > div:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (orientation: landscape) and (min-width: 340px) and (max-width: 419px) and (max-height: 320px) {
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options > .group > div {
+    gap: 0.3rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options > .group > div > button:first-child {
+    gap: 0;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options > .group > div > button:first-child > span:first-child,
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options > .group > div > button:first-child > svg {
+    display: none;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"] .folia-lyrics-animation-options > .group > div > button:first-child > span:nth-child(2) > span:first-child {
+    font-size: 0.72rem;
+  }
+}
+@media (orientation: landscape) {
+  .folia-android-shell .folia-floating-player-controls {
+    width: min(30rem, calc(100vw - 2rem));
+    max-width: none;
+  }
+  .folia-android-shell .folia-player-home-anchor {
+    width: min(14rem, calc(100vw - 1.5rem));
+    max-width: none;
+  }
+
+  .folia-android-shell .folia-floating-player-card[data-expanded="false"] {
+    width: 100% !important;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid rgb(255 255 255 / 12%);
+    border-radius: 1.15rem;
+    background: rgb(16 18 24 / 82%);
+    box-shadow: 0 8px 28px rgb(0 0 0 / 28%);
+  }
+
+  .folia-android-shell .folia-player-collapsed-meta {
+    display: flex;
+    width: 100%;
+    gap: 0.55rem;
+  }
+
+  .folia-android-shell .folia-player-collapsed-meta button {
+    width: 1.65rem;
+    height: 1.65rem;
+  }
+
+  .folia-android-shell .folia-floating-player-card[data-expanded="false"] {
+    padding: 0.45rem 0.65rem 0.35rem;
+    border-radius: 1rem;
+  }
+
+  .folia-android-shell .folia-player-collapsed-view {
+    position: relative;
+    height: 2rem;
+    padding: 0;
+  }
+
+  .folia-android-shell .folia-player-mini-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -0.15rem;
+    height: 0.125rem;
+  }
+
+  .folia-android-shell .folia-player-mini-progress > div {
+    height: 0.125rem;
+    gap: 0;
+  }
+
+  .folia-android-shell .folia-player-mini-progress > div > span {
+    display: none;
+  }
+
+  .folia-android-shell .folia-player-mini-progress > div > div {
+    height: 0.125rem;
+  }
+
+  .folia-android-shell .folia-player-mini-progress > div > div > div {
+    border-radius: 999px;
+  }
+
+  .folia-android-shell .folia-player-expand-toggle,
+  .folia-android-shell .folia-player-collapse-toggle {
+    display: flex;
+    color: var(--text-secondary);
+    background: rgb(255 255 255 / 8%);
+  }
+
+  .folia-android-shell .folia-player-home-anchor .folia-floating-player-card[data-expanded="true"] {
+    width: 100% !important;
+    max-width: none;
+    padding: 0.45rem 0.5rem;
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 1rem;
+    background: rgb(16 18 24 / 88%);
+  }
+
+  .folia-android-shell .folia-android-home-player-expanded {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .folia-android-shell .folia-android-home-player-heading {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .folia-android-shell .folia-android-home-player-play,
+  .folia-android-shell .folia-android-home-player-collapse {
+    display: inline-flex;
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 999px;
+  }
+
+  .folia-android-shell .folia-android-home-player-play:disabled {
+    opacity: 0.45;
+  }
+
+  .folia-android-shell .folia-android-home-player-title {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .folia-android-shell .folia-android-home-player-collapse {
+    color: var(--text-secondary);
+    background: rgb(255 255 255 / 8%);
+  }
+
+  .folia-android-shell .folia-android-player-progress > div {
+    height: 1.5rem;
+    gap: 0.35rem;
+  }
+
+  .folia-android-shell .folia-android-player-progress > div > span {
+    width: 2rem;
+    font-size: 0.55rem;
+    line-height: 1;
+  }
+
+  .folia-android-shell .folia-android-player-progress > div > div:nth-child(2) {
+    display: flex;
+    height: 1.5rem !important;
+    align-items: center;
+    background: transparent !important;
+  }
+
+  .folia-android-shell .folia-android-player-progress > div > div:nth-child(2) > div:first-child {
+    top: calc(50% - 2px);
+    height: 4px !important;
+  }
+
+  .folia-android-shell .folia-android-player-progress > div > div:nth-child(2) input[type="range"] {
+    height: 100%;
+    touch-action: pan-x;
+  }
+
+  .folia-android-shell .folia-player-collapsed-view > div:last-child > span {
+    font-size: 0.58rem;
+  }
+  .folia-android-shell .folia-track-title-navigator-arrow {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid rgb(255 255 255 / 12%);
+    background: rgb(255 255 255 / 8%);
+  }
+  .folia-android-shell:has(.folia-provider-switcher-menu) .folia-floating-player-controls {
+    display: none !important;
+  }
+  .folia-android-shell:has(.folia-provider-login-modal) .folia-floating-player-controls {
+    display: none !important;
+  }
+  .folia-android-shell:has(.folia-settings-modal) .folia-floating-player-controls {
+    display: none !important;
+  }
+  .folia-android-shell:has(.folia-floating-player-card) .folia-home-root {
+    padding-bottom: 0 !important;
+  }
+
+  .folia-android-shell:has(.folia-floating-player-card) .folia-home-canvas {
+    padding-bottom: 0 !important;
+  }
+  .folia-android-shell .folia-vis-playground-shell {
+    padding: 0.25rem !important;
+  }
+
+  .folia-android-shell .folia-vis-playground-panel {
+    border-radius: 1.1rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-header {
+    min-height: 2.75rem;
+    padding: 0.3rem 0.55rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-grid {
+    grid-template-columns: minmax(0, 0.6fr) minmax(0, 1.4fr);
+    gap: 0.4rem;
+    padding: 0.4rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-preview {
+    min-height: 0 !important;
+    height: 100%;
+    border-radius: 0.9rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-settings {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .folia-android-shell .folia-vis-playground-settings > * {
+    height: 100%;
+  }
+
+  .folia-android-shell .folia-vis-playground-settings-panel {
+    gap: 0.25rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-section-tabs {
+    width: 100%;
+    justify-content: stretch;
+    gap: 0.15rem;
+    padding: 0.15rem;
+    border-radius: 0.7rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-section-tabs button {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 1.55rem;
+    padding: 0.12rem 0.2rem;
+    font-size: 0.64rem;
+    white-space: nowrap;
+  }
+
+  .folia-android-shell .folia-vis-playground-settings-scroll {
+    padding-right: 0;
+    row-gap: 0.25rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-section {
+    padding: 0.4rem !important;
+    border-radius: 0.9rem !important;
+  }
+
+  .folia-android-shell .folia-vis-playground-section > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.3rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-section .space-y-4 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.3rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-preset-group {
+    row-gap: 0.2rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-preset-label {
+    font-size: 0.58rem;
+    line-height: 1.1;
+    letter-spacing: 0.08em;
+  }
+
+  .folia-android-shell .folia-vis-playground-preset-group > div:last-child {
+    gap: 0.2rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-preset-option {
+    min-height: 1.55rem;
+    padding: 0.14rem 0.45rem;
+    font-size: 0.68rem;
+    line-height: 1.1;
+  }
+
+  .folia-android-shell .folia-vis-playground-toggle-row {
+    gap: 0.45rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-toggle-row > div:first-child {
+    gap: 0.15rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-toggle-row > div:first-child > div:first-child {
+    font-size: 0.72rem;
+    line-height: 1.15;
+  }
+
+  .folia-android-shell .folia-vis-playground-toggle-row > div:first-child > div:last-child {
+    font-size: 0.62rem;
+    line-height: 1.15;
+  }
+
+  .folia-android-shell .folia-vis-playground-section input[type="range"] {
+    min-height: 1.45rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-section {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 0.12rem 0.4rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-section > * {
+    margin: 0 !important;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-section > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0 !important;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-font-size {
+    min-width: 0;
+    margin: 0 !important;
+    padding: 0;
+    border: 0;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-header,
+  .folia-android-shell .folia-vis-playground-common-font-size,
+  .folia-android-shell .folia-vis-playground-common-notice,
+  .folia-android-shell .folia-vis-playground-common-opacity {
+    grid-column: 1 / -1;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-header {
+    min-height: 1.2rem;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-header > div:first-child {
+    display: none;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-header .folia-vis-playground-reset-button {
+    width: 1.2rem;
+    height: 1.2rem;
+    justify-content: center;
+    gap: 0;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .folia-android-shell .folia-vis-playground-reset-label {
+    display: none;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-font-size {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-font-size > :not([hidden]) ~ :not([hidden]),
+  .folia-android-shell .folia-vis-playground-common-weight > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-font-size > div:last-child,
+  .folia-android-shell .folia-vis-playground-common-weight > div:last-child {
+    min-width: 0;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-section > .folia-vis-playground-toggle-row {
+    grid-column: 1;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-weight {
+    grid-column: 2;
+    min-width: 0;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-weight .folia-vis-playground-preset-group > div:last-child {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.1rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-opacity {
+    display: grid;
+    grid-template-columns: auto minmax(5rem, 1fr);
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-opacity > div {
+    white-space: nowrap;
+  }
+
+  .folia-android-shell .folia-vis-playground-common-opacity input[type="range"] {
+    width: 100%;
+  }
+
+  .folia-android-shell .folia-vis-playground-background-mode-section > div:first-child > div:first-child > div:last-child,
+  .folia-android-shell .folia-vis-playground-visualizer-mode-section > div:first-child > div:first-child > div:last-child {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .folia-android-shell .folia-vis-playground-dynamic-settings > * {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 0.35rem;
+    margin-top: 0 !important;
+    padding: 0.45rem !important;
+    border-radius: 0.9rem !important;
+  }
+
+  .folia-android-shell .folia-vis-playground-dynamic-settings > * > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .folia-android-shell .folia-vis-playground-dynamic-settings > * > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+
+  .folia-android-shell .folia-vis-playground-dynamic-settings > * > div[class*="space-y-3.5"][class*="rounded"],
+  .folia-android-shell .folia-vis-playground-dynamic-settings > * > div[class*="space-y-4"][class*="rounded"] {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 0.35rem;
+    padding: 0.4rem !important;
+    border-radius: 0.75rem !important;
+  }
+
+  .folia-android-shell .folia-vis-playground-dynamic-settings > * > div[class*="space-y-3.5"][class*="rounded"] > :first-child,
+  .folia-android-shell .folia-vis-playground-dynamic-settings > * > div[class*="space-y-4"][class*="rounded"] > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .folia-android-shell .folia-vis-playground-dynamic-settings > * > div[class*="space-y-3.5"][class*="rounded"] > :not(:first-child),
+  .folia-android-shell .folia-vis-playground-dynamic-settings > * > div[class*="space-y-4"][class*="rounded"] > :not(:first-child) {
+    min-width: 0;
+  }
+
+  .folia-android-shell .folia-vis-playground-dynamic-settings > * > div[class*="space-y-3.5"][class*="rounded"] > :not([hidden]) ~ :not([hidden]),
+  .folia-android-shell .folia-vis-playground-dynamic-settings > * > div[class*="space-y-4"][class*="rounded"] > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+
+  .folia-android-shell .folia-vis-playground-dynamic-settings .space-y-2\.5 > :not([hidden]) ~ :not([hidden]),
+  .folia-android-shell .folia-vis-playground-dynamic-settings .space-y-2 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0.2rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-dynamic-settings .text-xs.font-medium.uppercase {
+    font-size: 0.56rem;
+    letter-spacing: 0.06em;
+    line-height: 1.1;
+  }
+
+  .folia-android-shell .folia-vis-playground-dynamic-settings button.rounded-full.border {
+    min-height: 1.55rem;
+    padding: 0.12rem 0.42rem;
+    font-size: 0.62rem;
+    line-height: 1.1;
+  }
+
+  .folia-android-shell .folia-vis-playground-dynamic-settings input[type="range"] {
+    min-height: 1.35rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-section {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 0.16rem 0.4rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-section > * {
+    min-width: 0;
+    margin: 0 !important;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-section > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0 !important;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-header,
+  .folia-android-shell .folia-vis-playground-subtitle-content-mode,
+  .folia-android-shell .folia-vis-playground-subtitle-font-settings,
+  .folia-android-shell .folia-vis-playground-harmony-section {
+    grid-column: 1 / -1;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-toggle {
+    min-height: 2rem;
+    gap: 0.2rem;
+    padding: 0.18rem 0.28rem;
+    border-radius: 0.55rem;
+    background: rgb(255 255 255 / 2%);
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-toggle > div:first-child > div:first-child {
+    gap: 0.22rem;
+    font-size: 0.62rem;
+    line-height: 1.1;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-toggle > div:first-child > div:last-child {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 0.52rem;
+    line-height: 1.05;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-toggle > button {
+    width: 2rem;
+    height: 1.15rem;
+    padding: 0.12rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-toggle > button > span {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-content-mode .folia-vis-playground-preset-group {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-content-mode .folia-vis-playground-preset-group > div:last-child {
+    gap: 0.2rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-content-mode .folia-vis-playground-preset-option {
+    min-height: 1.4rem;
+    padding: 0.1rem 0.42rem;
+    font-size: 0.62rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-slider {
+    display: grid;
+    grid-template-columns: auto minmax(2rem, 1fr);
+    align-items: center;
+    column-gap: 0.3rem;
+    padding: 0.15rem 0.28rem;
+    border-radius: 0.55rem;
+    background: rgb(255 255 255 / 2%);
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-slider > div:first-child {
+    font-size: 0.62rem !important;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-slider input[type="range"] {
+    min-height: 1.3rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-font-settings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.3rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-subtitle-font-settings > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+
+  .folia-android-shell .folia-vis-playground-harmony-section {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.25rem 0.4rem;
+  }
+
+  .folia-android-shell .folia-vis-playground-harmony-section > :first-child {
+    grid-column: 1 / -1;
+  }
+
+  .folia-android-shell .folia-vis-playground-harmony-section > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+
+  .folia-android-shell .folia-vis-playground-preview > .absolute.left-4,
+  .folia-android-shell .folia-vis-playground-preview > .absolute.right-4 {
+    top: 0.4rem;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+  }
+
+  .folia-android-shell .folia-vis-playground-preview > button[aria-label] {
+    right: 0.45rem;
+    bottom: 0.45rem;
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .folia-android-shell .folia-jizura-workbench-card {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 0.15rem 0.35rem;
+    padding: 0.5rem !important;
+    border-radius: 0.9rem !important;
+    box-shadow: none !important;
+  }
+
+  .folia-android-shell .folia-jizura-workbench-card > * {
+    margin: 0 !important;
+  }
+
+  .folia-android-shell .folia-jizura-workbench-header,
+  .folia-android-shell .folia-jizura-summary-inline,
+  .folia-android-shell .folia-jizura-options-section,
+  .folia-android-shell .folia-jizura-layout-section {
+    grid-column: 1 / -1;
+  }
+
+  .folia-android-shell .folia-jizura-workbench-header {
+    align-items: center;
+    padding: 0 0.15rem;
+  }
+
+  .folia-android-shell .folia-jizura-workbench-header > div > div:first-child {
+    font-size: 0.82rem;
+    line-height: 1.1;
+  }
+
+  .folia-android-shell .folia-jizura-context {
+    max-width: 15rem;
+    margin-top: 0.15rem;
+    overflow: hidden;
+    font-size: 0.6rem;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .folia-android-shell .folia-jizura-workbench-header > button {
+    padding: 0.25rem 0.45rem;
+    font-size: 0.62rem;
+  }
+
+  .folia-android-shell .folia-jizura-summary-inline {
+    overflow: hidden;
+    padding: 0 0.2rem;
+    line-height: 1.1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .folia-android-shell .folia-jizura-theme-section,
+  .folia-android-shell .folia-jizura-reroll-section,
+  .folia-android-shell .folia-jizura-options-section,
+  .folia-android-shell .folia-jizura-layout-section {
+    min-width: 0;
+    padding: 0.45rem !important;
+    border-radius: 0.7rem !important;
+  }
+
+  .folia-android-shell .folia-jizura-theme-section > div:first-child,
+  .folia-android-shell .folia-jizura-reroll-section > div:first-child,
+  .folia-android-shell .folia-jizura-options-section > div:first-child,
+  .folia-android-shell .folia-jizura-layout-section > div:first-child {
+    margin-bottom: 0.25rem !important;
+    font-size: 0.62rem;
+    letter-spacing: 0.03em;
+  }
+
+  .folia-android-shell .folia-jizura-theme-section > div:first-child > div > div:nth-child(2) {
+    display: none;
+  }
+
+  .folia-android-shell .folia-jizura-theme-section > select {
+    min-height: 1.8rem;
+    padding: 0.25rem 0.4rem;
+    font-size: 0.72rem;
+  }
+
+  .folia-android-shell .folia-jizura-theme-section > div:last-child {
+    display: none;
+  }
+
+  .folia-android-shell .folia-jizura-reroll-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.2rem;
+  }
+
+  .folia-android-shell .folia-jizura-reroll-button {
+    min-height: 1.55rem;
+    padding: 0.2rem 0.25rem;
+    font-size: 0.62rem;
+    white-space: nowrap;
+  }
+
+  .folia-android-shell .folia-jizura-options-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 0.45rem;
+  }
+
+  .folia-android-shell .folia-jizura-option-row {
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 0;
+    padding: 0.2rem 0 !important;
+  }
+
+  .folia-android-shell .folia-jizura-option-row input {
+    width: 0.8rem;
+    height: 0.8rem;
+    margin-top: 0;
+  }
+
+  .folia-android-shell .folia-jizura-option-row > span > span:first-child {
+    overflow: hidden;
+    font-size: 0.65rem;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .folia-android-shell .folia-jizura-option-description {
+    display: -webkit-box;
+    overflow: hidden;
+    margin-top: 0.08rem;
+    font-size: 0.55rem;
+    line-height: 1.1;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .folia-android-shell .folia-jizura-layout-section > div:last-child {
+    gap: 0.3rem;
+  }
+
+  .folia-android-shell .folia-jizura-layout-section select,
+  .folia-android-shell .folia-jizura-layout-section label {
+    min-height: 1.8rem;
+    padding: 0.25rem 0.35rem;
+    font-size: 0.65rem;
+  }
+
+  .folia-android-shell .folia-jizura-summary-section {
+    display: none;
+  }
+
+  .folia-android-shell .folia-jizura-context {
+    display: none;
+  }
+
+  .folia-android-shell .folia-jizura-options-section > div:first-child {
+    margin-bottom: 0.15rem !important;
+  }
+  .folia-android-shell .folia-command-palette-shell {
+    align-items: flex-start;
+    overflow-y: auto;
+    padding-top: 2.25rem !important;
+    padding-bottom: 0.5rem;
+  }
+
+  .folia-android-shell .folia-command-palette-container {
+    max-height: 100%;
+  }
+
+  .folia-android-shell .folia-command-palette-body {
+    height: min(42dvh, 12rem) !important;
+    max-height: calc(100dvh - 10rem);
+    padding: 0.4rem;
+    overscroll-behavior: contain;
+  }
+
+  .folia-android-shell [data-testid='command-palette-pinned-row'] {
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+    padding: 0;
+  }
+
+  .folia-android-shell [data-testid='command-palette-pinned-row'] button {
+    min-height: 2.25rem;
+    gap: 0.3rem;
+    padding: 0.35rem 0.4rem;
+    font-size: 0.62rem;
+  }
+  .folia-android-shell:has(.lattice-root) .folia-now-playing-toast {
+    display: none !important;
+  }
+}
+
+@media (orientation: landscape) and (max-width: 480px) {
+  .folia-android-shell .folia-vis-playground-grid {
+    grid-template-columns: minmax(0, 0.68fr) minmax(0, 1.32fr);
+  }
+}
+
+@media (orientation: landscape) and (min-width: 560px) and (max-height: 360px) {
+  .folia-android-shell .folia-jizura-reroll-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.15rem;
+  }
+
+  .folia-android-shell .folia-jizura-reroll-button {
+    min-height: 1.8rem;
+    padding-right: 0.1rem;
+    padding-left: 0.1rem;
+  }
+
+  .folia-android-shell .folia-jizura-options-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 0.3rem;
+  }
+
+  .folia-android-shell .folia-jizura-option-row {
+    align-items: flex-start;
+    gap: 0.2rem;
+    min-height: 1.9rem;
+    padding: 0.1rem 0 !important;
+  }
+
+  .folia-android-shell .folia-jizura-option-row > span > span:first-child {
+    white-space: nowrap;
+  }
+
+  .folia-android-shell .folia-jizura-option-description {
+    display: none;
+  }
+}
+.folia-android-shell .folia-grid-track-viewport .theme-polaroid-card {
+  background-color: var(--bg-color) !important;
+  transition: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+@media (orientation: landscape) and (max-height: 360px) {
+  .folia-android-shell .folia-settings-modal__content > .space-y-8 {
+    row-gap: 0.35rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor] {
+    min-width: 0;
+    margin-top: 0 !important;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor] > h3,
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor] > div > h3 {
+    margin-bottom: 0.25rem !important;
+    padding-top: 0.35rem;
+    font-size: 0.7rem;
+    line-height: 1.15;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor] .space-y-1 > :last-child[class*="opacity-50"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor] .space-y-1\.5 > :last-child[class*="opacity-50"] {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 1.2;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor] [class~="p-4"] {
+    padding: 0.45rem !important;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor] [class~="px-4"] {
+    padding-right: 0.45rem !important;
+    padding-left: 0.45rem !important;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor] [class~="py-4"] {
+    padding-top: 0.4rem !important;
+    padding-bottom: 0.4rem !important;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor] [class~="gap-4"] {
+    gap: 0.45rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor] [class*="text-[11px]"] {
+    font-size: 0.68rem;
+    line-height: 1.2;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor] button.rounded-xl.border {
+    min-height: 2.25rem;
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+    border-radius: 0.65rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="queueSettings"] .grid.grid-cols-2 > button > div:last-child,
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="playbackModeSettings"] .grid.grid-cols-2 > button > div:last-child {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    margin-top: 0.1rem;
+    line-height: 1.15;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="labPerformance"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="labPlayerUi"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="labWindowAndTools"] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 0.35rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor^="lab"] > h3 {
+    grid-column: 1 / -1;
+    margin: 0 !important;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor^="lab"] > :not(h3) {
+    min-width: 0;
+    margin-top: 0 !important;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor] input[type="range"] {
+    min-height: 1.75rem;
+  }
+  .folia-android-shell .folia-settings-modal__content .space-y-4:has(> [data-settings-anchor]),
+  .folia-android-shell .folia-settings-modal__content .space-y-5:has(> [data-settings-anchor]),
+  .folia-android-shell .folia-settings-modal__content .space-y-3:has(> [data-settings-anchor]),
+  .folia-android-shell .folia-settings-modal__content .space-y-6:has(> [data-settings-anchor]),
+  .folia-android-shell .folia-settings-modal__content > .space-y-8:has(> [data-settings-anchor]) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
+    gap: 0.35rem 0.5rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content .space-y-4:has(> [data-settings-anchor]) > :not([hidden]) ~ :not([hidden]),
+  .folia-android-shell .folia-settings-modal__content .space-y-5:has(> [data-settings-anchor]) > :not([hidden]) ~ :not([hidden]),
+  .folia-android-shell .folia-settings-modal__content .space-y-3:has(> [data-settings-anchor]) > :not([hidden]) ~ :not([hidden]),
+  .folia-android-shell .folia-settings-modal__content .space-y-6:has(> [data-settings-anchor]) > :not([hidden]) ~ :not([hidden]),
+  .folia-android-shell .folia-settings-modal__content > .space-y-8:has(> [data-settings-anchor]) > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 0;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyricsRenderer"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="themePresets"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="gridViewCardSettings"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="importExportTitle"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="playbackEntryView"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="bottomUiSettings"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="pinnedCommands"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="transitionSettings"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="lyrics"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="audioOutputSettings"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="jsMusicSources"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="r2Sync"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="cacheDetails"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="localLibraryWatch"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="mediaCache"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="labPerformance"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="labPlayerUi"] {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (orientation: landscape) and (min-width: 560px) and (max-height: 360px) {
+  .folia-android-shell .folia-settings-modal__content > .space-y-8:has(> [data-settings-anchor]) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (orientation: landscape) and (max-width: 559px) and (max-height: 360px) {
+  .folia-android-shell .folia-settings-modal__content .space-y-4:has(> [data-settings-anchor]),
+  .folia-android-shell .folia-settings-modal__content .space-y-5:has(> [data-settings-anchor]),
+  .folia-android-shell .folia-settings-modal__content .space-y-3:has(> [data-settings-anchor]),
+  .folia-android-shell .folia-settings-modal__content .space-y-6:has(> [data-settings-anchor]),
+  .folia-android-shell .folia-settings-modal__content > .space-y-8:has(> [data-settings-anchor]) {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="labPerformance"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="labPlayerUi"],
+  .folia-android-shell .folia-settings-modal__content [data-settings-anchor="labWindowAndTools"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.folia-android-shell .folia-search-workspace {
+  padding: 6px 10px 44px;
+}
+
+.folia-android-shell .folia-search-workspace > header {
+  gap: 4px;
+}
+
+.folia-android-shell .folia-search-query-form {
+  min-height: 36px;
+}
+
+.folia-android-shell .folia-search-query-input {
+  min-height: 34px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.folia-android-shell .folia-search-close {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 6px;
+}
+
+.folia-android-shell .folia-search-source-nav {
+  gap: 5px;
+  padding-bottom: 0;
+}
+
+.folia-android-shell .folia-search-source-button {
+  min-height: 34px;
+  padding: 0 9px;
+  white-space: nowrap;
+}
+
+.folia-android-shell .folia-search-source-description {
+  display: none;
+}
+
+.folia-android-shell .folia-search-results-area {
+  margin-top: 2px;
+}
+
+.folia-android-shell .folia-search-load-more {
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+.folia-android-shell .folia-search-load-more-button {
+  min-height: 28px;
+  padding: 4px 12px;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.folia-android-shell .folia-search-result-row {
+  padding: 1px 4px;
+}
+
+.folia-android-shell .folia-search-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 1px 4px;
+}
+
+.folia-android-shell .folia-search-result-card {
+  min-width: 0;
+  gap: 7px;
+  padding-left: 7px;
+  padding-right: 7px;
+  border-radius: 10px;
+}
+
+.folia-android-shell .folia-search-result-cover {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.folia-android-shell .folia-search-result-title {
+  font-size: 12px;
+  line-height: 14px;
+}
+
+.folia-android-shell .folia-search-result-metadata {
+  margin-top: 0;
+  gap: 3px;
+  font-size: 10px;
+  line-height: 12px;
+}
+
+.folia-android-shell .folia-search-result-duration {
+  display: block !important;
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.folia-android-shell .folia-search-result-card > button:last-child {
+  min-width: 26px;
+  min-height: 26px;
+  padding: 3px;
+  opacity: 0.72 !important;
+}
+
+.folia-android-shell .folia-search-more-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+}
+@media (orientation: landscape) and (max-height: 360px) {
+  .folia-android-shell .folia-provider-login-modal {
+    overflow: hidden;
+    padding: 4px;
+  }
+
+  .folia-android-shell .folia-provider-login-card {
+    max-height: calc(100dvh - 8px);
+    max-width: 360px;
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .folia-android-shell .folia-provider-login-title {
+    margin-bottom: 8px !important;
+    font-size: 0.95rem;
+    line-height: 1.2;
+  }
+
+  .folia-android-shell .folia-provider-login-qr {
+    padding: 4px;
+    margin-bottom: 6px;
+    border-radius: 10px;
+  }
+
+  .folia-android-shell .folia-provider-login-qr-content {
+    width: 128px !important;
+    height: 128px !important;
+  }
+
+  .folia-android-shell .folia-provider-login-status {
+    margin-top: 2px !important;
+    line-height: 1.25;
+    color: rgba(255, 255, 255, 0.88) !important;
+    opacity: 1;
+  }
+
+  .folia-android-shell .folia-provider-login-note {
+    margin-top: 6px !important;
+    line-height: 1.25;
+    color: rgba(255, 255, 255, 0.68) !important;
+    opacity: 1;
+  }
+
+  .folia-android-shell .folia-provider-login-card > .mb-5 {
+    margin-bottom: 8px;
+  }
+
+  .folia-android-shell .folia-provider-login-card > .mb-5 > p:nth-child(2) {
+    margin-bottom: 6px;
+  }
+
+  .folia-android-shell .folia-provider-login-card > .mb-5 button {
+    padding: 6px 8px;
+  }
+  .folia-android-shell .folia-provider-login-card:has(> .folia-provider-login-methods) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 144px;
+    column-gap: 12px;
+    row-gap: 6px;
+    align-content: center;
+    max-width: 460px;
+  }
+
+  .folia-android-shell .folia-provider-login-card:has(> .folia-provider-login-methods) > .folia-provider-login-title,
+  .folia-android-shell .folia-provider-login-card:has(> .folia-provider-login-methods) > .folia-provider-login-note {
+    grid-column: 1 / -1;
+  }
+
+  .folia-android-shell .folia-provider-login-card:has(> .folia-provider-login-methods) > button:first-child {
+    top: 4px;
+    right: 4px;
+    padding: 6px;
+  }
+
+  .folia-android-shell .folia-provider-login-card > .folia-provider-login-title {
+    margin-bottom: 0 !important;
+  }
+
+  .folia-android-shell .folia-provider-login-card > .folia-provider-login-methods {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: center;
+    margin: 0 !important;
+  }
+
+  .folia-android-shell .folia-provider-login-card > .folia-provider-login-qr {
+    grid-column: 2;
+    grid-row: 2 / span 3;
+    align-self: center;
+    justify-self: center;
+    margin: 0 !important;
+  }
+
+  .folia-android-shell .folia-provider-login-card > .folia-provider-login-current,
+  .folia-android-shell .folia-provider-login-card > .folia-provider-login-status,
+  .folia-android-shell .folia-provider-login-card > button:not(:first-child) {
+    grid-column: 1;
+    justify-self: start;
+  }
+
+  .folia-android-shell .folia-provider-login-card:has(> .folia-provider-login-methods) > .folia-provider-login-note {
+    margin-top: 2px !important;
+  }
+
+  .folia-android-shell .folia-provider-login-methods > .flex {
+    gap: 6px;
+  }
+
+  .folia-android-shell .folia-provider-login-methods > .flex button {
+    min-width: 0;
+    gap: 5px;
+    padding: 6px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+  }
+
+  .folia-android-shell .folia-provider-login-methods > .flex img {
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
+
+  .folia-android-shell .folia-provider-login-methods > p:first-child,
+  .folia-android-shell .folia-provider-login-methods > p:nth-child(2),
+  .folia-android-shell .folia-provider-login-current {
+    opacity: 0.78;
+  }
+}

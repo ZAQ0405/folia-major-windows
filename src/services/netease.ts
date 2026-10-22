@@ -1,7 +1,8 @@
 import { NeteaseUser, NeteasePlaylist, NoCopyrightRecommendation, SongPrivilege, SongResult } from "../types";
 import { readProviderSessionValue, removeProviderSessionValue, writeProviderSessionValue } from './onlineMusic/providerStorage';
 import type { PersonalFmRequestOptions } from '../types/onlineMusic';
-import { resolveAndroidTransportBase } from './onlineMusic/androidTransport';
+import { resolveAndroidTransportBase } from '../platform/android/services/androidTransport';
+import { isAndroidCapacitor } from '../utils/runtimePlatform';
 
 type UnavailableSongReplacement = {
   replacementSong: SongResult;
@@ -39,6 +40,9 @@ const getConfiguredApiBase = () => {
 
 export const getNeteaseTransportAvailability = () => {
   if (isElectronRuntime()) return { configured: true } as const;
+  // Android search/playback/lyrics use the APK-bundled LX-compatible source runtime and direct
+  // HTTPS transports. They do not require VITE_NETEASE_API_BASE or a mapped desktop port.
+  if (isAndroidCapacitor) return { configured: true } as const;
   return getConfiguredApiBase()
     ? { configured: true } as const
     : { configured: false, reason: 'not-configured' as const };

@@ -14,6 +14,8 @@ import { applyDetectedChorusEffects, applyNeteaseChorusByTime } from '../chorusE
 import type { NeteaseChorusRange } from '../chorusEffects';
 import { buildKugouLyricSearchQuery } from '../searchQuery';
 import { requestKugouLyricSearch } from '../../../services/onlineMusic/kugouTransport';
+import { isAndroidCapacitor } from '../../runtimePlatform';
+import { resolveProviderRequestUrl } from './requestUrl';
 
 const isElectron = typeof window !== 'undefined' && (window as any).electron;
 type KugouLyricFormat = 'lrc' | 'enhanced-lrc' | 'vtt' | 'krc';
@@ -116,7 +118,7 @@ async function requestKugou(url: string, params: Record<string, any>, module: st
   });
 
   const finalUrl = urlObj.toString();
-  const requestUrl = isElectron ? finalUrl : `/api/lyric-proxy?url=${encodeURIComponent(finalUrl)}`;
+  const requestUrl = isElectron ? finalUrl : resolveProviderRequestUrl(finalUrl, isAndroidCapacitor);
 
   const finalHeaders = {
     'User-Agent': `Android14-1070-11070-201-0-${module}-wifi`,
@@ -163,7 +165,7 @@ export async function searchKugouLyrics(keyword: string, page = 1, pageSize = 20
 
   try {
     const data = await requestKugou(
-      'http://complexsearch.kugou.com/v2/search/song',
+      'https://complexsearch.kugou.com/v2/search/song',
       params,
       'SearchSong',
       { 'x-router': 'complexsearch.kugou.com' }
@@ -211,7 +213,7 @@ export async function searchKugouLyrics(keyword: string, page = 1, pageSize = 20
  */
 async function searchKugouLyricsOld(keyword: string, page = 1, pageSize = 20): Promise<SongResult[]> {
   const pagesize = pageSize;
-  const url = 'http://mobiles.kugou.com/api/v3/search/song';
+  const url = 'https://mobiles.kugou.com/api/v3/search/song';
   const params = {
     showtype: '14',
     highlight: '',
@@ -232,7 +234,7 @@ async function searchKugouLyricsOld(keyword: string, page = 1, pageSize = 20): P
   });
 
   const finalUrl = urlObj.toString();
-  const requestUrl = isElectron ? finalUrl : `/api/lyric-proxy?url=${encodeURIComponent(finalUrl)}`;
+  const requestUrl = isElectron ? finalUrl : resolveProviderRequestUrl(finalUrl, isAndroidCapacitor);
 
   try {
     const response = await fetch(requestUrl, {
@@ -345,7 +347,7 @@ export async function fetchKugouLyrics(
     };
 
     const downloadRes = await requestKugou(
-      'http://lyrics.kugou.com/download',
+        'https://lyrics.kugou.com/download',
       downloadParams,
       'Lyric'
     );

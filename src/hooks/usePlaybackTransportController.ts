@@ -6,6 +6,7 @@ import { setPlayerState } from '../stores/usePlaybackStore';
 import { useTranslation } from 'react-i18next';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { currentTime } from '../stores/motionSignals';
+import type { AudioQualityPreference } from '../types/onlineMusic';
 
 // src/hooks/usePlaybackTransportController.ts
 
@@ -28,6 +29,8 @@ type UsePlaybackTransportControllerParams = {
         failedSrc?: string | null;
         resumeAt?: number;
         autoplay: boolean;
+        allowSameSourceRetry?: boolean;
+        fallbackQuality?: AudioQualityPreference;
     }) => Promise<boolean>;
     getSyntheticStageLyricsTime: () => number;
     syncStageLyricsClock: (timeSec: number, endTimeSec: number, nextPlayerState: PlayerState, startTimeSec?: number) => void;
@@ -108,6 +111,8 @@ export function usePlaybackTransportController({
                 failedSrc: audioRef.current.currentSrc || audioSrc,
                 resumeAt: audioRef.current.currentTime,
                 autoplay: true,
+                allowSameSourceRetry: true,
+                fallbackQuality: audioRef.current.error?.code === 4 ? 'standard' : undefined,
             });
 
             if (recovered) {

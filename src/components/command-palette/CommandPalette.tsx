@@ -383,7 +383,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
             {isOpen && (
                 <motion.div
                     data-folia-keyboard-window="true"
-                    className={`fixed inset-0 z-[150] flex items-start justify-center px-4 pt-[18vh] ${hasClearBackdrop ? '' : 'backdrop-blur-md'}`}
+                    className={`folia-command-palette-shell fixed inset-0 z-[150] flex items-start justify-center px-4 pt-[18vh] ${hasClearBackdrop ? '' : 'backdrop-blur-md'}`}
                     style={{
                         backgroundColor: hasClearBackdrop
                             ? (isDaylight ? 'rgba(250,250,249,0.12)' : 'rgba(0,0,0,0.16)')
@@ -396,7 +396,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                     onMouseDown={onClose}
                 >
                     <motion.div
-                        className="w-full max-w-2xl"
+                        className="folia-command-palette-container w-full max-w-2xl"
                         initial={{ opacity: 0, y: 18, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 18, scale: 0.98 }}
@@ -412,7 +412,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                         onMouseDown={(event) => event.stopPropagation()}
                     >
                         <div
-                            className={`overflow-hidden rounded-3xl border shadow-2xl ${panelBg}`}
+                            className={`folia-command-palette-panel overflow-hidden rounded-3xl border shadow-2xl ${panelBg}`}
                             data-testid="command-palette-panel"
                             style={{
                                 borderColor: isDaylight ? 'rgba(0,0,0,0.10)' : 'rgba(255,255,255,0.12)',
@@ -476,7 +476,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
                             no measurement, no content-driven height. commandPaletteSizing.spec.ts guards it. */}
                         <div
                             data-testid="command-palette-body"
-                            className="h-[min(496px,50vh)] overflow-y-auto p-2"
+                            className="folia-command-palette-body h-[min(496px,50vh)] overflow-y-auto p-2"
                             onTouchStart={() => inputRef.current?.blur()}
                         >
                             <CommandPaletteSyntaxHints

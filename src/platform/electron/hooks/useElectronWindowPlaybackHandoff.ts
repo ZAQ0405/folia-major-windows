@@ -1,28 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, MutableRefObject, RefObject, SetStateAction } from 'react';
 import type { MotionValue } from 'framer-motion';
-import { restorePlaybackSourceForSong } from '../components/app/playback/restorePlaybackSource';
-import { PlayerState } from '../types';
-import type { LyricData, SongResult, StageSource, StageStatus, StatusMessage } from '../types';
-import type { AudioQualityPreference, MediaId } from '../types/onlineMusic';
-import type { ThemeCacheSongKey } from '../services/themeCache';
-import { isStagePlaybackSong } from '../utils/appPlaybackGuards';
+import { restorePlaybackSourceForSong } from '../../../components/app/playback/restorePlaybackSource';
+import { PlayerState } from '../../../types';
+import type { LyricData, SongResult, StageSource, StageStatus, StatusMessage } from '../../../types';
+import type { AudioQualityPreference, MediaId } from '../../../types/onlineMusic';
+import type { ThemeCacheSongKey } from '../../../services/themeCache';
+import { isStagePlaybackSong } from '../../../utils/appPlaybackGuards';
 import type {
     PlaybackSnapshot,
     StageLyricsClockState,
     WindowPlaybackHandoff,
-} from '../types/appPlayback';
-import { setStatusMessage as setStatusMsg } from '../stores/useStatusMessageStore';
-import { setActivePlaybackContext, setAudioSrc, setCachedCoverUrl, setCurrentLineIndex, setCurrentSong, setDuration, setIsFmMode, setPlayQueue, setPlayerState } from '../stores/usePlaybackStore';
-import { useStableActionSurface } from './useStableCallbacks';
-import { usePlaybackStore } from '../stores/usePlaybackStore';
-import { useAppViewStore } from '../stores/useAppViewStore';
-import { useAppChromeStore } from '../stores/useAppChromeStore';
-import { useAudioSettingsStore } from '../stores/useAudioSettingsStore';
-import { usePlayerChromeSettingsStore } from '../stores/usePlayerChromeSettingsStore';
-import { currentTime } from '../stores/motionSignals';
+} from '../../../types/appPlayback';
+import { setStatusMessage as setStatusMsg } from '../../../stores/useStatusMessageStore';
+import { setActivePlaybackContext, setAudioSrc, setCachedCoverUrl, setCurrentLineIndex, setCurrentSong, setDuration, setIsFmMode, setPlayQueue, setPlayerState } from '../../../stores/usePlaybackStore';
+import { useStableActionSurface } from '../../../hooks/useStableCallbacks';
+import { usePlaybackStore } from '../../../stores/usePlaybackStore';
+import { useAppViewStore } from '../../../stores/useAppViewStore';
+import { useAppChromeStore } from '../../../stores/useAppChromeStore';
+import { useAudioSettingsStore } from '../../../stores/useAudioSettingsStore';
+import { usePlayerChromeSettingsStore } from '../../../stores/usePlayerChromeSettingsStore';
+import { currentTime } from '../../../stores/motionSignals';
 
-// src/hooks/useElectronWindowPlaybackHandoff.ts
+// src/platform/electron/hooks/useElectronWindowPlaybackHandoff.ts
 // Captures and restores renderer playback state across Electron BrowserWindow rebuilds.
 
 type SetState<T> = Dispatch<SetStateAction<T>>;

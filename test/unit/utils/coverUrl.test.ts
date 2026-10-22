@@ -1,9 +1,48 @@
-import { describe, expect, it } from 'vitest';
-import { COVER_SIZE_STEPS, describeCoverUrl, getOriginalCoverUrl, getSizedCoverUrl, resolveCoverSizeStep } from '@/utils/coverUrl';
+import { describe, expect, it, vi } from 'vitest';
+import { COVER_SIZE_STEPS, describeCoverUrl, getCoverDisplayUrl, getCoverRequestUrl, getOriginalCoverUrl, getSizedCoverUrl, resolveCoverSizeStep } from '@/utils/coverUrl';
+
+const runtime = vi.hoisted(() => ({ isAndroidCapacitor: true }));
+vi.mock('@/utils/runtimePlatform', () => ({
+    get isAndroidCapacitor() { return runtime.isAndroidCapacitor; },
+}));
 
 // test/unit/utils/coverUrl.test.ts
 
 describe('coverUrl utilities', () => {
+    it('keeps provider artwork on direct HTTPS URLs in the standalone Android app', () => {
+        const qqUrl = 'https://y.gtimg.cn/music/photo_new/T002R300x300M000album.jpg?max_age=2592000';
+        const kugouUrl = 'https://imge.kugou.com/stdmusic/400/20251014/cover.jpg';
+
+        expect(getCoverRequestUrl(qqUrl)).toBe(qqUrl);
+        expect(getCoverRequestUrl(kugouUrl)).toBe(kugouUrl);
+    });
+
+    it('keeps QQ and NetEase artwork on direct URLs in Android', () => {
+        const qqUrl = 'http://qpic.y.qq.com/music_cover/album/600?n=1';
+        const neteaseUrl = 'https://p3.music.126.net/abc/cover.jpg?param=300y300';
+
+        expect(getCoverRequestUrl(qqUrl)).toBe(qqUrl);
+        expect(getCoverRequestUrl(neteaseUrl)).toBe(neteaseUrl);
+    });
+
+    it('still uses the same-origin proxy in browser builds', () => {
+        runtime.isAndroidCapacitor = false;
+        const qqUrl = 'https://y.gtimg.cn/music/photo_new/T002R300x300M000album.jpg?max_age=2592000';
+        expect(getCoverRequestUrl(qqUrl)).toBe(`/api/lyric-proxy?url=${encodeURIComponent(qqUrl)}`);
+        runtime.isAndroidCapacitor = true;
+    });
+
+    it('leaves unrelated cover hosts and local URLs unchanged', () => {
+        expect(getCoverRequestUrl('https://images.example.test/cover.jpg')).toBe('https://images.example.test/cover.jpg');
+        expect(getCoverRequestUrl('blob:http://localhost/cover')).toBe('blob:http://localhost/cover');
+    });
+
+    it('sizes Android display URLs without routing them through a desktop-only proxy', () => {
+        const source = 'https://y.gtimg.cn/music/photo_new/T002M000album.jpg?max_age=2592000';
+        const sized = 'https://y.gtimg.cn/music/photo_new/T002R300x300M000album.jpg?max_age=2592000';
+        expect(getCoverDisplayUrl(source, 150)).toBe(sized);
+    });
+
     it('keeps blob cover URLs unchanged', () => {
         const blobUrl = 'blob:http://localhost:3000/1a56d3d0-2d9d-4f99-be5b-93f3dede5938';
 

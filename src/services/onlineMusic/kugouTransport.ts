@@ -1,7 +1,8 @@
 import md5 from 'blueimp-md5';
 import { OnlineProviderError } from '../../types/onlineMusic';
 import { readProviderSessionValue, removeProviderSessionValue, writeProviderSessionValue } from './providerStorage';
-import { resolveAndroidTransportBase } from './androidTransport';
+import { resolveAndroidTransportBase } from '../../platform/android/services/androidTransport';
+import { isAndroidCapacitor } from '../../utils/runtimePlatform';
 
 // src/services/onlineMusic/kugouTransport.ts
 
@@ -26,7 +27,7 @@ export type KugouLyricCandidate = {
     [key: string]: unknown;
 };
 
-const KUGOU_LYRIC_SEARCH_URL = 'http://lyrics.kugou.com/search';
+const KUGOU_LYRIC_SEARCH_URL = 'https://lyrics.kugou.com/search';
 const KUGOU_LYRIC_SEARCH_HEADERS = {
     'KG-RC': '1',
     'KG-THash': 'expand_search_manager.cpp:852736169:451',
@@ -151,9 +152,9 @@ export const requestKugouAnonymousSearch = async (
         `LnT6xpN3khm36zse0QzvmgTZ3waWdRSA${signatureSource}LnT6xpN3khm36zse0QzvmgTZ3waWdRSA`,
     );
 
-    const targetUrl = new URL('http://complexsearch.kugou.com/v2/search/song');
+    const targetUrl = new URL('https://complexsearch.kugou.com/v2/search/song');
     Object.entries(params).forEach(([key, value]) => targetUrl.searchParams.set(key, String(value)));
-    const requestUrl = typeof window !== 'undefined' && window.electron
+    const requestUrl = (typeof window !== 'undefined' && Boolean(window.electron)) || isAndroidCapacitor
         ? targetUrl.toString()
         : `/api/lyric-proxy?url=${encodeURIComponent(targetUrl.toString())}`;
     const response = await fetch(requestUrl, {
@@ -212,7 +213,7 @@ export const requestKugouLegacyPlayInfo = async (hash: string): Promise<any> => 
         return JSON.parse(response.bodyText) as any;
     }
 
-    const requestUrl = typeof window !== 'undefined' && window.electron
+    const requestUrl = (typeof window !== 'undefined' && Boolean(window.electron)) || isAndroidCapacitor
         ? targetUrlString
         : `/api/lyric-proxy?url=${encodeURIComponent(targetUrlString)}`;
     const response = await fetch(requestUrl, {
@@ -297,7 +298,7 @@ export const requestKugouLyricSearch = async (
         const response = electronProxy
             ? await electronProxy(targetUrl, { method: 'GET', headers: KUGOU_LYRIC_SEARCH_HEADERS })
             : await fetch(
-                typeof window !== 'undefined' && window.electron
+                (typeof window !== 'undefined' && Boolean(window.electron)) || isAndroidCapacitor
                     ? targetUrl
                     : `/api/lyric-proxy?url=${encodeURIComponent(targetUrl)}`,
                 { method: 'GET', credentials: 'omit', headers: KUGOU_LYRIC_SEARCH_HEADERS },
@@ -366,6 +367,9 @@ const persistElectronAccountHint = (operation: KugouOperation, response: any): v
 
 export const getKugouTransportAvailability = () => {
     if (typeof window !== 'undefined' && window.electron?.kugouRequest) return { configured: true } as const;
+    // The Android APK uses the bundled LX-compatible source runtime plus its native direct
+    // HTTPS transport. Account/API-base operations remain separate from anonymous music access.
+    if (isAndroidCapacitor) return { configured: true } as const;
     return getWebApiBase()
         ? { configured: true } as const
         : { configured: false, reason: 'not-configured' as const };

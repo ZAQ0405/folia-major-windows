@@ -42,6 +42,8 @@ interface SectionSpec {
     descriptionKey: string;
     /** Sections that only exist on the desktop build. */
     electronOnly?: boolean;
+    /** Sections that do not have useful controls on Android touch devices. */
+    androidHidden?: boolean;
 }
 
 interface GroupSpec {
@@ -70,7 +72,7 @@ export const SETTINGS_NAV_GROUP_SPECS: GroupSpec[] = [
         labelKey: 'options.settingsGroupControls',
         sections: [
             { id: 'playback', icon: PlayCircle, labelKey: 'options.playbackSettings', descriptionKey: 'options.playbackSettingsPanelDesc' },
-            { id: 'interaction', icon: Keyboard, labelKey: 'options.interactionSettings', descriptionKey: 'options.interactionSettingsPanelDesc' },
+            { id: 'interaction', icon: Keyboard, labelKey: 'options.interactionSettings', descriptionKey: 'options.interactionSettingsPanelDesc', androidHidden: true },
         ],
     },
     {
@@ -87,19 +89,20 @@ export const SETTINGS_NAV_GROUP_SPECS: GroupSpec[] = [
         sections: [
             { id: 'desktop', icon: Command, labelKey: 'options.desktopSettings', descriptionKey: 'options.desktopSettingsPanelDesc', electronOnly: true },
             { id: 'lab', icon: FlaskConical, labelKey: 'options.labSettings', descriptionKey: 'options.labSettingsDesc' },
-            { id: 'developer', icon: Terminal, labelKey: 'options.developerSettings', descriptionKey: 'options.developerSettingsDesc' },
+            { id: 'developer', icon: Terminal, labelKey: 'options.developerSettings', descriptionKey: 'options.developerSettingsDesc', androidHidden: true },
         ],
     },
 ];
 
-/** Resolves the grouping into translated nav items, dropping desktop-only sections (and groups left empty) on web. */
-export const buildSettingsNavGroups = (t: Translate, options: { isElectron: boolean }): SettingsNavGroup[] => (
+/** Resolves translated navigation and omits controls that cannot be used on the current platform. */
+export const buildSettingsNavGroups = (t: Translate, options: { isElectron: boolean; isAndroidCapacitor?: boolean }): SettingsNavGroup[] => (
     SETTINGS_NAV_GROUP_SPECS
         .map(group => ({
             id: group.id,
             label: t(group.labelKey),
             items: group.sections
-                .filter(section => !section.electronOnly || options.isElectron)
+                .filter(section => (!section.electronOnly || options.isElectron)
+                    && (!section.androidHidden || !options.isAndroidCapacitor))
                 .map(section => ({
                     id: section.id,
                     icon: section.icon,
@@ -107,8 +110,11 @@ export const buildSettingsNavGroups = (t: Translate, options: { isElectron: bool
                     description: t(section.descriptionKey),
                     anchors: (Object.entries(SETTINGS_ANCHOR_DEFINITIONS) as [SettingsAnchorId, typeof SETTINGS_ANCHOR_DEFINITIONS[SettingsAnchorId]][])
                         .filter(([, definition]) => (
-                            definition.section === section.id
+                            (options.isAndroidCapacitor && 'androidSection' in definition
+                                ? definition.androidSection === section.id
+                                : definition.section === section.id)
                             && (!('electronOnly' in definition) || !definition.electronOnly || options.isElectron)
+                            && (!('androidHidden' in definition) || !definition.androidHidden || !options.isAndroidCapacitor)
                         ))
                         .map(([id, definition]) => ({ id, label: t(definition.labelKey) })),
                 })),

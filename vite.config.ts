@@ -8,8 +8,24 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import dns from 'node:dns/promises';
 import net from 'node:net';
+import { Readable } from 'node:stream';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const getAndroidApiBase = (envName: string): string => {
+  const value = process.env[envName]?.trim();
+  if (!value) return '';
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`${envName} must be an absolute HTTPS URL for Android release builds`);
+  }
+  if (url.protocol !== 'https:' || ['localhost', '127.0.0.1', '::1'].includes(url.hostname)) {
+    throw new Error(`${envName} cannot point to localhost or use non-HTTPS in Android release builds`);
+  }
+  return url.toString().replace(/\/$/u, '');
+};
 
 const LYRIC_PROXY_CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
@@ -37,6 +53,7 @@ const LYRIC_PROXY_IGNORED_FORWARD_HEADERS = ['host', 'connection', 'content-leng
 function isAllowedLyricProxyHost(hostname: string): boolean {
   return hostname === 'qq.com' || hostname.endsWith('.qq.com') ||
     hostname === 'y.gtimg.cn' ||
+    hostname === 'music.126.net' || hostname.endsWith('.music.126.net') ||
     hostname === 'kugou.com' || hostname.endsWith('.kugou.com') ||
     hostname === 'kgimg.com' || hostname.endsWith('.kgimg.com') ||
     hostname === 'kuwo.cn' || hostname.endsWith('.kuwo.cn') ||
@@ -242,6 +259,97 @@ function devLyricProxyPlugin() {
   };
 }
 
+function devAndroidAudioProxyPlugin() {
+  return {
+    name: 'folia-dev-android-audio-proxy',
+    apply: 'serve' as const,
+    configureServer(server: ViteDevServer) {
+      server.middlewares.use(async (req, res, next) => {
+        const requestUrl = new URL(req.url ?? '/', 'http://localhost');
+        if (requestUrl.pathname !== '/api/android-audio-stream') {
+          next();
+          return;
+        }
+
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
+          res.statusCode = 405;
+          res.setHeader('Allow', 'GET, HEAD');
+          res.end();
+          return;
+        }
+
+        const rawTarget = requestUrl.searchParams.get('url');
+        if (!rawTarget) {
+          res.statusCode = 400;
+          res.end('Missing audio URL');
+          return;
+        }
+
+        const isAllowedAudioUrl = (value: URL) => {
+          const hostname = value.hostname.toLowerCase();
+          const isNeteaseCdn = hostname === 'music.126.net' || hostname.endsWith('.music.126.net');
+          const isQqMusicCdn = /^(?:[a-z0-9-]+\.)*qqmusic\.qq\.com$/u.test(hostname)
+            || hostname === 'aqqmusic.tc.qq.com';
+          return ['http:', 'https:'].includes(value.protocol)
+            && !value.username && !value.password
+            && (isNeteaseCdn || isQqMusicCdn);
+        };
+
+        try {
+          let target = new URL(rawTarget);
+          if (!isAllowedAudioUrl(target)) {
+            res.statusCode = 403;
+            res.end('Audio host is not allowed');
+            return;
+          }
+
+          const headers = new Headers();
+          const range = req.headers.range;
+          if (range) headers.set('Range', range);
+          const ifRange = req.headers['if-range'];
+          if (ifRange) headers.set('If-Range', Array.isArray(ifRange) ? ifRange.join(', ') : ifRange);
+
+          let upstream: Response | null = null;
+          for (let redirectCount = 0; redirectCount <= 4; redirectCount += 1) {
+            upstream = await fetch(target, { method: req.method, headers, redirect: 'manual' });
+            if (![301, 302, 303, 307, 308].includes(upstream.status)) break;
+            const location = upstream.headers.get('location');
+            if (!location || redirectCount === 4) throw new Error('Audio CDN redirect limit exceeded');
+            target = new URL(location, target);
+            if (!isAllowedAudioUrl(target)) throw new Error('Audio CDN redirected to a disallowed host');
+          }
+
+          if (!upstream) throw new Error('Audio CDN returned no response');
+          res.statusCode = upstream.status;
+          for (const key of ['accept-ranges', 'content-length', 'content-range', 'content-type', 'etag', 'last-modified']) {
+            const value = upstream.headers.get(key);
+            if (value) res.setHeader(key, value);
+          }
+          res.setHeader('Access-Control-Allow-Origin', '*');
+
+          if (req.method === 'HEAD' || !upstream.body) {
+            res.end();
+            return;
+          }
+
+          Readable.fromWeb(upstream.body as import('node:stream/web').ReadableStream<Uint8Array>)
+            .on('error', (error) => res.destroy(error))
+            .pipe(res);
+        } catch (error) {
+          console.error('Vite Android audio proxy request failed:', error);
+          if (!res.headersSent) {
+            res.statusCode = 502;
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.end('Audio CDN request failed');
+          } else {
+            res.destroy(error instanceof Error ? error : undefined);
+          }
+        }
+      });
+    },
+  };
+}
+
 export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig> {
   const isCapacitorBuild = process.env.FOLIA_BUILD_TARGET === 'capacitor';
   let commitHash = '';
@@ -299,15 +407,21 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
 
   return {
     base: process.env.ELECTRON === 'true' || isCapacitorBuild ? './' : '/',
+    // `.env.local` is a developer machine's configuration, not APK configuration.
+    // Only explicitly supplied HTTPS Android service URLs may enter a Capacitor build.
+    envPrefix: isCapacitorBuild ? ['VITE_AI_PROVIDER'] : 'VITE_',
     worker: {
       format: 'es'
     },
     build: {
+      outDir: isCapacitorBuild ? 'dist-android' : 'dist',
       rollupOptions: {
         input: {
-          main: 'index.html',
-          stageClient: 'stage-client.html',
-          modExport: 'mod-export.html',
+          index: isCapacitorBuild ? 'android.html' : 'index.html',
+          ...(!isCapacitorBuild ? {
+            stageClient: 'stage-client.html',
+            modExport: 'mod-export.html',
+          } : {}),
         },
         output: {
           // three.js is a large dependency used only by the diorama 3D visualizer. Split it into its
@@ -334,6 +448,7 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
     plugins: [
       devLyricProxyPlugin(),
       devJsSourceProxyPlugin(),
+      devAndroidAudioProxyPlugin(),
       commandPinyinPlugin(),
       react(),
       ...(isCapacitorBuild ? [] : [VitePWA({
@@ -373,7 +488,15 @@ export default async function viteConfig(_config: ConfigEnv): Promise<UserConfig
       '__APP_VERSION__': JSON.stringify(JSON.parse(fs.readFileSync(path.resolve(__dirname, 'package.json'), 'utf-8')).version),
       '__APP_VERSION_LABEL__': JSON.stringify(appVersionLabel),
       '__APP_RELEASE_CHANNEL__': JSON.stringify(appReleaseChannel),
-      '__DOCKER_STACK_VERSION__': JSON.stringify(dockerStackVersion)
+      '__DOCKER_STACK_VERSION__': JSON.stringify(dockerStackVersion),
+      ...(isCapacitorBuild ? {
+        'import.meta.env.VITE_NETEASE_API_BASE': JSON.stringify(getAndroidApiBase('FOLIA_ANDROID_NETEASE_API_BASE')),
+        'import.meta.env.VITE_QQ_API_BASE': JSON.stringify(getAndroidApiBase('FOLIA_ANDROID_QQ_API_BASE')),
+        'import.meta.env.VITE_KUGOU_API_BASE': JSON.stringify(getAndroidApiBase('FOLIA_ANDROID_KUGOU_API_BASE')),
+        'process.env.VITE_NETEASE_API_BASE': 'undefined',
+        'process.env.VITE_QQ_API_BASE': 'undefined',
+        'process.env.VITE_KUGOU_API_BASE': 'undefined',
+      } : {})
     },
     resolve: {
       alias: {

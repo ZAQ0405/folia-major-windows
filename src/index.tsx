@@ -35,7 +35,7 @@ void (async () => {
     // Diagnostics and performance helpers are useful, but none is allowed to
     // become a prerequisite for mounting the player.
     await Promise.allSettled([
-      import('./utils/frameRateLimiter').then(({ installGlobalVisualizerFrameRateLimiter }) => installGlobalVisualizerFrameRateLimiter()),
+      import('./utils/frameRateLimiter').then(({ disableGlobalVisualizerFrameRateLimiter }) => disableGlobalVisualizerFrameRateLimiter()),
       import('./utils/consoleLogBuffer').then(({ installConsoleLogCapture }) => installConsoleLogCapture()),
       import('./services/debug/debugModule').then(({ installDebugModule }) => installDebugModule()),
       import('./services/debug/memorySamples').then(({ installMemorySampleFeed }) => installMemorySampleFeed()),

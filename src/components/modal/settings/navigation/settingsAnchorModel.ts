@@ -28,6 +28,7 @@ export const SETTINGS_ANCHOR_DEFINITIONS = {
     // PlaybackSettingsSubview (TransitionSettingsSection renders inside it)
     queueSettings: { section: 'playback', labelKey: 'options.queueSettings' },
     playbackModeSettings: { section: 'playback', labelKey: 'options.playbackModeSettings' },
+    providerPlaybackModes: { section: 'playback', labelKey: 'options.providerPlaybackModes' },
     scrobbleSettings: { section: 'playback', labelKey: 'options.scrobbleSettings' },
     transitionSettings: { section: 'playback', labelKey: 'options.transitionSettings' },
     replayGainSettings: { section: 'playback', labelKey: 'options.replayGainSettings' },
@@ -36,9 +37,9 @@ export const SETTINGS_ANCHOR_DEFINITIONS = {
     jsMusicSources: { section: 'playback', labelKey: 'options.jsMusicSources' },
 
     // InteractionSettingsSubview
-    gridActionButton: { section: 'interaction', labelKey: 'options.gridActionButton' },
-    gridPaletteHotkey: { section: 'interaction', labelKey: 'options.gridPaletteHotkey' },
-    customShortcut: { section: 'interaction', labelKey: 'options.customShortcut' },
+    gridActionButton: { section: 'interaction', androidSection: 'general', labelKey: 'options.gridActionButton' },
+    gridPaletteHotkey: { section: 'interaction', labelKey: 'options.gridPaletteHotkey', androidHidden: true },
+    customShortcut: { section: 'interaction', labelKey: 'options.customShortcut', androidHidden: true },
 
     // IntegrationSettingsSubview — stageMode is declared twice on purpose, the Electron and web
     // panels being mutually exclusive; it is still one destination.
@@ -64,7 +65,13 @@ export const SETTINGS_ANCHOR_DEFINITIONS = {
     labMotion: { section: 'lab', labelKey: 'options.reduceMotionSection' },
     labPlayerUi: { section: 'lab', labelKey: 'options.labPlayerUiSection' },
     labWindowAndTools: { section: 'lab', labelKey: 'options.labWindowAndToolsSection' },
-} as const satisfies Record<string, { section: SettingsSubviewId; labelKey: string; electronOnly?: boolean }>;
+} as const satisfies Record<string, {
+    section: SettingsSubviewId;
+    labelKey: string;
+    electronOnly?: boolean;
+    androidHidden?: boolean;
+    androidSection?: SettingsSubviewId;
+}>;
 
 export type SettingsAnchorId = keyof typeof SETTINGS_ANCHOR_DEFINITIONS;
 

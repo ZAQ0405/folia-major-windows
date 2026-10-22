@@ -13,6 +13,8 @@ import { SettingsAnchor } from './navigation/SettingsAnchorContext';
 import SettingsSectionHeading from './navigation/SettingsSectionHeading';
 import { useHomeLayoutSettingsStore } from '../../../stores/useHomeLayoutSettingsStore';
 import { useSettingsModalStore } from '../../../stores/useSettingsModalStore';
+import { isAndroidCapacitor } from '../../../utils/runtimePlatform';
+import { InteractionSettingsSubview } from './InteractionSettingsSubview';
 
 // src/components/modal/settings/GeneralSettingsSubview.tsx
 // Global app preferences that should stay independent from playback and desktop-only settings.
@@ -182,6 +184,14 @@ const GeneralSettingsSubview: React.FC<GeneralSettingsSubviewProps> = ({
                     </div>
                 </div>
             </SettingsAnchor>
+
+            {isAndroidCapacitor && (
+                <InteractionSettingsSubview
+                    isDaylight={isDaylight}
+                    settingsCardClass={settingsCardClass}
+                    theme={theme}
+                />
+            )}
 
             <HomeCardPositionSection isDaylight={isDaylight} settingsCardClass={settingsCardClass} theme={theme} />
 

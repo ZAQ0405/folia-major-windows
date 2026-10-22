@@ -16,6 +16,7 @@ import { setPlayerState } from '../stores/usePlaybackStore';
 import { useTranslation } from 'react-i18next';
 import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { useAppViewStore } from '../stores/useAppViewStore';
+import { isAndroidCapacitor } from '../utils/runtimePlatform';
 
 // src/hooks/usePlaybackAudioBridge.ts
 
@@ -134,6 +135,11 @@ export function usePlaybackAudioBridge({
         // The context is the sentinel, not the source node: a deck that failed to connect must
         // not let this run twice, because createMediaElementSource throws on a second call.
         if (!audioRef.current || audioContextRef.current) return;
+        // Android music sources frequently omit Access-Control-Allow-Origin. Routing those
+        // cross-origin streams through MediaElementAudioSourceNode makes Chromium mute/reject
+        // them, even when the <audio> element itself can play the URL. Leave remote Android
+        // streams on the native media-element path; local media and desktop keep the full graph.
+        if (isAndroidCapacitor && currentSong?.sourceRef?.kind === 'online') return;
         try {
             const AudioContextClass = window.AudioContext || (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
             const ctx = new AudioContextClass();
@@ -161,7 +167,7 @@ export function usePlaybackAudioBridge({
         } catch (error) {
             console.error('Audio Context Setup Failed:', error);
         }
-    }, [analyserRef, applyReplayGain, audioContextRef, audioEqualizerSettings, audioRef, connectDecks, gainNodeRef, getTargetPlaybackVolume, syncOutputGain]);
+    }, [analyserRef, applyReplayGain, audioContextRef, audioEqualizerSettings, audioRef, connectDecks, currentSong, gainNodeRef, getTargetPlaybackVolume, syncOutputGain]);
 
     /**
      * Writes a fully-played track's audio and cover into the media cache.

@@ -163,6 +163,17 @@ export const restoreGlobalVisualizerFrameRateLimiter = () => {
     installedLimiter = null;
 };
 
+/** Permanently opt this app session out of the experimental global RAF cap. */
+export const disableGlobalVisualizerFrameRateLimiter = () => {
+    if (typeof window === 'undefined') return;
+    try {
+        window.localStorage.removeItem(VISUALIZER_FRAME_RATE_STORAGE_KEY);
+    } catch {
+        // The native RAF can still be restored even when storage is unavailable.
+    }
+    restoreGlobalVisualizerFrameRateLimiter();
+};
+
 export const installGlobalVisualizerFrameRateLimiter = (overrideFrameRate?: VisualizerFrameRate) => {
     if (typeof window === 'undefined') {
         return;

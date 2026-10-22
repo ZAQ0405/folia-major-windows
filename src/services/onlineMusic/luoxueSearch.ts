@@ -2,9 +2,10 @@ import type { UnifiedSong } from '../../types';
 import type { JsonValue, OnlineProviderId, ProviderPage } from '../../types/onlineMusic';
 import { OnlineProviderError } from '../../types/onlineMusic';
 import { getOnlineMusicProvider } from './providerRegistry';
+import { isAndroidCapacitor } from '../../utils/runtimePlatform';
 
-// This is the search layer used by Luoxue itself. JS source scripts are deliberately not
-// involved here: they resolve audio/lyrics for an already identified song.
+// Folia's provider adapters speak LX-compatible platform protocols here. This is not LX's
+// bundled musicSdk; imported LX-style JS sources are only used later for playback/lyrics.
 
 type PageInput = { limit: number; offset: number };
 type LuoxueChannelId = 'wy' | 'tx' | 'kg' | 'kw';
@@ -105,7 +106,15 @@ const buildSong = ({
     };
 };
 
-const normalizeKuwo = (body: unknown, providerId: OnlineProviderId, source: LuoxueChannelId): ProviderPage<UnifiedSong> => {
+const getKuwoCoverUrl = (raw: Record<string, any>): string | undefined => {
+    const candidate = text(raw.web_albumpic_short || raw.webAlbumPicShort || raw.albumPic || raw.pic);
+    if (!candidate) return undefined;
+    if (/^https?:\/\//iu.test(candidate)) return candidate.replace(/^http:/iu, 'https:');
+    if (candidate.startsWith('//')) return `https:${candidate}`;
+    return `https://img1.kuwo.cn/star/albumcover/${candidate.replace(/^\/+/, '')}`;
+};
+
+export const normalizeKuwoSearch = (body: unknown, providerId: OnlineProviderId = 'kuwo', source: LuoxueChannelId = 'kw'): ProviderPage<UnifiedSong> => {
     const response = record(body);
     const rawList = Array.isArray(response.abslist) ? response.abslist : [];
     const items = rawList.map(item => {
@@ -121,6 +130,7 @@ const normalizeKuwo = (body: unknown, providerId: OnlineProviderId, source: Luox
             albumId: text(raw.ALBUMID),
             albumName: text(raw.ALBUM),
             durationMs,
+            coverUrl: getKuwoCoverUrl(raw),
             data: providerData([
                 ['songmid', id],
                 ['albumId', text(raw.ALBUMID)],
@@ -131,12 +141,107 @@ const normalizeKuwo = (body: unknown, providerId: OnlineProviderId, source: Luox
     return { items, total, hasMore: total > items.length, nextOffset: 0 };
 };
 
-const requestJson = async (url: string, init: { method?: string; headers?: Record<string, string>; body?: string } = {}): Promise<unknown> => {
+export const normalizeGdStudioSearch = (
+    body: unknown,
+    offset: number,
+): ProviderPage<UnifiedSong> => {
+    const rawList = Array.isArray(body) ? body : [];
+    const items = rawList.map(item => {
+        const raw = record(item);
+        const id = text(raw.id || raw.url_id);
+        return buildSong({
+            providerId: 'netease',
+            source: 'wy',
+            id,
+            name: text(raw.name),
+            artists: artistNames(raw.artist),
+            albumName: text(raw.album),
+            data: providerData([
+                ['songmid', id],
+                ['url_id', text(raw.url_id)],
+                ['pic_id', text(raw.pic_id)],
+                ['lyric_id', text(raw.lyric_id)],
+            ]),
+        });
+    }).filter((song): song is UnifiedSong => Boolean(song));
+    return { items, total: items.length, hasMore: false, nextOffset: offset + items.length };
+};
+
+const neteaseSearchCoverCache = new Map<string, Promise<string>>();
+const pendingNeteaseCoverRequests: Array<() => void> = [];
+let activeNeteaseCoverRequests = 0;
+
+const withNeteaseCoverRequestLimit = <T>(task: () => Promise<T>): Promise<T> => new Promise((resolve, reject) => {
+    const run = () => {
+        activeNeteaseCoverRequests += 1;
+        void task().then(resolve, reject).finally(() => {
+            activeNeteaseCoverRequests -= 1;
+            pendingNeteaseCoverRequests.shift()?.();
+        });
+    };
+    if (activeNeteaseCoverRequests < 3) run();
+    else pendingNeteaseCoverRequests.push(run);
+});
+
+/** GD Studio returns NetEase's opaque pic_id in search results; resolve it only for visible rows. */
+export const resolveNeteaseSearchCover = (picId: string, songId = ''): Promise<string> => {
+    const id = text(picId);
+    const trackId = text(songId);
+    const cacheKey = trackId || id;
+    if (!cacheKey) return Promise.resolve('');
+    const cached = neteaseSearchCoverCache.get(cacheKey);
+    if (cached) return cached;
+
+    const request = withNeteaseCoverRequestLimit(async () => {
+        if (trackId) {
+            try {
+                const detailParams = new URLSearchParams({ id: trackId, ids: JSON.stringify([trackId]) });
+                const detail = record(await requestLuoxueJson(
+                    `https://music.163.com/api/song/detail/?${detailParams.toString()}`,
+                    { headers: { Referer: 'https://music.163.com/', 'User-Agent': 'Mozilla/5.0' } },
+                ));
+                const song = Array.isArray(detail.songs) ? record(detail.songs[0]) : {};
+                const coverUrl = text(record(song.album).picUrl);
+                if (coverUrl) return coverUrl.replace(/^http:/iu, 'https:');
+            } catch {
+                // The older public detail endpoint can be unavailable for a short window; the
+                // GD Studio picture route below remains an independent fallback.
+            }
+        }
+        if (!id) return '';
+        const params = new URLSearchParams({ types: 'pic', source: 'netease', id });
+        const payload = await requestLuoxueJson(`https://music-api.gdstudio.xyz/api.php?${params.toString()}`);
+        return text(record(payload).url);
+    }).catch(error => {
+            console.warn('[LX Search] Failed to resolve NetEase cover:', error);
+            return '';
+        });
+    neteaseSearchCoverCache.set(cacheKey, request);
+    return request;
+};
+
+export const requestLuoxueJson = async (
+    url: string,
+    init: { method?: string; headers?: Record<string, string>; body?: string } = {},
+    useNativeHttp = isAndroidCapacitor,
+): Promise<unknown> => {
     const bridge = typeof window !== 'undefined' ? window.electron?.fetchJsSourceRequest : undefined;
     if (bridge) {
         const response = await bridge(url, { ...init, timeout: 15_000 });
         if (!response.ok) throw new Error(`LX search request failed (${response.status})`);
         try { return JSON.parse(response.bodyText); } catch { throw new Error('LX search returned invalid JSON'); }
+    }
+
+    // Android's CapacitorHttp patch sends fetch through the native stack, bypassing
+    // WebView CORS and the serverless proxy that is absent from an installed APK.
+    if (useNativeHttp) {
+        const response = await fetch(url, {
+            method: init.method || 'GET',
+            headers: init.headers,
+            body: init.body,
+        });
+        if (!response.ok) throw new Error(`LX search request failed (${response.status})`);
+        try { return await response.json(); } catch { throw new Error('LX search returned invalid JSON'); }
     }
 
     const proxyUrl = `/api/js-source-request?url=${encodeURIComponent(url)}`;
@@ -151,12 +256,12 @@ const requestJson = async (url: string, init: { method?: string; headers?: Recor
 
 const searchKuwo = async (query: string, page: PageInput): Promise<ProviderPage<UnifiedSong>> => {
     const pageNumber = Math.floor(page.offset / Math.max(1, page.limit)) + 1;
-    const url = 'http://search.kuwo.cn/r.s?client=kt'
+    const url = 'https://search.kuwo.cn/r.s?client=kt'
         + `&all=${encodeURIComponent(query)}&pn=${pageNumber - 1}&rn=${page.limit}`
         + '&uid=794762570&ver=kwplayer_ar_9.2.2.1&vipver=1&show_copyright_off=1'
         + '&newver=1&ft=music&cluster=0&strategy=2012&encoding=utf8&rformat=json'
         + '&vermerge=1&mobi=1&issubtitle=1';
-    return normalizeKuwo(await requestJson(url), 'kuwo', 'kw');
+    return normalizeKuwoSearch(await requestLuoxueJson(url), 'kuwo', 'kw');
 };
 
 const searchNative = async (
@@ -169,8 +274,27 @@ const searchNative = async (
     return provider.search.searchSongs(query, page.limit, page.offset);
 };
 
+const searchNeteaseDirect = async (query: string, page: PageInput): Promise<ProviderPage<UnifiedSong>> => {
+    const params = new URLSearchParams({
+        types: 'search',
+        source: 'netease',
+        name: query,
+        count: String(Math.max(1, page.limit)),
+    });
+    try {
+        const body = await requestLuoxueJson(`https://music-api.gdstudio.xyz/api.php?${params.toString()}`);
+        return normalizeGdStudioSearch(body, page.offset);
+    } catch (error) {
+        // GD Studio may rate-limit mobile clients (503). Folia's native NetEase adapter returns
+        // album.picUrl directly, so it also recovers artwork instead of leaving empty result rows.
+        console.warn('[LX Search] NetEase direct search failed; falling back to the native provider:', error);
+        return searchNative('netease', query, page);
+    }
+};
+
 const searchChannel = (channel: typeof CHANNELS[number], query: string, page: PageInput) => {
     if (channel.id === 'kw') return searchKuwo(query, page);
+    if (isAndroidCapacitor && channel.id === 'wy') return searchNeteaseDirect(query, page);
     return searchNative(channel.providerId, query, page);
 };
 

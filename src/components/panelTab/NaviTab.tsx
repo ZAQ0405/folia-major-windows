@@ -60,10 +60,10 @@ const NaviTab: React.FC<NaviTabProps> = ({
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col space-y-6 pt-4 px-2"
+            className="folia-panel-navi-root flex flex-col space-y-6 pt-4 px-2"
         >
             {/* Server Info */}
-            <div className="space-y-3">
+            <div className="folia-panel-navi-info space-y-3">
                 <h3 className="text-sm font-semibold opacity-50 uppercase tracking-wider flex items-center gap-2">
                     <Cloud size={14} /> Navidrome Server
                 </h3>
@@ -88,7 +88,7 @@ const NaviTab: React.FC<NaviTabProps> = ({
             />
 
             {/* Lyrics Management */}
-            <div className="space-y-3">
+            <div className="folia-panel-navi-lyrics space-y-3">
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold opacity-50 uppercase tracking-wider flex items-center gap-2">
                         <FileText size={14} /> {t('localMusic.lyrics')}

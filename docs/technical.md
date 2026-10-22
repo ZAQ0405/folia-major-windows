@@ -146,7 +146,7 @@ vercel env pull .env.local
 | --- | --- | --- |
 | `VITE_NETEASE_API_BASE` | 网易云音乐 API 实例地址 | 是 |
 | `VITE_KUGOU_API_BASE` | Web 版的 KuGouMusicApi 实例地址；Electron 不使用此项 | 否，默认留空 |
-| `VITE_QQ_API_BASE` | QQ 音乐 API 实例地址；Cloudflare / Vercel 上可填 `/api/qq` 用本仓库内置的 serverless 入口；留空时 QQ 入口可见但不可用 | 否，默认留空 |
+| `VITE_QQ_API_BASE` | QQ 音乐 API 实例地址；Cloudflare / Vercel 上可填 `/api/qq`；Android APK 留空时使用内置 handler 和扫码 relay，桌面/Web 留空则不可用 | 否，默认留空 |
 | `QQ_SESSION_SECRET` | serverless 形态下加密登录态用的服务端密钥，**不加 `VITE_` 前缀**；未设置时 QQ 登录路由回 501，曲库路由仍可用 | 用 `/api/qq` 时需要 |
 | `QQ_SESSION_SECRET_PREVIOUS` | 轮换 `QQ_SESSION_SECRET` 时用来验证旧令牌，避免把所有人一次性登出 | 否 |
 | `VITE_AI_PROVIDER` | AI 提供商，`google` 或 `openai` | 是 |
@@ -155,6 +155,10 @@ vercel env pull .env.local
 | `OPENAI_API_URL` | OpenAI 兼容接口地址，可填 base URL 或完整 `chat/completions` 地址 | 使用 OpenAI兼容接口 时需要 |
 | `OPENAI_API_MODEL` | 模型名，例如 `gpt-5.6-luna`、`gpt-4.1-mini`、`deepseek-v4-flash` | 使用 OpenAI兼容接口 时需要 |
 | `OPENAI_API_TEMPERATURE` | 温度，范围 `0`–`2`；留空或无效时默认使用 `0.7` | 否 |
+
+Android APK 不读取开发机 `.env.local` 中的 `VITE_*_API_BASE`，避免把 `localhost` 打进真机包。需要启用依赖服务端的账号、歌单等能力时，在构建环境显式设置 `FOLIA_ANDROID_NETEASE_API_BASE`、`FOLIA_ANDROID_QQ_API_BASE` 或 `FOLIA_ANDROID_KUGOU_API_BASE`，值必须是可从手机访问的 HTTPS 地址；留空时相应账号服务会保持不可用，不会回连开发机。LX 兼容音源脚本和酷我搜索在 Android 使用 Capacitor 原生 HTTP 请求，不需要本机代理。
+
+Android Web 入口独立于桌面：`android.html` / `src/platform/android/*` 构建到 `dist-android/`，再由 Capacitor 同步至 APK；桌面继续使用 `index.html` / `src/index.tsx` 和 `dist/`。播放状态及音乐 provider 业务仍共用，避免两套播放逻辑漂移。Android 状态栏和导航栏采用透明 edge-to-edge，由页面背景延伸绘制，不使用固定黑色边框。
 
 注意：部分模型对于温度参数有特殊要求，例如 `kimi-k3` 要求温度必须为 `1`。
 

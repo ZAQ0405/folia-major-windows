@@ -12,6 +12,8 @@ import { qrcDecrypt } from './qrcDecrypt';
 import { applyDetectedChorusEffects, applyNeteaseChorusByTime } from '../chorusEffects';
 import type { NeteaseChorusRange } from '../chorusEffects';
 import { getOriginalCoverUrl } from '../../coverUrl';
+import { isAndroidCapacitor } from '../../runtimePlatform';
+import { resolveProviderRequestUrl } from './requestUrl';
 
 const QQ_REQUEST_TIMEOUT_MS = 15_000;
 const QQ_REQUEST_ATTEMPTS = 3;
@@ -67,7 +69,7 @@ async function requestQQ(method: string, module: string, param: any): Promise<an
     ? `${targetUrl}?data=${encodeURIComponent(JSON.stringify(payload))}`
     : targetUrl;
   const bridge = getElectronRequestBridge();
-  const url = bridge ? requestUrl : `/api/lyric-proxy?url=${encodeURIComponent(requestUrl)}`;
+  const url = bridge ? requestUrl : resolveProviderRequestUrl(requestUrl, isAndroidCapacitor);
   const requestBody = JSON.stringify(payload);
   const headers = {
     'Content-Type': 'application/json',

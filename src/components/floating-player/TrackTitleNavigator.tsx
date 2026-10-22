@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTrackTitlePreview, type TrackNavSide } from '../../hooks/useTrackTitlePreview';
 import { usePlayerChromeSettingsStore } from '../../stores/usePlayerChromeSettingsStore';
+import { isAndroidCapacitor } from '../../utils/runtimePlatform';
 // src/components/floating-player/TrackTitleNavigator.tsx
 
 const PREVIEW_OPACITY = 0.55;
@@ -64,7 +65,7 @@ const TrackTitleNavigator: React.FC<TrackTitleNavigatorProps> = ({
     const arrowClass = [
         'pointer-events-auto flex h-6 w-6 items-center justify-center rounded-full',
         'transition-opacity duration-200 hover:opacity-100!',
-        alwaysShowArrows ? 'opacity-70' : 'opacity-0 group-hover/title:opacity-70',
+        alwaysShowArrows || isAndroidCapacitor ? 'opacity-70' : 'opacity-0 group-hover/title:opacity-70',
         isDaylight ? 'hover:bg-black/10' : 'hover:bg-white/15',
     ].join(' ');
     const textClass = 'w-full truncate text-center text-sm font-bold';
@@ -83,7 +84,7 @@ const TrackTitleNavigator: React.FC<TrackTitleNavigatorProps> = ({
                 type="button"
                 aria-label={label}
                 title={target || label}
-                className={arrowClass}
+                className={`folia-track-title-navigator-arrow ${arrowClass}`}
                 style={{ color }}
                 onClick={(e) => {
                     // 必须拦住冒泡：胶囊自身的 onClick 会导航到 player 页
@@ -98,7 +99,7 @@ const TrackTitleNavigator: React.FC<TrackTitleNavigatorProps> = ({
     };
 
     return (
-        <div className="group/title relative min-w-0 select-none px-1">
+        <div className="folia-track-title-navigator group/title relative min-w-0 select-none px-1">
             {/* 感应区比箭头宽，指针「靠近」箭头即可预览；区内非箭头处的点击不拦截 */}
             <div
                 className={`${zoneClass} left-0 w-14 justify-start pl-1`}

@@ -28,8 +28,9 @@ export async function handleLyricProxy(request: Request): Promise<Response> {
   };
   const ignoredForwardHeaders = ['host', 'connection', 'content-length', 'origin', 'referer'];
   const isAllowedLyricProxyHost = (hostname: string): boolean =>
-    hostname === 'qq.com' || hostname.endsWith('.qq.com') ||
-    hostname === 'kugou.com' || hostname.endsWith('.kugou.com') ||
+    hostname === 'qq.com' || hostname.endsWith('.qq.com') || hostname === 'y.gtimg.cn' ||
+    hostname === 'music.126.net' || hostname.endsWith('.music.126.net') ||
+    hostname === 'kugou.com' || hostname.endsWith('.kugou.com') || hostname === 'kgimg.com' || hostname.endsWith('.kgimg.com') ||
     hostname === 'amll-ttml-db.stevexmh.net';
   const isAmllDbHost = (hostname: string): boolean =>
     hostname === 'amll-ttml-db.stevexmh.net';

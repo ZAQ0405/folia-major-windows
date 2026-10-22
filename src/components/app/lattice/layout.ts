@@ -5,7 +5,7 @@ import {
     BLOCK_COLS,
     BLOCK_ROWS,
     SLOTS_PER_BLOCK,
-    getBlockReflow,
+    getPreferredBlockReflow,
     getBlockTemplate,
     type BlockSlot,
 } from './blockTemplates';
@@ -211,6 +211,8 @@ export const layoutLattice = (
     bounds: Bounds,
     overscan: number,
     metrics: WallMetrics,
+    maxInstances?: number,
+    priorityBounds: Bounds = bounds,
 ): QueueInstance[] => {
     if (totalEntries <= 0 || geometry.blockWidth <= 0 || geometry.blockHeight <= 0) return [];
 
@@ -232,18 +234,41 @@ export const layoutLattice = (
                 const instance = buildInstance(geometry, totalEntries, column, row, slotIndex, metrics);
                 if (!overlaps(toBounds(instance), view)) continue;
                 result.push(instance);
-                if (result.length >= MAX_RENDERED_INSTANCES) return result;
+                if (maxInstances === undefined && result.length >= MAX_RENDERED_INSTANCES) return result;
             }
         }
     }
 
-    return result;
+    if (maxInstances === undefined || result.length <= maxInstances) return result;
+
+    // Android budgets compositor layers per screen rather than per desktop-sized viewport. The
+    // cap is a prefetch budget, never a visibility cap: a wide / high-density viewport can have
+    // more cards on screen than `maxInstances`, and slicing those cards creates literal holes
+    // during a drag. Preserve every card intersecting the live viewport, then spend the remainder
+    // of the budget on the nearest off-screen candidates.
+    const centerX = (bounds.left + bounds.right) / 2;
+    const centerY = (bounds.top + bounds.bottom) / 2;
+    const visible: QueueInstance[] = [];
+    const offscreen: QueueInstance[] = [];
+    for (const instance of result) {
+        (overlaps(toBounds(instance), priorityBounds) ? visible : offscreen).push(instance);
+    }
+    if (visible.length >= maxInstances) return visible;
+
+    offscreen.sort((first, second) => {
+        const firstX = first.x + first.width / 2 - centerX;
+        const firstY = first.y + first.height / 2 - centerY;
+        const secondX = second.x + second.width / 2 - centerX;
+        const secondY = second.y + second.height / 2 - centerY;
+        return firstX * firstX + firstY * firstY - (secondX * secondX + secondY * secondY);
+    });
+    return [...visible, ...offscreen.slice(0, maxInstances - visible.length)];
 };
 
 /**
- * Rects for every card in the block holding `active`, while that card is expanded. The block's
- * footprint is unchanged, so nothing outside it moves and no cascade can escape; the cards
- * inside re-gear instead of being shoved aside.
+ * Every card in the selected block moves into a coordinated reflow. The target layout is an exact
+ * cover, so the selected poster occupies its own space instead of floating above and obscuring
+ * its neighbours.
  */
 export const layoutExpandedBlock = (
     geometry: LatticeGeometry,
@@ -257,7 +282,7 @@ export const layoutExpandedBlock = (
     const block = getInstanceBlock(geometry, active);
     const localColumn = block.column - active.repeatX * geometry.blocksPerRow;
     const localRow = block.row - active.repeatY * geometry.blockRows;
-    const reflow = getBlockReflow(localColumn, localRow, block.slotIndex);
+    const reflow = getPreferredBlockReflow(localColumn, localRow, block.slotIndex);
     if (!reflow) return result;
 
     const pitch = getPitch(metrics);
@@ -266,7 +291,7 @@ export const layoutExpandedBlock = (
     const blockInCell = localRow * geometry.blocksPerRow + localColumn;
 
     for (let slotIndex = 0; slotIndex < SLOTS_PER_BLOCK; slotIndex += 1) {
-        const slot = reflow[slotIndex];
+        const slot: BlockSlot = reflow[slotIndex];
         const cellSlot = blockInCell * SLOTS_PER_BLOCK + slotIndex;
         result.set(`${cellSlot}:${active.repeatX}:${active.repeatY}`, {
             x: originX + slot.x * pitch,

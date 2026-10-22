@@ -8,6 +8,8 @@ import { getSizedCoverUrl } from '../../../utils/coverUrl';
 import { getSongUnavailableLabel, isSongUnavailable } from '../../../services/onlineMusic/songAvailability';
 import { canResolveSongCatalogRef } from '../../../services/onlineMusic/catalogRefs';
 import { getProviderSongMetadata } from '../../../services/onlineMusic/songMetadata';
+import { resolveNeteaseSearchCover } from '../../../services/onlineMusic/luoxueSearch';
+import { isAndroidCapacitor } from '../../../utils/runtimePlatform';
 
 // src/components/app/search/SearchResultRow.tsx
 
@@ -15,6 +17,7 @@ type SearchResultRowProps = {
     track: UnifiedSong;
     style: React.CSSProperties;
     isDaylight: boolean;
+    isCompact: boolean;
     onPlayTrack: (track: UnifiedSong) => void;
     onAddTrackToQueue: (track: UnifiedSong) => void;
     onOpenArtist: (track: UnifiedSong, artistName: string, artistId?: MediaId, entityId?: string) => void;
@@ -42,6 +45,7 @@ const SearchResultRow: React.FC<SearchResultRowProps> = ({
     track,
     style,
     isDaylight,
+    isCompact,
     onPlayTrack,
     onAddTrackToQueue,
     onOpenArtist,
@@ -51,7 +55,35 @@ const SearchResultRow: React.FC<SearchResultRowProps> = ({
     const isUnavailable = isSongUnavailable(track);
     const unavailableLabel = getSongUnavailableLabel(track, t('status.songUnavailableTag'));
     const metadata = getProviderSongMetadata(track);
-    const coverUrl = getSizedCoverUrl(metadata.coverUrl, 120);
+    const providerData = track.sourceRef?.kind === 'online' ? track.sourceRef.providerData : undefined;
+    const neteasePicId = track.sourceRef?.kind === 'online' && track.sourceRef.providerId === 'netease'
+        ? String(providerData?.pic_id || '')
+        : '';
+    const [resolvedCoverUrl, setResolvedCoverUrl] = React.useState('');
+    React.useEffect(() => {
+        if (!isAndroidCapacitor || metadata.coverUrl || !neteasePicId) {
+            setResolvedCoverUrl('');
+            return;
+        }
+        let active = true;
+        void resolveNeteaseSearchCover(neteasePicId, String(track.id)).then(url => {
+            if (active) setResolvedCoverUrl(url);
+        });
+        return () => { active = false; };
+    }, [metadata.coverUrl, neteasePicId]);
+    const coverUrl = getSizedCoverUrl(metadata.coverUrl || resolvedCoverUrl, 120);
+    const getTrackWithArtwork = async (): Promise<UnifiedSong> => {
+        const currentCover = metadata.coverUrl || resolvedCoverUrl;
+        if (currentCover || !isAndroidCapacitor || !neteasePicId) return track;
+        const resolved = await resolveNeteaseSearchCover(neteasePicId, String(track.id));
+        if (!resolved) return track;
+        return {
+            ...track,
+            album: { ...track.album, coverUrl: resolved },
+        };
+    };
+    const handlePlayTrack = async () => onPlayTrack(await getTrackWithArtwork());
+    const handleAddTrackToQueue = async () => onAddTrackToQueue(await getTrackWithArtwork());
     const artists = metadata.artists;
     const album = metadata.album;
     const providerId = track.sourceRef?.kind === 'online' ? String(track.sourceRef.providerId) : '';
@@ -62,9 +94,9 @@ const SearchResultRow: React.FC<SearchResultRowProps> = ({
     ));
 
     return (
-        <div style={style} className="px-2 py-1.5">
+        <div style={style} className="folia-search-result-row px-2 py-1.5" data-compact={isCompact || undefined}>
             <div
-                className={`group flex h-full items-center gap-3 rounded-2xl border px-3 transition-colors ${
+                className={`folia-search-result-card group flex h-full items-center gap-3 rounded-2xl border px-3 transition-colors ${
                     isDaylight
                         ? 'border-black/[0.05] bg-black/[0.035] hover:bg-black/[0.07]'
                         : 'border-white/[0.06] bg-white/[0.04] hover:bg-white/[0.08]'
@@ -73,8 +105,8 @@ const SearchResultRow: React.FC<SearchResultRowProps> = ({
                 <button
                     type="button"
                     disabled={isUnavailable}
-                    onClick={() => onPlayTrack(track)}
-                    className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-zinc-500/15 disabled:cursor-not-allowed"
+                    onClick={() => { void handlePlayTrack(); }}
+                    className="folia-search-result-cover relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-zinc-500/15 disabled:cursor-not-allowed"
                     aria-label={t('search.playTrack')}
                 >
                     {coverUrl ? (
@@ -96,8 +128,8 @@ const SearchResultRow: React.FC<SearchResultRowProps> = ({
                         <button
                             type="button"
                             disabled={isUnavailable}
-                            onClick={() => onPlayTrack(track)}
-                            className="truncate text-left text-sm font-semibold disabled:cursor-not-allowed"
+                            onClick={() => { void handlePlayTrack(); }}
+                            className="folia-search-result-title truncate text-left text-sm font-semibold disabled:cursor-not-allowed"
                             style={{ color: 'var(--text-primary)' }}
                         >
                             {formatSongName(track)}
@@ -113,7 +145,7 @@ const SearchResultRow: React.FC<SearchResultRowProps> = ({
                             </span>
                         )}
                     </div>
-                    <div className="mt-1 flex min-w-0 items-center gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    <div className="folia-search-result-metadata mt-1 flex min-w-0 items-center gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
                         <span className="min-w-0 truncate">
                             {artists.map((artist, index) => {
                                 const canOpenArtist = Boolean(
@@ -152,13 +184,13 @@ const SearchResultRow: React.FC<SearchResultRowProps> = ({
                     </div>
                 </div>
 
-                <span className="hidden shrink-0 font-mono text-xs opacity-35 sm:block">
+                <span className="folia-search-result-duration hidden shrink-0 font-mono text-xs opacity-35 sm:block">
                     {formatDuration(metadata.durationMs)}
                 </span>
                 {!isUnavailable && (
                     <button
                         type="button"
-                        onClick={() => onAddTrackToQueue(track)}
+                        onClick={() => { void handleAddTrackToQueue(); }}
                         className="shrink-0 rounded-full p-2 opacity-60 transition-all hover:bg-black/10 hover:opacity-100 dark:hover:bg-white/10 sm:opacity-0 sm:group-hover:opacity-100"
                         title={t('navidrome.addToQueue')}
                     >

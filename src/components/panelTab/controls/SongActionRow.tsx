@@ -40,7 +40,7 @@ const SongActionRow: React.FC<SongActionRowProps> = ({
     const buttonBg = isDaylight ? 'bg-black/5 hover:bg-black/10' : 'bg-white/5 hover:bg-white/10';
 
     return (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="folia-panel-song-actions grid grid-cols-3 gap-3">
             <button
                 onClick={onToggleLoop}
                 disabled={loopToggleDisabled}

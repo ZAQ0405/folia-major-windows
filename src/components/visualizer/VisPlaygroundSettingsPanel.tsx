@@ -58,6 +58,7 @@ interface PresetGroupProps<T> {
 }
 
 interface ToggleRowProps {
+    className?: string;
     label: string;
     description?: string;
     checked: boolean;
@@ -207,8 +208,8 @@ const PresetGroup = <T,>({
     theme,
     isOptionActive,
 }: PresetGroupProps<T>) => (
-    <div className="space-y-2.5">
-        <div className="text-xs font-medium uppercase tracking-[0.24em] opacity-60" style={{ color: theme.secondaryColor }}>
+    <div className="folia-vis-playground-preset-group space-y-2.5">
+        <div className="folia-vis-playground-preset-label text-xs font-medium uppercase tracking-[0.24em] opacity-60" style={{ color: theme.secondaryColor }}>
             {label}
         </div>
         <div className="flex flex-wrap gap-2">
@@ -220,7 +221,7 @@ const PresetGroup = <T,>({
                         key={String(option.value)}
                         type="button"
                         onClick={() => onChange(option.value)}
-                        className="px-3 py-2 rounded-full text-sm transition-all border"
+                        className="folia-vis-playground-preset-option px-3 py-2 rounded-full text-sm transition-all border"
                         style={{
                             ...getAccentOptionStyle(isActive, theme, isDaylight),
                             color: theme.primaryColor,
@@ -235,6 +236,7 @@ const PresetGroup = <T,>({
 );
 
 const ToggleRow: React.FC<ToggleRowProps> = ({
+    className,
     label,
     description,
     checked,
@@ -242,7 +244,7 @@ const ToggleRow: React.FC<ToggleRowProps> = ({
     theme,
     icon: Icon = Monitor,
 }) => (
-    <div className="flex items-center justify-between gap-4">
+    <div className={`folia-vis-playground-toggle-row flex items-center justify-between gap-4 ${className ?? ''}`}>
         <div className="space-y-1">
             <div className="text-sm font-medium flex items-center gap-2" style={{ color: theme.primaryColor }}>
                 <Icon size={14} />
@@ -282,7 +284,8 @@ const ResetSectionButton: React.FC<{
         type="button"
         onClick={onClick}
         disabled={!onClick}
-        className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-45"
+        aria-label={label}
+        className="folia-vis-playground-reset-button inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-45"
         style={{
             color: theme.secondaryColor,
             borderColor: colorWithAlpha(theme.secondaryColor, 0.16),
@@ -290,7 +293,7 @@ const ResetSectionButton: React.FC<{
         }}
     >
         <RotateCcw size={12} />
-        {label}
+        <span className="folia-vis-playground-reset-label">{label}</span>
     </button>
 );
 
@@ -387,7 +390,7 @@ const SectionTabs: React.FC<Pick<VisPlaygroundSettingsPanelProps, 'activeSection
     theme,
     isDaylight,
 }) => (
-    <div className="inline-flex w-fit items-center gap-1 rounded-full p-1" style={{ backgroundColor: colorWithAlpha(theme.backgroundColor, isDaylight ? 0.34 : 0.52) }}>
+    <div className="folia-vis-playground-section-tabs inline-flex w-fit items-center gap-1 rounded-full p-1" style={{ backgroundColor: colorWithAlpha(theme.backgroundColor, isDaylight ? 0.34 : 0.52) }}>
         {SECTION_OPTIONS.map(section => {
             const active = activeSection === section;
             return (
@@ -568,7 +571,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
     }
 
     return (
-        <div className="min-h-0 flex flex-col gap-4">
+        <div className="folia-vis-playground-settings-panel min-h-0 flex flex-col gap-4">
             <SectionTabs
                 activeSection={activeSection}
                 onSectionChange={onSectionChange}
@@ -577,10 +580,10 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                 isDaylight={isDaylight}
             />
 
-            <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-4">
+            <div className="folia-vis-playground-settings-scroll flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-4">
                 {activeSection === 'common' && (
-                    <div className="rounded-[24px] border p-4 space-y-4" style={{ backgroundColor: controlCardBg, borderColor: colorWithAlpha(theme.secondaryColor, 0.16) }}>
-                        <div className="flex items-start justify-between gap-3">
+                    <div className="folia-vis-playground-section folia-vis-playground-common-section rounded-[24px] border p-4 space-y-4" style={{ backgroundColor: controlCardBg, borderColor: colorWithAlpha(theme.secondaryColor, 0.16) }}>
+                        <div className="folia-vis-playground-common-header flex items-start justify-between gap-3">
                             <div className="space-y-1">
                                 <div className="text-sm font-medium" style={{ color: theme.primaryColor }}>
                                     {t('options.previewCommonSettings')}
@@ -620,7 +623,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
 
                         <fieldset
                             disabled={visualizerMode === 'sonnet' || visualizerMode === 'tempera'}
-                            className={`space-y-4 transition-opacity ${visualizerMode === 'sonnet' || visualizerMode === 'tempera' ? 'opacity-40' : ''}`}
+                            className={`folia-vis-playground-common-font-size space-y-4 transition-opacity ${visualizerMode === 'sonnet' || visualizerMode === 'tempera' ? 'opacity-40' : ''}`}
                         >
                             <PresetGroup
                                 label={t('options.fontSize')}
@@ -654,7 +657,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
 
                         {(visualizerMode === 'sonnet' || visualizerMode === 'tempera') && (
                             <div
-                                className="rounded-2xl border px-3.5 py-3 text-xs leading-relaxed"
+                                className="folia-vis-playground-common-notice rounded-2xl border px-3.5 py-3 text-xs leading-relaxed"
                                 style={{
                                     color: theme.secondaryColor,
                                     borderColor: colorWithAlpha(theme.accentColor, isDaylight ? 0.22 : 0.28),
@@ -674,7 +677,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                         />
 
                         {fontWeight !== null && (
-                            <div className="space-y-4">
+                            <div className="folia-vis-playground-common-weight space-y-4">
                                 <PresetGroup
                                     label={t('options.fontWeight')}
                                     value={fontWeightSliderValue}
@@ -714,7 +717,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                             </div>
                         )}
 
-                        <div className="space-y-2">
+                        <div className="folia-vis-playground-common-opacity space-y-2">
                             <div className="flex items-center justify-between text-sm" style={{ color: theme.primaryColor }}>
                                 <span>{t('options.visualizerOpacity')}</span>
                                 <span className="font-mono opacity-70" style={{ color: theme.secondaryColor }}>
@@ -744,7 +747,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                                 <span>{t('options.nativeBlurBackgroundNotice')}</span>
                             </div>
                         )}
-                        <div className="rounded-[24px] border p-4 space-y-4" style={{ backgroundColor: controlCardBg, borderColor: colorWithAlpha(theme.secondaryColor, 0.16) }}>
+                        <div className="folia-vis-playground-section folia-vis-playground-background-mode-section rounded-[24px] border p-4 space-y-4" style={{ backgroundColor: controlCardBg, borderColor: colorWithAlpha(theme.secondaryColor, 0.16) }}>
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-1">
                                     <div className="text-sm font-medium" style={{ color: theme.primaryColor }}>
@@ -773,6 +776,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                             />
                         </div>
 
+                        <div className="folia-vis-playground-dynamic-settings folia-vis-playground-background-dynamic">
                         {backgroundEntry.renderSettingsPanel?.({
                             config: backgroundConfig,
                             actions: backgroundActions,
@@ -784,6 +788,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                             onSliderPointerDown,
                             onSliderCommit,
                         })}
+                        </div>
                     </>
                 )}
 
@@ -802,7 +807,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                             />
                         ) : (
                             <>
-                        <div className="rounded-[24px] border p-4 space-y-4" style={{ backgroundColor: controlCardBg, borderColor: colorWithAlpha(theme.secondaryColor, 0.16) }}>
+                        <div className="folia-vis-playground-section folia-vis-playground-visualizer-mode-section rounded-[24px] border p-4 space-y-4" style={{ backgroundColor: controlCardBg, borderColor: colorWithAlpha(theme.secondaryColor, 0.16) }}>
                             <div className="flex items-start justify-between gap-3">
                                 <div className="space-y-1">
                                     <div className="text-sm font-medium" style={{ color: theme.primaryColor }}>
@@ -829,6 +834,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                             />
                         </div>
 
+                        <div className="folia-vis-playground-dynamic-settings folia-vis-playground-visualizer-dynamic">
                         {visualizerEntry.renderSettingsPanel?.({
                             t,
                             isDaylight,
@@ -875,14 +881,15 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                             onSliderPointerDown,
                             onSliderCommit,
                         })}
+                        </div>
                             </>
                         )}
                     </>
                 )}
 
                 {activeSection === 'subtitle' && (
-                    <div className="rounded-[24px] border p-4 space-y-4" style={{ backgroundColor: controlCardBg, borderColor: colorWithAlpha(theme.secondaryColor, 0.16) }}>
-                        <div className="flex items-start justify-between gap-3">
+                    <div className="folia-vis-playground-section folia-vis-playground-subtitle-section rounded-[24px] border p-4 space-y-4" style={{ backgroundColor: controlCardBg, borderColor: colorWithAlpha(theme.secondaryColor, 0.16) }}>
+                        <div className="folia-vis-playground-subtitle-header flex items-start justify-between gap-3">
                             <div className="space-y-1">
                                 <div className="text-sm font-medium" style={{ color: theme.primaryColor }}>
                                     {t('options.previewSubtitleSettings')}
@@ -899,6 +906,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                         </div>
 
                         <ToggleRow
+                            className="folia-vis-playground-subtitle-toggle folia-vis-playground-subtitle-translation-toggle"
                             label={t('options.hidePlayerTranslationSubtitle')}
                             description={t('options.hidePlayerTranslationSubtitleDesc')}
                             checked={hideTranslationSubtitle}
@@ -907,6 +915,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                             icon={CaptionsOff}
                         />
 
+                        <div className="folia-vis-playground-subtitle-content-mode">
                         <PresetGroup
                             label={t('options.subtitleContentMode')}
                             value={subtitleContentMode}
@@ -919,8 +928,10 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                             isDaylight={isDaylight}
                             theme={theme}
                         />
+                        </div>
 
                         <ToggleRow
+                            className="folia-vis-playground-subtitle-toggle folia-vis-playground-subtitle-background-toggle"
                             label={t('options.subtitleOverlayBackground')}
                             description={t('options.subtitleOverlayBackgroundDesc')}
                             checked={subtitleOverlayBackground}
@@ -930,6 +941,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                         />
 
                         <ToggleRow
+                            className="folia-vis-playground-subtitle-toggle folia-vis-playground-subtitle-blur-toggle"
                             label={t('options.subtitleUpcomingLyricsBlur')}
                             checked={subtitleUpcomingLyricsBlur}
                             onChange={onToggleSubtitleUpcomingLyricsBlur}
@@ -938,6 +950,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                         />
 
                         <ToggleRow
+                            className="folia-vis-playground-subtitle-toggle folia-vis-playground-subtitle-inherits-toggle"
                             label={t('options.subtitleFontInheritsLyrics')}
                             description={t('options.subtitleFontInheritsLyricsDesc')}
                             checked={subtitleFontInheritsLyrics}
@@ -946,7 +959,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                             icon={Monitor}
                         />
 
-                        <div className="space-y-2">
+                        <div className="folia-vis-playground-subtitle-slider folia-vis-playground-subtitle-scale-slider space-y-2">
                             <div className="flex items-center justify-between text-sm" style={{ color: theme.primaryColor }}>
                                 <span>{t('options.subtitleFontScale')}</span>
                                 <span className="font-mono opacity-70" style={{ color: theme.secondaryColor }}>
@@ -968,7 +981,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                         </div>
 
                         {!subtitleFontInheritsLyrics && (
-                            <div className="space-y-4">
+                            <div className="folia-vis-playground-subtitle-font-settings space-y-4">
                                 <PresetGroup
                                     label={t('options.subtitleFontFamily')}
                                     value={subtitleFontFamily ? 'custom' : subtitleFontStyle}
@@ -1034,7 +1047,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                             </div>
                         )}
 
-                        <div className="space-y-2">
+                        <div className="folia-vis-playground-subtitle-slider folia-vis-playground-subtitle-opacity-slider space-y-2">
                             <div className="flex items-center justify-between text-sm" style={{ color: theme.primaryColor }}>
                                 <span>{t('options.subtitleOverlayOpacity')}</span>
                                 <span className="font-mono opacity-70" style={{ color: theme.secondaryColor }}>
@@ -1057,7 +1070,7 @@ const VisPlaygroundSettingsPanel: React.FC<VisPlaygroundSettingsPanelProps> = (p
                 )}
 
                 {activeSection === 'subtitle' && (
-                    <div className="rounded-[24px] border p-4 space-y-4" style={{ backgroundColor: controlCardBg, borderColor: colorWithAlpha(theme.secondaryColor, 0.16) }}>
+                    <div className="folia-vis-playground-section folia-vis-playground-harmony-section rounded-[24px] border p-4 space-y-4" style={{ backgroundColor: controlCardBg, borderColor: colorWithAlpha(theme.secondaryColor, 0.16) }}>
                         <div className="space-y-1">
                             <div className="text-sm font-medium" style={{ color: theme.primaryColor }}>
                                 {t('options.harmonySubtitleSettings')}

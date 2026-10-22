@@ -117,41 +117,40 @@ describe('findAdjacentInstance', () => {
     });
 });
 
-describe('navigating a block whose cards are re-geared', () => {
+describe('navigation while the selected block reflows', () => {
     const active = locateInstanceAt(geometry, TOTAL, 0, 0, 3, metrics)!;
     const rendered = layoutExpandedBlock(geometry, TOTAL, active, metrics);
     const drawn = (i: QueueInstance) => ({ ...i, ...(rendered.get(i.instanceId) ?? {}) });
 
-    it('steps by where posters are drawn, not by their base slots', () => {
-        for (let slotIndex = 0; slotIndex < 12; slotIndex += 1) {
-            const from = seat(0, 0, slotIndex);
-            const next = findAdjacentInstance(from, 'right', geometry, TOTAL, metrics, rendered);
-            if (!next) continue;
+    it('navigates according to the reflowed rectangles', () => {
+        const ahead = {
+            right: (a: QueueInstance, b: QueueInstance) => center(b).x > center(a).x,
+            left: (a: QueueInstance, b: QueueInstance) => center(b).x < center(a).x,
+            down: (a: QueueInstance, b: QueueInstance) => center(b).y > center(a).y,
+            up: (a: QueueInstance, b: QueueInstance) => center(b).y < center(a).y,
+        } as const;
 
-            const source = drawn(from);
-            const target = drawn(next);
-            expect(target.x + target.width / 2).toBeGreaterThan(source.x + source.width / 2);
+        for (let slotIndex = 0; slotIndex < 12; slotIndex += 1) {
+            for (const direction of DIRECTIONS) {
+                const from = seat(0, 0, slotIndex);
+                const next = findAdjacentInstance(from, direction, geometry, TOTAL, metrics, rendered)!;
+                expect(next).not.toBeNull();
+                expect(ahead[direction](drawn(from), drawn(next))).toBe(true);
+            }
         }
     });
 
-    it('returns the canonical instance, leaving the drawn rect to the caller', () => {
-        const next = findAdjacentInstance(seat(0, 0, 0), 'right', geometry, TOTAL, metrics, rendered)!;
-        const canonical = locateInstanceAt(
-            geometry,
-            TOTAL,
-            0,
-            0,
-            next.cellSlot % 12,
-            metrics,
-        )!;
+    it('reflows every card in the block without bringing the selected one over the others', () => {
+        expect(rendered.size).toBe(12);
+        expect(drawn(active)).not.toEqual(active);
 
-        expect(next).toEqual(canonical);
-        // It is inside the re-geared block, so the drawn rect really does differ from the base one.
-        expect(rendered.has(next.instanceId)).toBe(true);
-        expect(drawn(next)).not.toEqual(canonical);
+        for (let slotIndex = 0; slotIndex < 12; slotIndex += 1) {
+            const sibling = seat(0, 0, slotIndex);
+            expect(rendered.has(sibling.instanceId)).toBe(true);
+        }
     });
 
-    it('ignores overrides for blocks that are not re-geared', () => {
+    it('leaves neighboring blocks unchanged', () => {
         const outside = seat(2, 2, 0);
         const withMap = findAdjacentInstance(outside, 'down', geometry, TOTAL, metrics, rendered);
         const without = findAdjacentInstance(outside, 'down', geometry, TOTAL, metrics);

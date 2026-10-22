@@ -13,18 +13,34 @@ import { getCachedSongAudioBlob, getCachedSongReplayGain, getSongCacheWithLegacy
 import { toSafePlaybackUrl } from '../utils/appPlaybackHelpers';
 import { getProviderSongMetadata } from './onlineMusic/songMetadata';
 import { useLyricSettingsStore } from '../stores/useLyricSettingsStore';
-import { isSourcePlaybackMode } from '../stores/usePlaybackModeStore';
+import { getPlaybackModeForProvider } from '../stores/usePlaybackModeStore';
+import { getPlaybackSourceRef } from '../utils/appPlaybackGuards';
+import { isAndroidCapacitor } from '../utils/runtimePlatform';
+
+const resolveAudioElementSource = (sourceUrl: string): string => {
+    // The Android emulator used for local development has no external network route. Keep
+    // installed builds on the provider CDN URL, but let the dev emulator stream byte ranges
+    // through Vite so the actual WebView audio path can still be exercised end to end.
+    if (!import.meta.env.DEV || !isAndroidCapacitor) return sourceUrl;
+    try {
+        const proxyUrl = new URL('/api/android-audio-stream', window.location.origin);
+        proxyUrl.searchParams.set('url', sourceUrl);
+        return proxyUrl.toString();
+    } catch {
+        return sourceUrl;
+    }
+};
 
 export async function loadOnlineSongAudioSource(
     song: SongResult,
     audioQuality: AudioQualityPreference,
     prefetched: PrefetchedSongData | null,
-    options: { forceRefresh?: boolean } = {},
+    options: { forceRefresh?: boolean; excludeUrl?: string | null } = {},
 ): Promise<
     | { kind: 'ok'; audioSrc: string; blobUrl?: string; replayGain?: ReplayGainInfo }
     | { kind: 'unavailable' }
 > {
-    const cachedAudioBlob = await getCachedSongAudioBlob(song);
+    const cachedAudioBlob = options.excludeUrl ? null : await getCachedSongAudioBlob(song);
     if (cachedAudioBlob) {
         const blobUrl = createSafeObjectUrl(cachedAudioBlob);
         if (blobUrl) {
@@ -56,12 +72,15 @@ export async function loadOnlineSongAudioSource(
     if (!url) {
         return { kind: 'unavailable' };
     }
+    const audioElementSource = resolveAudioElementSource(url);
 
+    const sourceRef = getPlaybackSourceRef(song);
+    const isSourceMode = sourceRef.kind === 'online' && getPlaybackModeForProvider(sourceRef.providerId) === 'source';
     const replayGain = applyOnlineAudioSourceMetadata(song, source?.replayGain).replayGain;
-    if (!isSourcePlaybackMode()) {
+    if (!isSourceMode) {
         updatePrefetchedAudioUrl(song, url, audioQuality, replayGain);
     }
-    return { kind: 'ok', audioSrc: url, replayGain };
+    return { kind: 'ok', audioSrc: audioElementSource, replayGain };
 }
 
 export const applyOnlineAudioSourceMetadata = (
@@ -86,7 +105,9 @@ export async function loadOnlineSongLyrics(
 ): Promise<void> {
     const { isCurrent, onLyrics, onPureMusicChange, onStateChange, onAutoMatchStart, onDone } = callbacks;
     const lyricCacheKey = getSongResourceCacheKey('lyric', song);
-    const jsSourceMode = isSourcePlaybackMode();
+    const lyricSourceRef = getPlaybackSourceRef(song);
+    const jsSourceMode = lyricSourceRef.kind === 'online'
+        && getPlaybackModeForProvider(lyricSourceRef.providerId) === 'source';
     const onlineLyricsState = await loadOnlineLyricsState(song);
   const initialSettingsLyricSettings = useLyricSettingsStore.getState();
 

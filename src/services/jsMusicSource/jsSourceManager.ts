@@ -23,6 +23,18 @@ const PROVIDER_SOURCE_KEY: Record<string, string> = {
     qq: 'tx',
     kuwo: 'kw',
 };
+const PROVIDER_SOURCE_KEYS: Record<string, string[]> = {
+    ...Object.fromEntries(Object.entries(PROVIDER_SOURCE_KEY).map(([providerId, key]) => [providerId, [key]])),
+};
+
+export const getAudioUrlIdentity = (value: string): string => {
+    try {
+        const url = new URL(value);
+        return `${url.origin}${url.pathname}`;
+    } catch {
+        return value;
+    }
+};
 const QUALITY_CANDIDATES: Record<AudioQualityPreference, string[]> = {
     standard: ['128k', 'standard', '128'],
     high: ['320k', 'high', '320', '128k', 'standard', '128'],
@@ -262,13 +274,16 @@ class JsMusicSourceManager {
     async resolveAudioSource(
         song: SongResult,
         requestedQuality: AudioQualityPreference,
-        options: { forceRefresh?: boolean } = {},
+        options: { forceRefresh?: boolean; excludeUrl?: string | null } = {},
     ): Promise<JsMusicSourceAudioResult | null> {
         // Luoxue's desktop cache contains full URLs that were already resolved successfully. This
         // must run before live sources so an existing full URL is not replaced by a provider's
         // limited preview fallback while a source backend is temporarily unavailable.
+        const excludedAudioIdentity = options.excludeUrl ? getAudioUrlIdentity(options.excludeUrl) : null;
         const luoxueCachedSource = await resolveLuoxueCachedAudioSource(song, requestedQuality, options);
-        if (luoxueCachedSource) return luoxueCachedSource;
+        if (luoxueCachedSource && getAudioUrlIdentity(luoxueCachedSource.url) !== excludedAudioIdentity) {
+            return luoxueCachedSource;
+        }
 
         for (const source of this.sources.filter(item => item.enabled)) {
             // A malformed/obsolete source should not add its initialization timeout to every
@@ -290,6 +305,10 @@ class JsMusicSourceManager {
                     });
                     const url = normalizeJsSourceAudioUrl(result);
                     if (!url) continue;
+                    if (excludedAudioIdentity && getAudioUrlIdentity(url) === excludedAudioIdentity) {
+                        console.warn('[JsMusicSource] Rejected audio URL after a media decode failure', source.name);
+                        continue;
+                    }
                     console.info('[JsMusicSource] Music URL resolved', `${source.name} ${sourceKey}`);
                     const providerSource: ProviderAudioSource = {
                         url,
@@ -342,8 +361,8 @@ class JsMusicSourceManager {
         const sourceRef = song.sourceRef?.kind === 'online' ? song.sourceRef : undefined;
         if (!sourceRef) return [];
         const explicit = asString(sourceRef.providerData?.source);
-        const preferred = explicit || PROVIDER_SOURCE_KEY[sourceRef.providerId];
-        return preferred && descriptors[preferred] ? [preferred] : [];
+        const preferred = explicit ? [explicit] : (PROVIDER_SOURCE_KEYS[sourceRef.providerId] || []);
+        return preferred.filter(key => Boolean(descriptors[key]));
     }
 
     private async ensureRuntime(source: JsMusicSourceRecord): Promise<JsSourceWorkerRuntime> {

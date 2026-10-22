@@ -36,6 +36,18 @@ describe('settingsNavModel', () => {
         expect(groups.every(group => group.items.length > 0)).toBe(true);
     });
 
+    it('omits desktop-oriented controls from the Android settings menu', () => {
+        const groups = buildSettingsNavGroups(echo, { isElectron: false, isAndroidCapacitor: true });
+        const items = flattenSettingsNavItems(groups);
+        const ids = items.map(item => item.id);
+
+        expect(ids).not.toContain('desktop');
+        expect(ids).not.toContain('developer');
+        expect(ids).not.toContain('interaction');
+        expect(items.find(item => item.id === 'general')?.anchors).toContainEqual({ id: 'gridActionButton', label: 'options.gridActionButton' });
+        expect(groups.every(group => group.items.length > 0)).toBe(true);
+    });
+
     it('keeps the section order the flat sidebar list used', () => {
         const ids = flattenSettingsNavItems(buildSettingsNavGroups(echo, { isElectron: true })).map(item => item.id);
         expect(ids).toEqual(ALL_SECTIONS);

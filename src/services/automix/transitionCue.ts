@@ -71,7 +71,7 @@ export const announceTransition = (cue: TransitionCue | null): void => {
     // A demonstration never speaks over the real thing. `active` is the one answer given to anyone
     // who turns up mid-blend, so a ten-second preview landing on top of a twenty-second mix would
     // hand the next renderer the preview's length and have it draw a clock the audio is not on.
-    // The remote window guards the same way for its own reasons - see useElectronPlaybackBridge.
+    // The remote window guards the same way for its own reasons - see platform/electron/hooks/useElectronPlaybackBridge.
     // Only this direction is blocked: a real handover always replaces a preview.
     if (cue?.preview) {
         const running = getActiveTransitionCue();

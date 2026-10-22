@@ -601,6 +601,8 @@ export default {
     "panelHint": "Click the title to open the side panel",
     "play": "Play",
     "pause": "Pause",
+    "expandPlayerBar": "Expand player controls",
+    "collapsePlayerBar": "Collapse player controls",
     "close": "Close",
     "volume": "Volume",
     "openEqualizer": "Open audio equalizer",
@@ -1441,15 +1443,15 @@ export default {
     "hidePlayerTranslationSubtitleDesc": "Does not affect visualizer modes that render standalone subtitles.",
     "hidePlayerRightPanelButton": "Hide player right-side button",
     "transparentPlayerBackground": "Transparent player background",
-    "transparentPlayerBackgroundDesc": "Only applies on the player page. When enabled, Folia switches to transparent window mode for OBS browser sources or chroma key overlays.",
+    "transparentPlayerBackgroundDesc": "Only applies on the player page. On desktop, enabling it keeps Folia above other windows. Click the titlebar lock to use windows behind Folia while it stays on top.",
     "enablePlayerPageNativeBlur": "Enable Player Page Native Blur",
     "enablePlayerPageNativeBlurDesc": "When enabled, theme, image, Monet, and other player backgrounds are hidden and replaced by the system native blur. Applies only in non-transparent mode on desktop; the native effect uses more resources and may lag while moving the window.",
     "nativeBlurConfirmTitle": "System glass effect",
     "nativeBlurConfirmDesc": "This changes the window to a translucent background using the system glass effect. Folia backgrounds will not be shown.",
     "nativeBlurConfirmAction": "I understand",
     "nativeBlurBackgroundNotice": "Native glassmorphism blur is enabled; lyrics animation background settings are currently overridden.",
-    "autoHidePlayerChrome": "Auto-hide player controls",
-    "autoHidePlayerChromeDesc": "When enabled, the player progress bar and right side buttons will automatically hide when the mouse leaves the window for more than 3 seconds.",
+    "autoHidePlayerChrome": "Auto-hide playback controls",
+    "autoHidePlayerChromeDesc": "When enabled, playback controls fade out on the player page and queue collage. Move the pointer over their resting position to fade them back in.",
     "stageTrackPill": "Now playing card",
     "stageTrackPillDesc": "The bottom-left now playing card on the player and play queue: auto-hide after a while, or keep it always visible / hidden.",
     "stageTrackPillMode_auto": "Timed",
@@ -1568,6 +1570,8 @@ export default {
     "jizuraRandomDesc": "Roll a new JIZURA lyric MV for the current song",
     "jizuraSaveRandom": "Fix song",
     "jizuraSaveRandomDesc": "Save the current random JIZURA plan for this song",
+    "jizuraUnfixSong": "Unfix song",
+    "jizuraUnfixSongDesc": "Remove this song's fixed JIZURA plan and return to random selection",
     "jizuraCustomizeSong": "Customize song",
     "jizuraCustomizeSongDesc": "Open JIZURA lyric MV customization for the current song",
     "foliaRandomPerSong": "Random Folia lyric animation per song",
@@ -2227,6 +2231,11 @@ export default {
     "playbackModeOfficialDesc": "Use the official playback interface for the song's provider while keeping signed-in account data available.",
     "playbackModeSource": "Source channel",
     "playbackModeSourceDesc": "Use the LX playback core and enabled JavaScript sources without calling the official playback interface.",
+    "providerPlaybackModes": "Playback channel per platform",
+    "providerPlaybackModesDesc": "Choose official or source playback independently for each platform. Platforms without an override follow the global mode above. Sign-in only affects account data.",
+    "providerPlaybackModeInherit": "Follow global",
+    "providerPlaybackModeOfficial": "Official",
+    "providerPlaybackModeSource": "Source",
     "jsMusicSources": "JavaScript music sources",
     "jsMusicSourcesDesc": "Import LX Music-compatible JavaScript sources. Source code runs in an isolated Worker and is used only to resolve playback URLs; import files you trust. In source-channel mode, sources are tried in list order without silently switching to official playback.",
     "jsMusicSourceImport": "Import JS source",
@@ -2433,6 +2442,25 @@ export default {
       "latticeArtworkEfficiency": {
         "title": "Lighter Lattice Artwork Loading",
         "description": "Lattice now loads cover sizes suited to each poster and prewarms larger artwork when opening a song, reducing unnecessary image decoding while keeping expansion transitions clear."
+      }
+    },
+    "v0_7_9": {
+      "intro": "Version 0.7.9 adds per-provider playback routing, an account-independent local favorites playlist, separate Folia and JIZURA visual modes, and hover-only player controls.",
+      "providerPlaybackModes": {
+        "title": "Choose a Playback Route Per Provider",
+        "description": "Select official playback or an audio source separately for each music provider. Sign-in is primarily for account details and provider playlists; it does not change your playback route."
+      },
+      "localFavoritePlaylist": {
+        "title": "Your Favorites Stay Local",
+        "description": "Selecting Favorites always opens the local playlist, whether or not you are signed in. Provider playlists remain available separately after connecting an account."
+      },
+      "independentLyricVisualizers": {
+        "title": "Configure Folia and JIZURA Separately",
+        "description": "The built-in Folia lyric animation and JIZURA lyric MV run as independent visual modes. JIZURA supports random styles, per-song customization, and saving a favorite random result."
+      },
+      "hoverOnlyPlayerControls": {
+        "title": "Player Controls Appear on Hover",
+        "description": "With auto-hide enabled, the player bar stays fully invisible until the pointer enters its own hover area. Side-panel controls and other UI remain visible."
       }
     }
   },

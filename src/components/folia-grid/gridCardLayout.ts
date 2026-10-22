@@ -30,3 +30,35 @@ export const squareGridCardBox = <T extends GridCardBox>(box: T): T => {
         spacingY: Math.round(box.spacingY * (side / box.cardHeight)),
     };
 };
+
+/** Fits Android drag limits to the actual finite card coordinates in the current collection. */
+export const resolveGridContentDragBounds = (
+    coords: ReadonlyArray<{ baseX: number; baseY: number }>,
+    viewport: { width: number; height: number },
+    card: { width: number; height: number; minScale: number },
+) => {
+    if (coords.length === 0) return { left: 0, right: 0, top: 0, bottom: 0 };
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const coord of coords) {
+        minX = Math.min(minX, coord.baseX);
+        maxX = Math.max(maxX, coord.baseX);
+        minY = Math.min(minY, coord.baseY);
+        maxY = Math.max(maxY, coord.baseY);
+    }
+
+    const edgeInsetX = Math.max(0, (viewport.width - card.width * 1.18 * card.minScale) / 2);
+    const edgeInsetY = Math.max(0, (viewport.height - card.height * 1.18 * card.minScale) / 2);
+    let left = -maxX + edgeInsetX;
+    let right = -minX - edgeInsetX;
+    let top = -maxY + edgeInsetY;
+    let bottom = -minY - edgeInsetY;
+
+    // If the finite collection already fits in the viewport on an axis, keep that axis still.
+    if (left > right) left = right = (left + right) / 2;
+    if (top > bottom) top = bottom = (top + bottom) / 2;
+    return { left, right, top, bottom };
+};

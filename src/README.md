@@ -114,6 +114,14 @@ App.tsx
 - Web API handlers：`api/`（部署入口）与 `api-ts/`（TypeScript 源码）；主题/代理公共代码在 `shared/`。
 - Sync Server：`sync-server/src/app.ts`（路由与协议）、`src/node.ts`、`src/cloudflare.ts`、`src/d1-emulator.ts`；Worker 包装在根 `worker/index.ts`。
 
+## Platform source boundaries
+
+- Android has its own HTML and React startup entry: `android.html` -> `src/platform/android/main.tsx` -> `bootstrap.tsx`; Android-only CSS lives in `src/platform/android/android.css`, and its web bundle is `dist-android/`.
+- Android-only frontend components and transport adapters live in `src/platform/android/`; the native Capacitor project lives in root `android/`.
+- Electron-only frontend hooks and services live in `src/platform/electron/`; the native shell and Windows integrations live in root `electron/`.
+- The Android and desktop entrypoints/build outputs are separate. Shared playback state, provider contracts, and provider implementations remain in `src/` so fixes are consistent across platforms; Android presentation and native transport adapters stay in its platform directory.
+- Shared code imports platform components directly at the composition boundary. Do not use platform path aliases or runtime resolution maps to swap Android and Electron implementations.
+
 ## Where changes usually belong
 
 1. 先用 `git ls-files` 验证路径，再用 `rg -n` 搜确切 symbol。

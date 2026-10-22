@@ -11,6 +11,7 @@ interface ProgressBarProps {
     secondaryColor?: string;
     trackColor?: string;
     disabled?: boolean;
+    unknownDurationText?: string;
     edgeStyle?: 'rounded' | 'square';
 }
 
@@ -32,6 +33,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
     secondaryColor = 'rgba(255,255,255,0.5)',
     trackColor = 'rgba(255,255,255,0.1)',
     disabled = false,
+    unknownDurationText,
     edgeStyle = 'rounded',
 }) => {
     const progressRef = useRef<HTMLDivElement>(null);
@@ -160,7 +162,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
             </div>
 
             <span className="text-[10px] font-mono font-medium opacity-60 w-8" style={{ color: secondaryColor }}>
-                {formatTime(duration)}
+                {duration > 0 ? formatTime(duration) : unknownDurationText ?? formatTime(duration)}
             </span>
         </div>
     );

@@ -20,6 +20,7 @@ type SetState<T> = Dispatch<SetStateAction<T>>;
 
 type UseSessionRestoreControllerParams = {
     userId?: MediaId;
+    currentSongRef: MutableRefObject<string | number | null>;
     blobUrlRef: MutableRefObject<string | null>;
     currentOnlineAudioUrlFetchedAtRef: MutableRefObject<number | null>;
     setLyrics: (nextLyrics: LyricData | null) => void;
@@ -42,6 +43,7 @@ type UseSessionRestoreControllerParams = {
 // Restores the main playback session without pushing more boot logic into App.tsx.
 export function useSessionRestoreController({
     userId,
+    currentSongRef,
     blobUrlRef,
     currentOnlineAudioUrlFetchedAtRef,
     setLyrics,
@@ -131,6 +133,9 @@ export function useSessionRestoreController({
                         useOnlineProviderAccountStore.getState().setActiveProviderId(lastSong.sourceRef.providerId);
                     }
                 }
+                // Recovery and delayed source loads use this ref to reject stale work. A session
+                // restore bypasses playSong(), so it must seed the same identity before loading.
+                currentSongRef.current = getPlaybackSongKey(lastSong);
                 setCurrentSong(lastSong);
                 setPlayQueue(lastQueue && lastQueue.length > 0 ? lastQueue : [lastSong]);
 

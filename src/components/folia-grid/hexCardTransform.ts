@@ -15,6 +15,8 @@ export interface HexCardFrameOptions {
     visibilityBuffer?: number;
     /** Scale the furthest still-visible card shrinks to. Defaults to the historical falloff. */
     minScale?: number;
+    /** Scale used for the card at the viewport center. Defaults to the historical center scale. */
+    centerScale?: number;
     /** Opacity the furthest still-visible card fades to. Defaults to the historical falloff. */
     minOpacity?: number;
 }
@@ -88,6 +90,7 @@ export const computeHexCardFrame = (
         visibilityBuffer = 0,
         minScale = HEX_CARD_MIN_SCALE_DEFAULT,
         minOpacity = HEX_CARD_MIN_OPACITY_DEFAULT,
+        centerScale = HEX_CARD_CENTER_SCALE,
     }: HexCardFrameOptions
 ): HexCardFrame => {
     const centerX = coord.baseX + dx;
@@ -101,7 +104,7 @@ export const computeHexCardFrame = (
             && Math.abs(centerY) <= viewportHeight / 2 + cardHeight / 2 + visibilityBuffer;
     const visible = visibleInRadius && visibleInViewport;
     const progress = Math.min(distance / Math.max(maxDistance, 1), 1);
-    const scale = HEX_CARD_CENTER_SCALE - (HEX_CARD_CENTER_SCALE - minScale) * progress;
+    const scale = centerScale - (centerScale - minScale) * progress;
     const opacity = visible ? 1.0 - (1.0 - minOpacity) * progress : 0;
     const zIndex = Math.round(50 - 49 * progress);
 

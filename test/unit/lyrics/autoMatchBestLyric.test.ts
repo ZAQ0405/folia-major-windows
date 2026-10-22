@@ -11,6 +11,8 @@ import { getOnlineMusicProvider } from '@/services/onlineMusic/providerRegistry'
 // Unit tests for the best lyric auto-matcher.
 
 vi.mock('@/services/netease', () => ({
+    getNeteaseTransportAvailability: () => ({ configured: true }),
+    isSongMarkedUnavailable: () => false,
     neteaseApi: {
         cloudSearch: vi.fn(),
         getLyric: vi.fn(),

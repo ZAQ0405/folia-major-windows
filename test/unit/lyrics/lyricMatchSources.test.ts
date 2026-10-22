@@ -8,6 +8,8 @@ import { searchAmllDbLyricCandidates } from '@/utils/lyrics/lyricMatchSources';
 // Covers source-specific lyric matching orchestration.
 
 vi.mock('@/services/netease', () => ({
+    getNeteaseTransportAvailability: () => ({ configured: true }),
+    isSongMarkedUnavailable: () => false,
     neteaseApi: {
         cloudSearch: vi.fn(),
         getLyric: vi.fn(),

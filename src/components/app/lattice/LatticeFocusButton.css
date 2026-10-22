@@ -234,3 +234,49 @@
     .lattice-tools { right: 16px; bottom: 16px; }
     .lattice-tools-panel { width: min(320px, calc(100vw - 32px)); }
 }
+
+/* Short Android landscape viewports cannot fit the desktop glass panel above the corner button.
+   The blur also creates an expensive WebView layer which can prevent its child text from painting. */
+@media (orientation: landscape) and (max-height: 360px) {
+    .folia-android-shell .lattice-tools-panel {
+        width: min(300px, calc(100vw - 32px));
+        max-height: calc(100dvh - 5rem);
+        gap: 2px;
+        padding: 6px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        border-radius: 16px;
+        background: rgb(10 13 18 / 96%);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+
+    .folia-android-shell .lattice-tools-action {
+        min-height: 34px;
+        gap: 8px;
+        padding-inline: 8px;
+        border-radius: 10px;
+        font-size: 12px;
+    }
+
+    .folia-android-shell .lattice-tools-action svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Keyboard chords and their help affordance do not apply to touch navigation. */
+    .folia-android-shell .lattice-tools-panel kbd,
+    .folia-android-shell .lattice-tools-help-trigger {
+        display: none;
+    }
+
+    .folia-android-shell .lattice-tools-help-section {
+        margin-top: 2px;
+        padding-top: 4px;
+    }
+
+    .folia-android-shell .lattice-tools-lights-toggle span {
+        min-width: 42px;
+        padding: 4px 8px;
+    }
+}

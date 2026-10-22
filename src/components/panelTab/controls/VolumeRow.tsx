@@ -61,7 +61,7 @@ const VolumeRow: React.FC<VolumeRowProps> = ({
     };
 
     return (
-        <div className={`flex items-center gap-2.5 ${wellBg} px-2.5 py-2 rounded-xl`}>
+        <div className={`folia-panel-volume-row flex items-center gap-2.5 ${wellBg} px-2.5 py-2 rounded-xl`}>
             <button
                 onClick={(event) => {
                     event.stopPropagation();

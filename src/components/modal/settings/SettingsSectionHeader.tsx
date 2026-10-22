@@ -23,7 +23,7 @@ export const SettingsSectionHeader: React.FC<SettingsSectionHeaderProps> = ({
     daylightLabel,
     utilityGhostButtonClass,
 }) => (
-    <div className="mb-4 md:mb-6 border-b border-white/10 pb-3 md:pb-4">
+    <div className="folia-settings-section-header mb-4 md:mb-6 border-b border-white/10 pb-3 md:pb-4">
         <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
                 <h2 className="truncate text-lg md:text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>

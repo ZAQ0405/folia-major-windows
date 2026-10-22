@@ -2,32 +2,32 @@ import { useEffect, useRef, useState } from 'react';
 import type React from 'react';
 import type { RefObject } from 'react';
 import type { MotionValue } from 'framer-motion';
-import { PlayerState } from '../types';
-import type { SongResult, LyricData } from '../types';
+import { PlayerState } from '../../../types';
+import type { SongResult, LyricData } from '../../../types';
 import type {
     PlayerChromeVisibilityMode,
     RemoteControlCommand,
     RemoteControlSnapshot,
     RemoteTrackTransition,
-} from '../types/remoteControl';
-import type { VideoExportState } from '../types/videoExport';
+} from '../../../types/remoteControl';
+import type { VideoExportState } from '../../../types/videoExport';
 import {
     buildDiscordPresenceSnapshotFromPlaybackSyncBridge,
     buildPlaybackSyncBridgeModel,
     buildRemoteControlSnapshotFromPlaybackSyncBridge,
     buildStagePlayerSnapshotFromPlaybackSyncBridge,
     buildTaskbarControlsFromPlaybackSyncBridge,
-} from '../utils/playbackSyncBridge';
-import { resolveStagePlayerPositionSec } from '../utils/stagePlayerSnapshot';
-import { getPlaybackSourceRef } from '../utils/appPlaybackGuards';
-import { omni } from '../services/onlineMusic/omni';
-import { subscribeToTransitionCue } from '../services/automix/transitionCue';
-import { useStableActionSurface } from './useStableCallbacks';
-import { selectDisplayCoverUrl, selectDisplayDuration, selectDisplayLyrics, selectDisplayPlayerState, selectDisplaySong, usePlaybackStore } from '../stores/usePlaybackStore';
-import { useAppChromeStore } from '../stores/useAppChromeStore';
-import { useThemeSettingsStore } from '../stores/useThemeSettingsStore';
-import { usePlayerChromeSettingsStore } from '../stores/usePlayerChromeSettingsStore';
-import { currentTime } from '../stores/motionSignals';
+} from '../../../utils/playbackSyncBridge';
+import { resolveStagePlayerPositionSec } from '../../../utils/stagePlayerSnapshot';
+import { getPlaybackSourceRef } from '../../../utils/appPlaybackGuards';
+import { omni } from '../../../services/onlineMusic/omni';
+import { subscribeToTransitionCue } from '../../../services/automix/transitionCue';
+import { useStableActionSurface } from '../../../hooks/useStableCallbacks';
+import { selectDisplayCoverUrl, selectDisplayDuration, selectDisplayLyrics, selectDisplayPlayerState, selectDisplaySong, usePlaybackStore } from '../../../stores/usePlaybackStore';
+import { useAppChromeStore } from '../../../stores/useAppChromeStore';
+import { useThemeSettingsStore } from '../../../stores/useThemeSettingsStore';
+import { usePlayerChromeSettingsStore } from '../../../stores/usePlayerChromeSettingsStore';
+import { currentTime } from '../../../stores/motionSignals';
 
 // Bridges Electron-specific shell features without coupling to UI components.
 const DISCORD_PRESENCE_SNAPSHOT_INTERVAL_MS = 1000;

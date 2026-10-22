@@ -36,11 +36,12 @@ import {
 } from './providerRegistry';
 import { saveProviderAccountSnapshot } from './providerAccountCache';
 import { jsMusicSourceManager } from '../jsMusicSource/jsSourceManager';
-import { isSourcePlaybackMode } from '../../stores/usePlaybackModeStore';
+import { getPlaybackModeForProvider } from '../../stores/usePlaybackModeStore';
 import { probeKugouTransport } from './kugouTransport';
 import { probeQqTransport } from './qqTransport';
 import { getLuoxueSearchChannels, searchLuoxueChannel, searchLuoxueChannels } from './luoxueSearch';
 import { isProviderLikedCollection } from '../../utils/providerCollection';
+import { isAndroidCapacitor } from '../../utils/runtimePlatform';
 
 // src/services/onlineMusic/omni.ts
 // Online Music Network Interface (Omni) - a unified interface for interacting with multiple online music providers.
@@ -65,6 +66,10 @@ const unsupported = (providerId: OmniProviderId, capability: string): never => {
 };
 
 const emptyPage = <T>(offset: number): OmniPage<T> => ({ items: [], hasMore: false, nextOffset: offset });
+
+export const shouldPreferBundledLxSource = (isAndroid: boolean, playbackMode: string): boolean => (
+    isAndroid || playbackMode === 'source'
+);
 
 // 点赞状态改完要落盘：只更内存的话，重启后靠快照 hydration 的那一帧会恢复旧心形，
 // 后台刷新再失败就一直是旧的。行号是会话级的，不进快照。
@@ -181,6 +186,22 @@ export const omni = {
         const checkedAt = Date.now();
         const provider = requireOnlineMusicProvider(providerId);
         const availability = provider.getAvailability?.() ?? { configured: true };
+
+        // Account/API configuration is separate from anonymous Android search. Probe the
+        // same bundled LX-compatible adapter users actually search through.
+        if (isAndroidCapacitor) {
+            try {
+                await searchLuoxueChannel(providerId, '告白气球', { limit: 1, offset: 0 });
+                return { status: 'available', checkedAt: Date.now() };
+            } catch (error) {
+                return {
+                    status: 'unavailable',
+                    checkedAt: Date.now(),
+                    message: error instanceof Error ? error.message : String(error),
+                };
+            }
+        }
+
         if (!availability.configured) {
             return {
                 status: 'unavailable',
@@ -281,7 +302,7 @@ export const omni = {
         };
     },
 
-    /** Reuses Luoxue's built-in musicSdk search layer. JS source scripts do not search. */
+    /** Uses Folia's LX-compatible provider search adapters; JS source scripts do not search. */
     async searchLuoxueSongs(query: string, page: PageInput): Promise<OmniPage<UnifiedSong>> {
         return searchLuoxueChannels(query, page);
     },
@@ -547,8 +568,9 @@ export const omni = {
     },
 
     canPlaySong(song: SongResult): boolean {
-        if (isSourcePlaybackMode()) {
-            return song.sourceRef?.kind === 'online';
+        const sourceRef = getPlaybackSourceRef(song);
+        if (sourceRef.kind === 'online' && getPlaybackModeForProvider(sourceRef.providerId) === 'source') {
+            return true;
         }
         return Boolean(providerForSong(song).playback);
     },
@@ -556,14 +578,26 @@ export const omni = {
     async getAudioSource(
         song: SongResult,
         quality: AudioQualityPreference,
-        options: { forceRefresh?: boolean } = {},
+        options: { forceRefresh?: boolean; excludeUrl?: string | null } = {},
     ): Promise<OmniAudioSource | null> {
         // The selected playback mode is explicit. Source availability must never implicitly
         // change the mode, and logging in to an official provider must never change it either.
-        if (isSourcePlaybackMode()) {
-            // LX Music-style resolution is the playback core. In source mode an empty result is
-            // unavailable; do not silently fall back to an official-provider preview URL.
-            return await jsMusicSourceManager.resolveAudioSource(song, quality, options);
+        const sourceRef = getPlaybackSourceRef(song);
+        // Installed Android builds have the LX-compatible source runtime in the APK, but no
+        // desktop API process. Prefer that bundled resolver on Android even when the persisted
+        // provider mode came from an older/shared settings snapshot; keep the user's mode intact.
+        // This is a transport choice, not a mode switch.
+        if (sourceRef.kind === 'online' && shouldPreferBundledLxSource(
+            isAndroidCapacitor,
+            getPlaybackModeForProvider(sourceRef.providerId),
+        )) {
+            const sourceAudio = await jsMusicSourceManager.resolveAudioSource(song, quality, options);
+            if (sourceAudio) return sourceAudio;
+            // The installed Android app has no Electron localhost API server. If an LX resolver
+            // is temporarily unavailable, try the provider transport when one is available; never
+            // change the persisted playback-mode preference as a side effect of this fallback.
+            if (!isAndroidCapacitor) return null;
+            console.warn('[Omni] Android LX source returned no audio URL; trying the provider transport', sourceRef.providerId);
         }
 
         const source = await (providerForSong(song).playback?.getAudioSource(song, quality) ?? null);
@@ -589,16 +623,20 @@ export const omni = {
     },
 
     async getLyrics(song: SongResult, context?: { userId?: MediaId | null }): Promise<OmniLyricsResult> {
-        if (isSourcePlaybackMode()) {
+        const sourceRef = getPlaybackSourceRef(song);
+        // As with playback, the packaged LX-style source runtime is Android's self-contained
+        // first choice. It does not depend on a Windows/Electron localhost API being mapped in.
+        if (sourceRef.kind === 'online' && shouldPreferBundledLxSource(
+            isAndroidCapacitor,
+            getPlaybackModeForProvider(sourceRef.providerId),
+        )) {
             const jsLyrics = await jsMusicSourceManager.resolveLyrics(song);
             if (jsLyrics) {
-                const sourceRef = getPlaybackSourceRef(song);
                 return (await resolveProviderLyricsChorus(jsLyrics, {
                     providerId: sourceRef.kind === 'online' ? sourceRef.providerId : 'source',
                     songId: sourceRef.kind === 'online' ? sourceRef.mediaId : song.id,
                 })).result;
             }
-            const sourceRef = getPlaybackSourceRef(song);
             const sourceProvider = getOnlineMusicProviderForSong(song);
             if (!sourceProvider?.lyrics) {
                 return unsupported(

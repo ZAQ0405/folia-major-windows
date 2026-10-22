@@ -17,6 +17,7 @@ import { toFiniteNumber } from '../../utils/replayGain';
 import { createProviderSongMetadata } from '../../utils/songMetadata';
 import { getNeteaseTransportAvailability, isSongMarkedUnavailable, neteaseApi } from '../netease';
 import { writeProviderSessionValue } from './providerStorage';
+import { isAndroidCapacitor } from '../../utils/runtimePlatform';
 
 // src/services/onlineMusic/neteaseProvider.ts
 
@@ -109,6 +110,43 @@ const normalizeCollection = (raw: any, type = 'playlist'): ProviderCollection =>
 const extractCloudLyricText = (response: any): string => (
     response?.lrc || response?.data?.lrc || response?.lyric || response?.data?.lyric || ''
 );
+
+const getAndroidPublicLyrics = async (song: SongResult): Promise<Record<string, any>> => {
+    const sourceRef = song.sourceRef?.kind === 'online' ? song.sourceRef : undefined;
+    const providerData = sourceRef?.providerData || {};
+    const id = String(providerData.url_id || providerData.lyric_id || sourceRef?.mediaId || song.id || '').trim();
+    if (!id) throw new Error('NetEase lyric request has no song id');
+    const query = new URLSearchParams({ id, lv: '1', kv: '1', tv: '1' });
+    const urls = [
+        `https://music.163.com/api/song/lyric?${query.toString()}`,
+        `https://music-api.gdstudio.xyz/api.php?${new URLSearchParams({ types: 'lyric', source: 'netease', id }).toString()}`,
+    ];
+    let lastError: unknown;
+    for (const url of urls) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12_000);
+        try {
+            const response = await fetch(url, {
+                signal: controller.signal,
+                headers: { Referer: 'https://music.163.com/', 'User-Agent': 'Mozilla/5.0' },
+            });
+            if (!response.ok) throw new Error(`NetEase lyric request failed (${response.status})`);
+            const payload = await response.json() as Record<string, any>;
+            const lyric = String(payload?.lrc?.lyric || payload?.lyric || payload?.data?.lyric || '');
+            if (!lyric.trim()) throw new Error('NetEase lyric service returned no lyric text');
+            return {
+                lrc: { lyric },
+                tlyric: { lyric: String(payload?.tlyric?.lyric || payload?.tlyric || payload?.data?.tlyric || '') },
+                romalrc: { lyric: String(payload?.romalrc?.lyric || payload?.romalrc || payload?.data?.romalrc || '') },
+            };
+        } catch (error) {
+            lastError = error;
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+    throw lastError instanceof Error ? lastError : new Error('NetEase lyrics are unavailable');
+};
 
 const neteaseChorusRangesCache = new Map<string, Promise<Array<{ startTime: number; endTime: number }>>>();
 
@@ -210,7 +248,19 @@ const getLyrics = async (
         };
     }
 
-    const response = await neteaseApi.getLyric(toNeteaseId(song.id));
+    let response: any;
+    try {
+        response = await neteaseApi.getLyric(toNeteaseId(song.id));
+    } catch (error) {
+        if (!isAndroidCapacitor) throw error;
+        response = await getAndroidPublicLyrics(song);
+    }
+    const returnedLyricText = typeof response?.lrc === 'string'
+        ? response.lrc
+        : response?.lrc?.lyric || response?.lyric || '';
+    if (isAndroidCapacitor && !String(returnedLyricText).trim()) {
+        response = await getAndroidPublicLyrics(song);
+    }
     const processed = await processNeteaseLyrics(
         typeof neteaseApi.getProcessedLyricPayload === 'function'
             ? neteaseApi.getProcessedLyricPayload(response)

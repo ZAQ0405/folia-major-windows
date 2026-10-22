@@ -831,17 +831,8 @@ const handleGetMusicUrl = async (source, musicInfo, quality) => {
   const backends = { tx: TX_BACKENDS, wy: WY_BACKENDS, kw: KW_BACKENDS, kg: KG_BACKENDS }[source]
   if (!backends) throw new Error('未知音源: ' + source)
 
-  // The official Kuwo endpoints can answer with a short preview even when they return 200.
-  // Use the validated aggregate resolver for Kuwo so the source never wins a race with a
-  // preview URL merely because it answered faster.
-  if (source === 'kw') {
-    const stableKw = backends.find((backend) => backend.name === '聚合酷我')
-    if (stableKw) {
-      const url = await stableKw.fetch(songId, targetQuality, musicInfo)
-      if (url && typeof url === 'string' && (url.startsWith('http://') || url.startsWith('https://'))) return url
-      throw new Error('聚合酷我返回无效URL')
-    }
-  }
+  // Try multiple Kuwo resolvers. The aggregate endpoint can return a URL for a
+  // follow-up request that is unavailable on Android, so it must not suppress fallbacks.
 
   const errors = []
   const total = backends.length

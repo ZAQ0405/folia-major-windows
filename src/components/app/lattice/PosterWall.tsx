@@ -2,11 +2,14 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import type { SongResult } from '../../../types';
 import {
     getLatticeGeometry,
+    getInstanceBlock,
     layoutExpandedBlock,
     layoutLattice,
+    locateInstanceAt,
     overlaps,
     toBounds,
     type Bounds,
+    type QueueInstance,
     type ReflowTile,
     type WallMetrics,
 } from './layout';
@@ -24,7 +27,7 @@ import { setLatticeCurrentSongPosterVisible } from '../../../stores/useLatticeCo
 import { getPlaybackSongKey } from '../../../utils/appPlaybackGuards';
 import { useDevicePixelRatio } from '../../../hooks/useMediaQuery';
 import { useReducedMotionFor } from '../../../hooks/useReducedMotionFor';
-import { EXPANSION_SPAN } from './blockTemplates';
+import { EXPANSION_SPAN, SLOTS_PER_BLOCK } from './blockTemplates';
 import { isAndroidCapacitor } from '../../../utils/runtimePlatform';
 
 // Draggable poster field: one greedily packed block template repeats over the queue.
@@ -43,7 +46,16 @@ type PosterWallProps = {
 
 const CELL_SIZE = 128;
 const GAP = 8;
-const OVERSCAN = 500;
+// Android WebView has a much tighter composited-tile budget than desktop Chromium. Keep enough
+// poster area ahead of a swipe to avoid blank edges, but do not retain half a screen of duplicate
+// poster layers beyond the viewport.
+// Cards are also the artwork prefetch window: keep enough offscreen instances mounted so a
+// quick swipe does not outrun cover decoding on Android. Rendering is optimized separately by
+// suppressing entrance motion and duplicate hidden image elements.
+const OVERSCAN = isAndroidCapacitor ? 320 : 500;
+// Five times the previous Android window: preserve a broad ring of already-mounted cards so
+// ordinary swipes reveal decoded artwork instead of triggering a burst of cold image requests.
+const MAX_ANDROID_POSTERS = 140;
 // How much of the flight path may stay rendered while the camera travels, in viewports.
 const MAX_RESERVED_VIEWPORTS = 3;
 // Metro tile landing: the wave starts at the top-left of the viewport and runs down the diagonal.
@@ -203,7 +215,9 @@ export default function PosterWall({
     // Posters landing in the opening wave are held back by their distance from that corner; once
     // the wave is over every poster mounts in place, so panning never replays it.
     const getEntranceDelay = useCallback((rect: { x: number; y: number }) => {
-        if (entranceDone || reducedMotion) return null;
+        // On Android, cards mount continuously as the camera crosses the cull boundary. Replaying
+        // an opacity/scale entrance for each arriving card reads as flicker and competes with touch.
+        if (isAndroidCapacitor || entranceDone || reducedMotion) return null;
         const steps = Math.max(0, rect.x - bounds.left) + Math.max(0, rect.y - bounds.top);
         return Math.min(ENTRANCE_MAX_DELAY, (steps / (CELL_SIZE + GAP)) * ENTRANCE_STAGGER);
     }, [bounds.left, bounds.top, entranceDone, reducedMotion]);
@@ -228,11 +242,31 @@ export default function PosterWall({
 
     const instances = useMemo(() => {
         if (!measured) return [];
-        const visible = layoutLattice(geometry, tiles.length, bounds, OVERSCAN, METRICS);
-        if (!activePoster || visible.some(instance => instance.instanceId === activePoster.instance.instanceId)) {
-            return visible;
-        }
-        return [...visible, activePoster.instance];
+        // `bounds` may include a swept region reserved for the next pan destination. Use the
+        // camera's actual viewport as the cap priority so overscan never evicts visible cards.
+        const priorityBounds = getWorldBounds(cameraRef.current, viewportRef.current);
+        const visible = layoutLattice(
+            geometry,
+            tiles.length,
+            bounds,
+            OVERSCAN,
+            METRICS,
+            isAndroidCapacitor ? MAX_ANDROID_POSTERS : undefined,
+            priorityBounds,
+        );
+        if (!activePoster) return visible;
+
+        // Expansion reflows every card in its block. Some siblings can move into the viewport
+        // even when their pre-expansion rect was outside the culling window, so keep the entire
+        // source block mounted until it collapses; otherwise those destination slots show holes.
+        const block = getInstanceBlock(geometry, activePoster.instance);
+        const renderedIds = new Set(visible.map(instance => instance.instanceId));
+        const expandedSiblings = Array.from({ length: SLOTS_PER_BLOCK }, (_, slotIndex) => (
+            locateInstanceAt(geometry, tiles.length, block.column, block.row, slotIndex, METRICS)
+        )).filter((instance): instance is QueueInstance => (
+            instance !== null && !renderedIds.has(instance.instanceId)
+        ));
+        return [...visible, ...expandedSiblings];
     }, [activePoster, bounds, geometry, measured, tiles.length]);
 
     // World point the viewport is centred on; both the keyboard seed and playback follow need it.
@@ -264,6 +298,12 @@ export default function PosterWall({
             ? layoutExpandedBlock(geometry, tiles.length, activePoster.instance, METRICS)
             : new Map<string, { x: number; y: number; width: number; height: number }>()
     ), [activePoster, geometry, tiles.length]);
+
+    // The resize correction reads current selection/layout, but must not run when a poster is
+    // selected: `expandPoster` already animates the camera to its expanded rect. Running both
+    // paths used to cancel that pan and snap to the destination on the next layout commit.
+    const resizeTargetRef = useRef({ activePoster, layout });
+    resizeTargetRef.current = { activePoster, layout };
 
     useEffect(() => {
         const currentSongKey = currentSong ? getPlaybackSongKey(currentSong) : null;
@@ -330,10 +370,12 @@ export default function PosterWall({
     // have committed, re-centre that card using the actual viewport instead of keeping
     // the old camera's screen-space offset.
     useLayoutEffect(() => {
-        if (!measured || !activePoster || viewportSize.width <= 0 || viewportSize.height <= 0) return;
-        const expandedRect = layout.get(activePoster.instance.instanceId);
+        if (!measured || viewportSize.width <= 0 || viewportSize.height <= 0) return;
+        const { activePoster: selectedPoster, layout: currentLayout } = resizeTargetRef.current;
+        if (!selectedPoster) return;
+        const expandedRect = currentLayout.get(selectedPoster.instance.instanceId);
         if (expandedRect) panTo(expandedRect, true);
-    }, [activePoster, cameraScale, layout, measured, panTo, viewportSize]);
+    }, [cameraScale, measured, panTo, viewportSize]);
 
     return (
         <div

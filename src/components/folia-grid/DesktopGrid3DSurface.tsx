@@ -143,7 +143,7 @@ export const DesktopGrid3DSurface: React.FC<DesktopGrid3DSurfaceProps> = ({
     return (
         <div className="w-full h-full min-h-0 flex flex-col justify-center relative">
             {!isLoading && (
-                <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10">
+                <div className="folia-grid3d-map-button absolute top-2 left-1/2 -translate-x-1/2 z-10">
                     <motion.button
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}

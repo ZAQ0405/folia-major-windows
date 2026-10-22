@@ -51,7 +51,6 @@ type AppOverlaysAmbient = {
     audioSrc: string | null;
     lyrics: LyricData | null;
     activePlaybackContext: 'main' | 'stage';
-    isPlayerChromeHidden: boolean;
     noTrackText: string;
     playQueue: SongResult[];
     isFmMode: boolean;
@@ -117,6 +116,10 @@ export type AppOverlaysDeps = {
     stageTrackPillOnScreen: boolean;
     /** 点卡片时展开右侧面板的歌曲卡片（切到 cover 页并打开） */
     openSongCardPanel: () => void;
+    autoHidePlayerChrome: boolean;
+    isFloatingPlayerControlsHidden: boolean;
+    onAutoHidePointerEnter: () => void;
+    onAutoHidePointerLeave: () => void;
 };
 
 type BuildAppOverlaysModelParams = AppOverlaysAmbient & AppOverlaysDeps;
@@ -156,7 +159,10 @@ export const buildAppOverlaysModel = ({
     toggleLoop,
     navigateToPlayer,
     navigateFromPlayerCapsule,
-    isPlayerChromeHidden,
+    autoHidePlayerChrome,
+    isFloatingPlayerControlsHidden,
+    onAutoHidePointerEnter,
+    onAutoHidePointerLeave,
     shouldHidePlayerProgressBar,
     onSeekMainAudio,
     onStagePlayerSeek,
@@ -286,7 +292,11 @@ export const buildAppOverlaysModel = ({
             secondaryColor: 'var(--text-secondary)',
             theme,
             isDaylight,
-            isHidden: currentView === 'player' && isPlayerChromeHidden,
+            // Keep dock visibility independent from the shared chrome state used by other controls.
+            isHidden: isFloatingPlayerControlsHidden,
+            autoHideEnabled: autoHidePlayerChrome,
+            onAutoHidePointerEnter,
+            onAutoHidePointerLeave,
             hideControlBar: shouldHidePlayerProgressBar,
             slotPrimary: playerControlSlotPrimary,
             slotSecondary: playerControlSlotSecondary,

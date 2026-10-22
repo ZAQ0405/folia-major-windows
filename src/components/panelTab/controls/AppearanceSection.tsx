@@ -95,9 +95,13 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
     const openSettings = useSettingsModalStore(state => state.openSettings);
     const displaySong = usePlaybackStore(selectDisplaySong);
     const jizuraEnabled = useVisualizerSettingsStore(state => state.jizuraEnabled);
+    const jizuraStyle = useVisualizerSettingsStore(state => state.jizuraStyle);
+    const jizuraSettings = useVisualizerSettingsStore(state => state.jizuraSettings);
     const setVisualizerMode = useVisualizerSettingsStore(state => state.handleSetVisualizerMode);
     const rerollJizura = useVisualizerSettingsStore(state => state.handleRerollJizura);
     const saveJizuraActiveVariant = useVisualizerSettingsStore(state => state.handleSaveJizuraActiveVariant);
+    const setJizuraSongPreset = useVisualizerSettingsStore(state => state.handleSetJizuraSongPreset);
+    const resetJizuraSongPreset = useVisualizerSettingsStore(state => state.handleResetJizuraSongPreset);
     const randomVisualizerModePerSong = useVisualizerSettingsStore(state => state.randomVisualizerModePerSong);
     const toggleRandomVisualizerModePerSong = useVisualizerSettingsStore(state => state.handleToggleRandomVisualizerModePerSong);
     const setFoliaSongPreset = useVisualizerSettingsStore(state => state.handleSetFoliaSongPreset);
@@ -203,7 +207,7 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
     };
 
     return (
-        <div className="space-y-1.5">
+        <div className="folia-panel-appearance flex flex-col gap-1.5">
             <VisualizerCategorySwitcher
                 active={jizuraEnabled ? 'jizura' : 'folia'}
                 isDaylight={isDaylight}
@@ -211,7 +215,7 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                 t={t}
             />
             {jizuraEnabled ? (
-                <div className={`flex items-center gap-1 rounded-lg px-1 ${isDaylight ? 'hover:bg-black/[0.06]' : 'hover:bg-white/[0.08]'}`}>
+                <div className={`folia-panel-jizura-quick-row flex items-center gap-1 rounded-lg px-1 ${isDaylight ? 'hover:bg-black/[0.06]' : 'hover:bg-white/[0.08]'}`}>
                     <button
                         type="button"
                         onClick={openVisualizerSettings}
@@ -227,21 +231,31 @@ const AppearanceSection: React.FC<AppearanceSectionProps> = ({
                         </span>
                     </button>
                     {displaySong && (
-                        <div className="flex shrink-0 items-center gap-1">
+                        <div className="folia-panel-jizura-quick-actions flex shrink-0 items-center gap-1">
                             <QuickControlChip
                                 isDaylight={isDaylight}
                                 label={t('options.jizuraRandom')}
                                 title={t('options.jizuraRandomDesc')}
                                 onClick={() => rerollJizura(jizuraSongKey)}
                             />
-                            {!jizuraSongPreset && jizuraActiveVariant && (
-                                <QuickControlChip
-                                    isDaylight={isDaylight}
-                                    label={t('options.jizuraSaveRandom')}
-                                    title={t('options.jizuraSaveRandomDesc')}
-                                    onClick={() => jizuraSongKey && saveJizuraActiveVariant(jizuraSongKey)}
-                                />
-                            )}
+                            <QuickControlChip
+                                isDaylight={isDaylight}
+                                label={t(jizuraSongPreset ? 'options.jizuraUnfixSong' : 'options.jizuraSaveRandom')}
+                                title={t(jizuraSongPreset ? 'options.jizuraUnfixSongDesc' : 'options.jizuraSaveRandomDesc')}
+                                onClick={() => {
+                                    if (!jizuraSongKey) return;
+                                    if (jizuraSongPreset) {
+                                        resetJizuraSongPreset(jizuraSongKey);
+                                    } else if (jizuraActiveVariant) {
+                                        saveJizuraActiveVariant(jizuraSongKey);
+                                    } else {
+                                        setJizuraSongPreset(jizuraSongKey, {
+                                            style: jizuraStyle,
+                                            settings: jizuraSettings,
+                                        });
+                                    }
+                                }}
+                            />
                             <QuickControlChip
                                 isDaylight={isDaylight}
                                 label={t('options.jizuraCustomizeSong')}

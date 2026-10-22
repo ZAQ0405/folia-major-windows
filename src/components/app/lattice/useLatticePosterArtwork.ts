@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { COVER_SIZE_STEPS, getOriginalCoverUrl, getSizedCoverUrl, resolveCoverSizeStep } from '../../../utils/coverUrl';
+import { COVER_SIZE_STEPS, getCoverRequestUrl, getOriginalCoverUrl, getSizedCoverUrl, resolveCoverSizeStep } from '../../../utils/coverUrl';
+import { isAndroidCapacitor } from '../../../utils/runtimePlatform';
+import type { SongResult } from '../../../types';
+import { resolveSongArtwork } from '../../../services/onlineMusic/songArtwork';
 
 // src/components/app/lattice/useLatticePosterArtwork.ts
 // Picks which variant of a cover one poster paints. The wall draws the same queue at four gears and
@@ -22,6 +25,7 @@ const decodingVariants = new Map<string, Promise<boolean>>();
  * Bounded like the decoded set, and for the same reason.
  */
 const failedVariants = new Map<string, true>();
+const cachedCoverLookups = new Map<string, Promise<string | null>>();
 
 /** Ladder step the URL was cut at; `Infinity` stands for the provider's own asset. */
 type PosterArtwork = {
@@ -41,9 +45,13 @@ const remember = (registry: Map<string, true>, url: string): void => {
     }
 };
 
-const variantUrl = (cover: string, step: number): string => (
-    Number.isFinite(step) ? getSizedCoverUrl(cover, step) : getOriginalCoverUrl(cover)
-);
+const variantUrl = (cover: string, step: number): string => {
+    const sizedUrl = Number.isFinite(step) ? getSizedCoverUrl(cover, step) : getOriginalCoverUrl(cover);
+    // QQ and KuGou artwork often stalls when Android WebView requests their CDN directly. Route
+    // those images through the app's existing same-origin proxy; CSS backgrounds cannot use the
+    // blob cache path that regular <img> surfaces use.
+    return isAndroidCapacitor ? getCoverRequestUrl(sizedUrl) : sizedUrl;
+};
 
 // Waits for a decoded frame rather than a load event: the swap that follows is then a repaint of
 // something already rasterized, instead of a decode landing in the middle of the expansion spring.
@@ -111,8 +119,24 @@ export const prewarmLatticePosterArtwork = (cover: string | undefined, sizePx: n
  * instead of blanking. It never trades back down either: a collapsed card holding a sharper copy
  * costs nothing to keep, while dropping to a smaller variant would buy a refetch and a second swap.
  */
-export const useLatticePosterArtwork = (cover: string | undefined, sizePx: number): string => {
-    const source = cover ?? '';
+export const useLatticePosterArtwork = (cover: string | undefined, song: SongResult, sizePx: number): string => {
+    const songKey = `${song.sourceRef?.kind === 'online' ? song.sourceRef.providerId : 'local'}:${String(song.id)}`;
+    const [cachedCover, setCachedCover] = useState<{ key: string; url: string } | null>(null);
+    useEffect(() => {
+        if (cover || cachedCover?.key === songKey) return;
+        let lookup = cachedCoverLookups.get(songKey);
+        if (!lookup) {
+            lookup = resolveSongArtwork(song).catch(() => null);
+            cachedCoverLookups.set(songKey, lookup);
+        }
+        let cancelled = false;
+        void lookup.then(url => {
+            if (url && !cancelled) setCachedCover({ key: songKey, url });
+        });
+        return () => { cancelled = true; };
+    }, [cachedCover?.key, cover, song, songKey]);
+
+    const source = cover || (cachedCover?.key === songKey ? cachedCover.url : '');
     const targetStep = resolveCoverSizeStep(sizePx);
     const [ready, setReady] = useState<PosterArtwork>(() => pickDisplay(source, targetStep));
     // Recomputed only when this slot changes song; the artwork of the previous one must not linger.
@@ -130,11 +154,19 @@ export const useLatticePosterArtwork = (cover: string | undefined, sizePx: numbe
             return;
         }
         let cancelled = false;
-        void decodeVariant(url).then(decoded => {
-            if (decoded && !cancelled) upgrade();
+        void decodeVariant(url).then(async decoded => {
+            if (cancelled) return;
+            if (decoded) {
+                upgrade();
+                return;
+            }
+            const fallback = await resolveSongArtwork(song).catch(() => null);
+            if (!cancelled && fallback && fallback !== source) {
+                setCachedCover({ key: songKey, url: fallback });
+            }
         });
         return () => { cancelled = true; };
-    }, [current, source, targetStep]);
+    }, [current, song, songKey, source, targetStep]);
 
     return current.url;
 };

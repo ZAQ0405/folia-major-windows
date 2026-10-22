@@ -19,6 +19,23 @@ import { setStatusMessage } from './useStatusMessageStore';
 const PLAYER_BOTTOM_BAR_OFFSET_STORAGE_KEY = 'player_bottom_bar_offset';
 const PLAYER_CONTROL_SLOT_PRIMARY_STORAGE_KEY = 'player_control_slot_primary';
 const PLAYER_CONTROL_SLOT_SECONDARY_STORAGE_KEY = 'player_control_slot_secondary';
+const AUTO_HIDE_HOVER_ONLY_MIGRATION_KEY = 'auto_hide_player_chrome_hover_only_v1';
+
+const readAutoHidePlayerChrome = () => {
+    if (typeof window === 'undefined') return true;
+    try {
+        // Make the requested hover-only behavior the default for existing installs once;
+        // the setting remains user-controllable after this migration.
+        if (localStorage.getItem(AUTO_HIDE_HOVER_ONLY_MIGRATION_KEY) !== 'true') {
+            localStorage.setItem('auto_hide_player_chrome', 'true');
+            localStorage.setItem(AUTO_HIDE_HOVER_ONLY_MIGRATION_KEY, 'true');
+            return true;
+        }
+    } catch {
+        return true;
+    }
+    return getStoredBoolean('auto_hide_player_chrome', true);
+};
 
 /** Reads the persisted lower-bounded offset; the viewport-dependent upper bound is applied by consumers. */
 const readStoredPlayerBottomBarOffset = (): number => {
@@ -94,7 +111,7 @@ export const usePlayerChromeSettingsStore = create<PlayerChromeSettingsState>((s
     useNativeMacFullscreenButton: getStoredBoolean('use_native_mac_fullscreen_button', false),
     transparentPlayerBackground: getStoredBoolean('transparent_player_background', false),
     enablePlayerPageNativeBlur: getStoredBoolean('enable_player_page_native_blur', false),
-    autoHidePlayerChrome: getStoredBoolean('auto_hide_player_chrome', false),
+    autoHidePlayerChrome: readAutoHidePlayerChrome(),
     showOpenPanelCloseButton: getStoredBoolean('show_open_panel_close_button', true),
     setTransparentPlayerBackgroundFromSystem: (enabled) => {
         setStoredBoolean('transparent_player_background', enabled);

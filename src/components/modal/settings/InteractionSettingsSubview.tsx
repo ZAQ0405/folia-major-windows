@@ -13,6 +13,7 @@ import {
 import { CustomSelect } from '../../shared/CustomSelect';
 import ShortcutCaptureField from './ShortcutCaptureField';
 import { PRIMARY_MODIFIER_LABEL } from '../../../utils/platform';
+import { isAndroidCapacitor } from '../../../utils/runtimePlatform';
 import { SettingsAnchor } from './navigation/SettingsAnchorContext';
 import SettingsSectionHeading from './navigation/SettingsSectionHeading';
 import {
@@ -151,7 +152,7 @@ export const InteractionSettingsSubview: React.FC<InteractionSettingsSubviewProp
                 </div>
             </SettingsAnchor>
 
-            <SettingsAnchor anchorId="gridPaletteHotkey" label={t('options.gridPaletteHotkey')}>
+            {!isAndroidCapacitor && <SettingsAnchor anchorId="gridPaletteHotkey" label={t('options.gridPaletteHotkey')}>
                 <SettingsSectionHeading icon={Command} label={t('options.gridPaletteHotkey')} />
                 <div className={`p-4 rounded-xl border ${settingsCardClass}`}>
                     <div className="flex items-center justify-between gap-4">
@@ -170,9 +171,9 @@ export const InteractionSettingsSubview: React.FC<InteractionSettingsSubviewProp
                         )}
                     </div>
                 </div>
-            </SettingsAnchor>
+            </SettingsAnchor>}
 
-            <SettingsAnchor anchorId="customShortcut" label={t('options.customShortcut')}>
+            {!isAndroidCapacitor && <SettingsAnchor anchorId="customShortcut" label={t('options.customShortcut')}>
                 <SettingsSectionHeading icon={Keyboard} label={t('options.customShortcut')} />
                 <div className={`p-4 rounded-xl border space-y-4 ${settingsCardClass}`}>
                     <div className="space-y-1">
@@ -207,7 +208,7 @@ export const InteractionSettingsSubview: React.FC<InteractionSettingsSubviewProp
                         </div>
                     </div>
                 </div>
-            </SettingsAnchor>
+            </SettingsAnchor>}
         </div>
     );
 };

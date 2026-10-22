@@ -58,11 +58,11 @@ const AccountTab: React.FC<AccountTabProps> = ({
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col justify-start gap-4 h-full"
+            className="folia-panel-account-root flex flex-col justify-start gap-4 h-full"
         >
             {activeUser ? (
                 /* User Info with Logout in Header */
-                <div className="flex items-center justify-between bg-white/5 p-3 rounded-xl">
+                <div className="folia-panel-account-info flex items-center justify-between bg-white/5 p-3 rounded-xl">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full overflow-hidden">
                             <img
@@ -91,7 +91,7 @@ const AccountTab: React.FC<AccountTabProps> = ({
                     </button>
                 </div>
             ) : (
-                <div className="flex flex-col items-center justify-center gap-2 py-4 text-center opacity-50">
+                <div className="folia-panel-account-info flex flex-col items-center justify-center gap-2 py-4 text-center opacity-50">
                     <p>{t('account.guestMode')}</p>
                     <button
                         onClick={onNavigateHome}
@@ -103,7 +103,7 @@ const AccountTab: React.FC<AccountTabProps> = ({
             )}
 
             {/* Provider-independent audio quality preference; each online provider maps these semantic presets. */}
-            <div className="bg-white/5 p-3 rounded-xl">
+            <div className="folia-panel-account-quality bg-white/5 p-3 rounded-xl">
                 <div className="flex items-center gap-2 mb-2 opacity-60">
                     <SlidersHorizontal size={12} />
                     <span className="text-[10px] font-bold uppercase tracking-wide">
@@ -149,9 +149,9 @@ const AccountTab: React.FC<AccountTabProps> = ({
             </div> */}
 
             {activeUser && <button
+                className={`folia-panel-account-sync w-full py-2 bg-white/5 hover:bg-white/10 rounded-lg flex items-center justify-center gap-2 text-xs font-bold opacity-80 transition-colors disabled:opacity-50`}
                 onClick={onSyncData}
                 disabled={isSyncing}
-                className="w-full py-2 bg-white/5 hover:bg-white/10 rounded-lg flex items-center justify-center gap-2 text-xs font-bold opacity-80 transition-colors disabled:opacity-50"
             >
                 <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} />
                 {isSyncing ? t('account.syncing') : t('account.syncData')}

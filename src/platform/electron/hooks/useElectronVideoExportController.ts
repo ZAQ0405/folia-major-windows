@@ -2,10 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type React from 'react';
 import type { RefObject } from 'react';
 import type { MotionValue } from 'framer-motion';
-import type { SongResult } from '../types';
-import type { RemoteControlCommand } from '../types/remoteControl';
-import type { VideoExportPreset, VideoExportState } from '../types/videoExport';
-import { idleVideoExportState } from '../types/videoExport';
+import type { SongResult } from '../../../types';
+import type { RemoteControlCommand } from '../../../types/remoteControl';
+import type { VideoExportPreset, VideoExportState } from '../../../types/videoExport';
+import { idleVideoExportState } from '../../../types/videoExport';
 import {
     buildDefaultVideoExportFileName,
     createCroppedVideoStream,
@@ -18,12 +18,12 @@ import {
     wait,
 } from '../services/electronVideoExport';
 import { useTranslation } from 'react-i18next';
-import { usePlaybackStore } from '../stores/usePlaybackStore';
-import { useAppChromeStore } from '../stores/useAppChromeStore';
-import { setIsPanelOpen } from '../stores/useAppViewStore';
-import { currentTime } from '../stores/motionSignals';
+import { usePlaybackStore } from '../../../stores/usePlaybackStore';
+import { useAppChromeStore } from '../../../stores/useAppChromeStore';
+import { setIsPanelOpen } from '../../../stores/useAppViewStore';
+import { currentTime } from '../../../stores/motionSignals';
 
-// src/hooks/useElectronVideoExportController.ts
+// src/platform/electron/hooks/useElectronVideoExportController.ts
 // Records the real player window so audio.currentTime remains the single animation clock.
 type UseElectronVideoExportControllerOptions = {
     isElectronWindow: boolean;

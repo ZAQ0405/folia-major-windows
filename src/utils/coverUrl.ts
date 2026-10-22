@@ -1,4 +1,5 @@
 // src/utils/coverUrl.ts
+import { isAndroidCapacitor } from './runtimePlatform';
 
 const NON_RESIZABLE_COVER_PROTOCOLS = new Set(['blob:', 'data:', 'file:', 'filesystem:']);
 const KUGOU_COVER_HOST_PATTERN = /(?:^|\.)(?:kugou\.com|kgimg\.com)$/i;
@@ -39,6 +40,40 @@ const withQqCoverSize = (url: URL, size: number | null): string => {
         size ? `$1R${size}x${size}$3` : '$1$3',
     );
     return url.toString();
+};
+
+/**
+ * Builds the image URL used by browser-side fetches for providers whose CDNs reject direct
+ * WebView requests. The same-origin lyric proxy already allowlists these hosts and streams the
+ * original image response, so it can also serve CSS backgrounds and img src attributes.
+ */
+export const getCoverRequestUrl = (url: string | null | undefined): string => {
+    const trimmedUrl = url?.trim() ?? '';
+    if (!trimmedUrl) return '';
+
+    // The Android APK is a standalone Capacitor bundle and has no /api/lyric-proxy server.
+    // Cross-origin image elements do not require CORS, so keep provider artwork on its HTTPS URL.
+    if (isAndroidCapacitor) return trimmedUrl;
+
+    try {
+        const urlObj = new URL(trimmedUrl);
+        const isProxyableCover = urlObj.hostname === 'y.gtimg.cn'
+            || urlObj.hostname.endsWith('.qq.com')
+            || urlObj.hostname === 'music.126.net'
+            || urlObj.hostname.endsWith('.music.126.net')
+            || KUGOU_COVER_HOST_PATTERN.test(urlObj.hostname);
+        return isProxyableCover
+            ? `/api/lyric-proxy?url=${encodeURIComponent(trimmedUrl)}`
+            : trimmedUrl;
+    } catch {
+        return trimmedUrl;
+    }
+};
+
+/** Display-sized artwork URL with the Android WebView-safe request route applied. */
+export const getCoverDisplayUrl = (url: string | null | undefined, size: number): string => {
+    const sizedUrl = getSizedCoverUrl(url, size);
+    return isAndroidCapacitor ? getCoverRequestUrl(sizedUrl) : sizedUrl;
 };
 
 /**

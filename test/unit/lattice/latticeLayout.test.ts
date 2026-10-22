@@ -14,6 +14,7 @@ import {
     SLOTS_PER_BLOCK,
     getBlockReflow,
     getBlockTemplate,
+    getPreferredBlockReflow,
 } from '../../../src/components/app/lattice/blockTemplates';
 
 // Covers the anchored expansion contract and the infinite lattice, without the browser UI.
@@ -58,6 +59,26 @@ describe('gear reflow tables', () => {
             for (let slotIndex = 0; slotIndex < SLOTS_PER_BLOCK; slotIndex += 1) {
                 const slot = getBlockReflow(column, row, slotIndex)![slotIndex];
                 expect({ cols: slot.cols, rows: slot.rows }).toEqual(EXPANSION_SPAN);
+            }
+        }
+    });
+
+    it('prefers a mirror reflow that reduces movement around the tapped card', () => {
+        for (const [column, row] of coordinates) {
+            const template = getBlockTemplate(column, row);
+            for (let slotIndex = 0; slotIndex < SLOTS_PER_BLOCK; slotIndex += 1) {
+                const score = (candidate: ReturnType<typeof getBlockReflow>) => candidate!.reduce((total, to, index) => {
+                    const from = template[index];
+                    const dx = to.x - from.x;
+                    const dy = to.y - from.y;
+                    const dCols = to.cols - from.cols;
+                    const dRows = to.rows - from.rows;
+                    const movement = dx * dx + dy * dy + 0.5 * (dCols * dCols + dRows * dRows);
+                    return total + movement * (index === slotIndex ? 16 : 1);
+                }, 0);
+
+                expect(score(getPreferredBlockReflow(column, row, slotIndex)))
+                    .toBeLessThanOrEqual(score(getBlockReflow(column, row, slotIndex)));
             }
         }
     });
@@ -147,6 +168,70 @@ describe('infinite lattice', () => {
         }
     });
 
+    it('limits offscreen preloads without removing visible posters', () => {
+        const bounds = viewport(-3000, -2000);
+        const instances = layoutLattice(geometry, TOTAL, bounds, 500, metrics, 24);
+        const visibleIds = layoutLattice(geometry, TOTAL, bounds, 0, metrics)
+            .map(instance => instance.instanceId);
+
+        expect(instances.length).toBeGreaterThanOrEqual(visibleIds.length);
+        expect(instances.map(instance => instance.instanceId)).toEqual(expect.arrayContaining(visibleIds));
+        expect(instances.length - visibleIds.length).toBeLessThanOrEqual(Math.max(0, 24 - visibleIds.length));
+        expect(instances.every(instance => instance.queueIndex >= 0 && instance.queueIndex < TOTAL)).toBe(true);
+    });
+
+    it('keeps every on-screen poster even when the viewport exceeds the render budget', () => {
+        const bounds = { left: 0, top: 0, right: 480, bottom: 320 };
+        const allCandidates = layoutLattice(geometry, TOTAL, bounds, 1200, metrics);
+        const visibleIds = allCandidates
+            .filter(instance => overlaps(instance, {
+                x: bounds.left,
+                y: bounds.top,
+                width: bounds.right - bounds.left,
+                height: bounds.bottom - bounds.top,
+            }))
+            .map(instance => instance.instanceId);
+        const capped = layoutLattice(geometry, TOTAL, bounds, 1200, metrics, 18);
+
+        expect(visibleIds.length).toBeLessThanOrEqual(18);
+        expect(capped.map(instance => instance.instanceId)).toEqual(expect.arrayContaining(visibleIds));
+        expect(capped).toHaveLength(18);
+
+        const wideBounds = { left: 0, top: 0, right: 2400, bottom: 1400 };
+        const wideCandidates = layoutLattice(geometry, TOTAL, wideBounds, 1000, metrics);
+        const wideVisibleIds = wideCandidates
+            .filter(instance => overlaps(instance, {
+                x: wideBounds.left,
+                y: wideBounds.top,
+                width: wideBounds.right - wideBounds.left,
+                height: wideBounds.bottom - wideBounds.top,
+            }))
+            .map(instance => instance.instanceId);
+        const wideCapped = layoutLattice(geometry, TOTAL, wideBounds, 1000, metrics, 18);
+
+        expect(wideVisibleIds.length).toBeGreaterThan(18);
+        expect(wideCapped.map(instance => instance.instanceId)).toEqual(expect.arrayContaining(wideVisibleIds));
+        expect(wideCapped.length).toBe(wideVisibleIds.length);
+    });
+
+    it('prioritizes the live viewport instead of a larger reserved pan region', () => {
+        const reserved = { left: -1200, top: -900, right: 2400, bottom: 1700 };
+        const liveViewport = { left: 150, top: 140, right: 630, bottom: 460 };
+        const allCandidates = layoutLattice(geometry, TOTAL, reserved, 0, metrics);
+        const viewportIds = allCandidates
+            .filter(instance => overlaps(instance, {
+                x: liveViewport.left,
+                y: liveViewport.top,
+                width: liveViewport.right - liveViewport.left,
+                height: liveViewport.bottom - liveViewport.top,
+            }))
+            .map(instance => instance.instanceId);
+        const capped = layoutLattice(geometry, TOTAL, reserved, 0, metrics, 18, liveViewport);
+
+        expect(viewportIds.length).toBeLessThanOrEqual(18);
+        expect(capped.map(instance => instance.instanceId)).toEqual(expect.arrayContaining(viewportIds));
+    });
+
     it('never overlaps two posters, including across cell seams', () => {
         const instances = layoutLattice(geometry, TOTAL, {
             left: geometry.cellWidth - 400,
@@ -208,8 +293,9 @@ describe('infinite lattice', () => {
         const active = locateInstanceAt(geometry, TOTAL, 1, 1, 5, metrics)!;
         const reflowed = layoutExpandedBlock(geometry, TOTAL, active, metrics);
 
-        it('re-gears exactly the block holding the open card', () => {
+        it('reflows the complete block so the selected poster does not cover its neighbours', () => {
             expect(reflowed.size).toBe(SLOTS_PER_BLOCK);
+            expect(reflowed.has(active.instanceId)).toBe(true);
 
             for (let slotIndex = 0; slotIndex < SLOTS_PER_BLOCK; slotIndex += 1) {
                 const sibling = locateInstanceAt(geometry, TOTAL, 1, 1, slotIndex, metrics)!;
@@ -217,7 +303,7 @@ describe('infinite lattice', () => {
             }
         });
 
-        it('leaves every poster outside that block alone', () => {
+        it('leaves every poster outside the selected block at its base rect', () => {
             for (const [column, row] of [[0, 1], [2, 1], [1, 0], [1, 2], [-1, -1]]) {
                 for (let slotIndex = 0; slotIndex < SLOTS_PER_BLOCK; slotIndex += 1) {
                     const outsider = locateInstanceAt(geometry, TOTAL, column, row, slotIndex, metrics)!;
@@ -226,7 +312,7 @@ describe('infinite lattice', () => {
             }
         });
 
-        it('keeps the re-geared cards inside the block footprint, without overlapping', () => {
+        it('keeps the reflow inside the block and free of card overlap', () => {
             const rects = [...reflowed.values()];
             const originX = geometry.blockWidth;
             const originY = geometry.blockHeight;

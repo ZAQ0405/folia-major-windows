@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReplayGainInfo, SongResult } from '@/types';
+import { usePlaybackModeStore } from '@/stores/usePlaybackModeStore';
 
 // test/unit/services/onlineReplayGainCache.test.ts
 // A track played from the media cache must reach the fader with the gain the provider stated the
@@ -42,6 +43,7 @@ describe('ReplayGain survives the media cache', () => {
     beforeEach(() => {
         store.clear();
         vi.clearAllMocks();
+        usePlaybackModeStore.getState().setProviderPlaybackMode('netease', 'source');
     });
 
     it('hands a cached track the gain a fetched URL left behind', async () => {

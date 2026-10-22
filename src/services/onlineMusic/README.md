@@ -19,7 +19,9 @@ UI / hooks / stores / app services
 
 当前 registry 注册 `netease`、`kugou` 和 `qq`。Navidrome 是独立的 Subsonic 服务，入口是 `src/services/navidromeService.ts`，不属于 Omni provider。
 
-可导入的 LX Music 风格 JS 音源不注册为 Omni provider：`src/services/jsMusicSource/jsSourceManager.ts` 优先直接复用洛雪桌面端 `music_url` 完整地址，未命中时才解析 JS 音源，由 `omni.getAudioSource` 作为启用 JS 音源时的播放核心调用；声明 `lyric` action 的音源和洛雪 `lyric` 缓存也通过 `omni.getLyrics` 进入 Folia 歌词解析链。搜索由 `src/services/onlineMusic/luoxueSearch.ts` 复用洛雪 `musicSdk` 的搜索层：网易、QQ、酷狗复用现有 provider transport，酷我使用 LX 对应的搜索协议；各通道并行查询、合并、去重、相关度排序，并保留平台 identity。JS 音源本身不参与搜索、账号或歌单路由。Folia 不保留旧 provider/预取 URL，JS 音源启用后不会静默回退到原生 provider 的试听地址。
+可导入的 LX Music 风格 JS 音源不注册为 Omni provider：`src/services/jsMusicSource/jsSourceManager.ts` 优先直接复用洛雪桌面端 `music_url` 完整地址，未命中时才解析 JS 音源，由 `omni.getAudioSource` 作为启用 JS 音源时的播放核心调用；声明 `lyric` action 的音源和洛雪 `lyric` 缓存也通过 `omni.getLyrics` 进入 Folia 歌词解析链。搜索由 `src/services/onlineMusic/luoxueSearch.ts` 中 Folia 自己维护的 LX 兼容适配层处理，**没有直接嵌入或调用 LX 的 `musicSdk`**：网易、QQ、酷狗调用各自平台适配器，酷我走 LX 使用的酷我搜索协议；各通道并行查询、合并、去重、相关度排序，并保留平台 identity。JS 音源本身不参与搜索、账号或歌单路由。Folia 不保留旧 provider/预取 URL，JS 音源启用后不会静默回退到原生 provider 的试听地址。
+
+Android Capacitor 构建启用原生 HTTP bridge：LX 音源 worker、酷我/酷狗匿名搜索直连上游；QQ 的 edge-compatible API handler 与扫码 MQTT WebSocket relay 随 APK 一起打包，在 Android 进程内运行，不再要求 `/api/qq` 后端或开发机端口映射。网易云账号/歌单以及酷狗账号能力仍需显式配置可从手机访问的 HTTPS API 地址（`FOLIA_ANDROID_NETEASE_API_BASE`、`FOLIA_ANDROID_KUGOU_API_BASE`）；Android 构建不会读取开发机 `.env.local`，也不会把 localhost 自动映射到宿主机。
 
 ## Public contract
 
@@ -46,7 +48,7 @@ UI / hooks / stores / app services
 - `providerRegistry.ts`：注册、查找、按歌曲 `sourceRef` 选择 provider、能力检查。
 - `neteaseProvider.ts`：网易云 adapter，归一化到 Omni contract。
 - `kugouProvider.ts`：酷狗 adapter；请求细节在 `kugouTransport.ts`，具体接口需结合 `docs/ku-go-api-docs.md` 和 `skills/kugou-provider-alignment`。
-- `qqProvider.ts`：QQ 音乐 adapter；请求与 opaque session 细节在 `qqTransport.ts`，归一化在 `qqNormalize.ts`。集合身份一律用 mid，数字 `albumid` / `singer.id` 会被上游拒收（返回 HTTP 200 但 `code` 非 0，只表现成空白页）。后端由 `VITE_QQ_API_BASE` 指向的私有 QQ API 提供，未配置时该 provider 不可用；填相对路径（`/api/qq`）时走的是本仓库内置的 serverless 入口（`worker/qq.ts` / `api-ts/qq.ts`）。扫码通道由后端 `/login/channels` 声明；打开登录时 UI 会等待能力发现并使用同一份结果决定流程，只宣告一个通道时直接进入单步流程。旧后端没有这条路由时回落到硬编码的 `qq` / `wechat` 两条，暂时性探测失败允许后续重试。
+- `qqProvider.ts`：QQ 音乐 adapter；请求与 opaque session 细节在 `qqTransport.ts`，归一化在 `qqNormalize.ts`。集合身份一律用 mid，数字 `albumid` / `singer.id` 会被上游拒收（返回 HTTP 200 但 `code` 非 0，只表现成空白页）。Android 未配置远端地址时直接调用随包内置的 edge-compatible handler，并在本机保留 MQTT QR relay；其他运行时仍通过 `VITE_QQ_API_BASE` 连接 API，填相对路径 `/api/qq` 时走仓库内置 serverless 入口（`worker/qq.ts` / `api-ts/qq.ts`）。Android 与 serverless 路由基于能力声明账号扫码通道，二维码创建前会等待 MQTT 订阅确认。
 - `providerAccountCache.ts`：按 provider 保存用户、集合、点赞 ID、hydration/freshness 快照；刷新失败保留旧快照。
 - `providerStorage.ts`：renderer 的 provider session/account 持久化边界。QQ 这里只保存 opaque `qqmusic_session`；真实 credential 始终由 QQ API 后端持有。Electron 通过主进程的 `safeStorage` 加密仓库跨重启恢复，独立 Node / Docker 后端可用 `QQ_AUTH_SESSION_PATH` 与 `QQ_SESSION_SECRET` 启用加密文件仓库；serverless 形态下 credential 加密在 token 里，服务端不存。送出方式按部署形态分岔：同源 base 用 `X-QQ-Session` header 送裸 token，外部 URL 与 Electron 维持 `?cookie=` 送整串 cookie，两者语义不同不可互换。酷狗 Web transport 仍在这里保存远端 API 请求所需的 session；Electron transport 只保留非敏感 `userid` 提示，`token`、cookie 与 `dfid` 由主进程加密持有，不得复制到 renderer。
 - `resourceCache.ts` / `resourceKeys.ts`：在线资源缓存键和缓存层。当前 kind：`audio`、`lyric`、`cover`、`theme`、`replayGain`。**新增 kind 必须同时在 `src/services/repositories/cacheRepository.ts` 的 `getCacheTableName` 与 `matchesCategory` 里登记前缀**，否则条目会静默落进 `api_cache` 兜底表、不属于任何一个「清除缓存」分类，变成清不掉的孤儿；若该 kind 是按歌曲存一份，还要确认它没有被计进 `mediaCount`（那个数字的语义是「已缓存歌曲数」，会翻倍）。

@@ -22,7 +22,7 @@ import { modeNeedsBeatGrid } from './automix/transitionStrategy';
 import { useLyricSettingsStore } from '../stores/useLyricSettingsStore';
 import { useAutomixSettingsStore } from '../stores/useAutomixSettingsStore';
 import { useAudioSettingsStore } from '../stores/useAudioSettingsStore';
-import { getPlaybackMode } from '../stores/usePlaybackModeStore';
+import { getPlaybackMode, getPlaybackModeForProvider } from '../stores/usePlaybackModeStore';
 
 // Prefetch configuration
 //
@@ -127,7 +127,8 @@ export const getPrefetchedData = (song: SongResult, requiredQuality?: AudioQuali
     const cached = prefetchCache.get(songKey);
     if (!cached) return null;
 
-    const playbackMode = getPlaybackMode();
+    const sourceRef = getPlaybackSourceRef(song);
+    const playbackMode = sourceRef.kind === 'online' ? getPlaybackModeForProvider(sourceRef.providerId) : 'official';
     if (cached.playbackMode !== playbackMode) {
         // Keep lyrics and cover data, but never carry an audio URL across the manual channel
         // switch.  The URL may be a preview from the official provider or a full-length LX source.
@@ -197,7 +198,7 @@ const prefetchSong = async (
 
     // Check if already prefetched with valid URL
     const existing = prefetchCache.get(songKey);
-    const playbackMode = getPlaybackMode();
+    const playbackMode = getPlaybackModeForProvider(sourceRef.providerId);
     if (existing?.playbackMode !== playbackMode) {
         // Reuse only mode-independent metadata. Audio is resolved again below through omni.
         if (existing) {
@@ -424,7 +425,10 @@ export const updatePrefetchedAudioUrl = (
         lyricRaw: existing?.lyricRaw || null,
         lyricPreferenceSource: existing?.lyricPreferenceSource || null,
         coverUrl: existing?.coverUrl || null,
-        playbackMode: getPlaybackMode(),
+        playbackMode: (() => {
+            const sourceRef = getPlaybackSourceRef(song);
+            return sourceRef.kind === 'online' ? getPlaybackModeForProvider(sourceRef.providerId) : getPlaybackMode();
+        })(),
     };
 
     touchPrefetchCacheEntry(songKey, nextData);

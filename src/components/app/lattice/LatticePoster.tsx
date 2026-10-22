@@ -129,7 +129,7 @@ function LatticePoster({
     // The artwork only has to cover the card's own box, and a square cover is scaled to the longer
     // edge. Both inputs are discrete - gears are integer spans and the camera only rescales on a
     // breakpoint - so this is not a per-frame value even while the card animates towards the size.
-    const coverUrl = useLatticePosterArtwork(tile.coverUrl, Math.max(rect.width, rect.height) * pixelScale);
+    const coverUrl = useLatticePosterArtwork(tile.coverUrl, tile.song, Math.max(rect.width, rect.height) * pixelScale);
     // Hover and press are the last moments before the open: warming here keeps the lyric chunk,
     // the Pixi module and the first shader compile off the click path.
     const warmLyrics = () => { if (isCurrent && !isAndroidCapacitor) prewarmLatticeLyrics(); };
@@ -210,6 +210,13 @@ function LatticePoster({
             exit={reducedMotion ? { opacity: 0, transition: { duration: 0 } } : 'leaving'}
             transition={reducedMotion
                 ? { duration: 0 }
+                : isAndroidCapacitor
+                    ? {
+                        // Keep the poster morph in step with the camera flight. A slightly longer
+                        // shared ease gives the 12-card reflow time to read as one layout change.
+                        type: 'tween', duration: 0.5, ease: [0.4, 0, 0.2, 1],
+                        opacity: { duration: 0.16, ease: 'easeOut' },
+                    }
                 : landing === null
                     ? {
                         type: 'spring', stiffness: 300, damping: 34,
@@ -222,13 +229,9 @@ function LatticePoster({
                         opacity: { duration: 0.24, delay: landing },
                     }}
             style={{
-                // Android WebView can fail to composite the promoted <img> layer when
-                // a poster grows into the large queue-card slot. Paint the same cover
-                // as the poster surface there; desktop keeps the decoded <img> layer.
-                backgroundImage: coverUrl && isAndroidCapacitor
-                    ? `url("${coverUrl}")`
-                    : coverUrl ? undefined : fallbackBackground(tile.id),
-                zIndex: expanded ? 20 : undefined,
+                // The artwork <img> is intentionally inert; paint the resolved cover directly on
+                // the card so desktop and Android use the same visible path.
+                backgroundImage: coverUrl ? `url("${coverUrl}")` : fallbackBackground(tile.id),
             }}
             onAnimationComplete={onExpansionComplete}
             onClick={handleClick}
@@ -238,7 +241,7 @@ function LatticePoster({
             aria-expanded={expanded ? undefined : false}
             aria-label={`${tile.title} · ${tile.artist}`}
         >
-            {coverUrl && (
+            {coverUrl && !isAndroidCapacitor && (
                 <img
                     className="lattice-poster-artwork"
                     src={coverUrl}

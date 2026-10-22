@@ -9,7 +9,7 @@ import { applyLocalSongCoverDisplay, buildLocalQueue } from '../services/playbac
 import { getNavidromeConfig, navidromeApi } from '../services/navidromeService';
 import { omni } from '../services/onlineMusic/omni';
 import { createCoverPlaceholder } from '../utils/coverPlaceholders';
-import { getSizedCoverUrl } from '../utils/coverUrl';
+import { getCoverDisplayUrl } from '../utils/coverUrl';
 import { getSongCoverUrl } from '../services/onlineMusic/songMetadata';
 import { getLocalCoverAssetUrl } from '../services/localCoverAssetUrl';
 import { PolaroidCard } from './folia-grid/PolaroidCard';
@@ -167,7 +167,7 @@ export const buildArtistGridCoords = (
     return coords;
 };
 
-const getLowResCoverUrl = (url: string): string => getSizedCoverUrl(url, 150);
+const getLowResCoverUrl = (url: string): string => getCoverDisplayUrl(url, 150);
 
 const toHttps = (url?: string): string => {
     if (!url) return '';
@@ -1062,7 +1062,7 @@ const ArtistGridView: React.FC<ArtistGridViewProps> = ({
                             }}
                         >
                             {item.coverUrl ? (
-                                <img src={getSizedCoverUrl(item.coverUrl, 512)} alt="avatar" draggable={false} loading="lazy" decoding="async" className="w-full h-full object-cover select-none" />
+                                <img src={getCoverDisplayUrl(item.coverUrl, 512)} alt="avatar" draggable={false} loading="lazy" decoding="async" className="w-full h-full object-cover select-none" />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-white/5">
                                     <Disc size={48} className="opacity-20 animate-spin" style={{ animationDuration: '4s' }} />

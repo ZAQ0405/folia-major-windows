@@ -81,6 +81,10 @@ describe('online playback recovery bounds', () => {
 
         await expect(controller.recoverOnlinePlaybackSource({ failedSrc: firstUrl, autoplay: true }))
             .resolves.toBe(true);
+        expect(loadAudioSourceMock).toHaveBeenCalledWith(song, 'high', null, {
+            forceRefresh: true,
+            excludeUrl: firstUrl,
+        });
         // The refreshed URL fails too. Before this guard the differing vkey made it look brand new,
         // so the error -> refresh -> error cycle never reached skipAfterPlaybackFailure().
         await expect(controller.recoverOnlinePlaybackSource({ failedSrc: streamUrl('two'), autoplay: true }))
@@ -100,5 +104,19 @@ describe('online playback recovery bounds', () => {
         await expect(controller.recoverOnlinePlaybackSource({ failedSrc: streamUrl('two'), autoplay: true }))
             .resolves.toBe(true);
         expect(loadAudioSourceMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not keep failing over forever when a different CDN host returns the same broken track', async () => {
+        const firstUrl = streamUrl('one');
+        const { controller } = createController(firstUrl);
+        loadAudioSourceMock.mockResolvedValue({ kind: 'ok', audioSrc: 'https://cdn-two.example.test/song.mp3' });
+
+        await expect(controller.recoverOnlinePlaybackSource({ failedSrc: firstUrl, autoplay: true }))
+            .resolves.toBe(true);
+        await expect(controller.recoverOnlinePlaybackSource({
+            failedSrc: 'https://cdn-two.example.test/song.mp3',
+            autoplay: true,
+        })).resolves.toBe(false);
+        expect(loadAudioSourceMock).toHaveBeenCalledTimes(1);
     });
 });

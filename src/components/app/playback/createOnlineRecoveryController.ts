@@ -92,10 +92,14 @@ export const createOnlineRecoveryController = ({
         failedSrc,
         resumeAt,
         autoplay,
+        allowSameSourceRetry = false,
+        fallbackQuality,
     }: {
         failedSrc?: string | null;
         resumeAt?: number;
         autoplay: boolean;
+        allowSameSourceRetry?: boolean;
+        fallbackQuality?: AudioQualityPreference;
     }): Promise<boolean> => {
         const song = currentSong;
         const audioElement = audioRef.current;
@@ -105,7 +109,11 @@ export const createOnlineRecoveryController = ({
         }
 
         const normalizedFailedSrc = getOnlineRecoveryKey(failedSrc || audioElement.currentSrc || audioSrc || null);
-        if (normalizedFailedSrc && lastAudioRecoverySourceRef.current === normalizedFailedSrc) {
+        const songRecoveryKey = `song:${getPlaybackSongKey(song)}`;
+        if (!allowSameSourceRetry && (
+            lastAudioRecoverySourceRef.current === songRecoveryKey
+            || (normalizedFailedSrc && lastAudioRecoverySourceRef.current === normalizedFailedSrc)
+        )) {
             return false;
         }
 
@@ -119,12 +127,32 @@ export const createOnlineRecoveryController = ({
             }
 
             try {
-                const audioResult = await loadOnlineSongAudioSource(song, audioQuality, null, { forceRefresh: true });
+                let failedSourceOrigin: string | null = null;
+                try {
+                    failedSourceOrigin = failedSrc ? new URL(failedSrc).origin : null;
+                } catch {
+                    failedSourceOrigin = failedSrc?.startsWith('blob:') ? 'blob:' : null;
+                }
+                console.info('[OnlineRecovery] resolving a replacement source', JSON.stringify({
+                    providerId: song.sourceRef?.kind === 'online' ? song.sourceRef.providerId : null,
+                    failedSourceOrigin,
+                    allowSameSourceRetry,
+                }));
+                const audioResult = await loadOnlineSongAudioSource(song, fallbackQuality ?? audioQuality, null, {
+                    forceRefresh: true,
+                    excludeUrl: failedSrc || audioElement.currentSrc || audioSrc,
+                });
                 if (currentSongRef.current !== getPlaybackSongKey(song) || !audioRef.current) {
+                    console.warn('[OnlineRecovery] discarded a stale replacement source', JSON.stringify({
+                        songStillCurrent: currentSongRef.current === getPlaybackSongKey(song),
+                        audioElementAvailable: Boolean(audioRef.current),
+                        sourceAvailable: audioResult.kind === 'ok',
+                    }));
                     return false;
                 }
 
                 if (audioResult.kind === 'unavailable') {
+                    console.warn('[OnlineRecovery] no compatible replacement source was available');
                     return false;
                 }
 
@@ -157,6 +185,14 @@ export const createOnlineRecoveryController = ({
                 currentOnlineAudioUrlFetchedAtRef.current = audioResult.audioSrc.startsWith('blob:')
                     ? null
                     : Date.now();
+                console.info('[OnlineRecovery] installed replacement source', JSON.stringify({
+                    fallbackQuality: fallbackQuality ?? audioQuality,
+                    sourceOrigin: (() => { try { return new URL(audioResult.audioSrc).origin; } catch { return 'blob:'; } })(),
+                }));
+                // A failed replacement may come from a different CDN hostname for the same track.
+                // Lock the song after one automatic failover so alternating hosts cannot create an
+                // endless reload loop; a deliberate play tap can still request another retry.
+                lastAudioRecoverySourceRef.current = songRecoveryKey;
                 setAudioSrc(audioResult.audioSrc);
                 return true;
             } catch (error) {

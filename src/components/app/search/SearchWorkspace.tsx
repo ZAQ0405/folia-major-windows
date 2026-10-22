@@ -12,6 +12,7 @@ import {
 import SearchResultsList from './SearchResultsList';
 import { useCollectionNavigationStore } from '../../../stores/useCollectionNavigationStore';
 import { omni } from '../../../services/onlineMusic/omni';
+import { isAndroidCapacitor } from '../../../utils/runtimePlatform';
 
 // src/components/app/search/SearchWorkspace.tsx
 
@@ -111,7 +112,7 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                     <header className="mx-auto flex w-full max-w-5xl shrink-0 flex-col gap-3">
                         <div className="flex items-center gap-3">
                             <form
-                                className={`relative flex-1 rounded-2xl border ${
+                                className={`folia-search-query-form relative flex-1 rounded-2xl border ${
                                     isDaylight ? 'border-black/10 bg-black/[0.04]' : 'border-white/10 bg-white/[0.05]'
                                 }`}
                                 onSubmit={(event) => {
@@ -128,14 +129,14 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                                     value={searchQuery}
                                     onChange={event => setSearchQuery(event.target.value)}
                                     placeholder={t('search.placeholder')}
-                                    className="w-full bg-transparent py-3.5 pl-11 pr-4 text-sm outline-none"
+                                    className="folia-search-query-input w-full bg-transparent py-3.5 pl-11 pr-4 text-sm outline-none"
                                     autoFocus
                                 />
                             </form>
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className={`rounded-full p-3 ${
+                                className={`folia-search-close rounded-full p-3 ${
                                     isDaylight ? 'bg-black/5 hover:bg-black/10' : 'bg-white/10 hover:bg-white/15'
                                 }`}
                                 aria-label={t('ui.backToHome')}
@@ -144,7 +145,7 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                             </button>
                         </div>
 
-                        <nav className="flex gap-2 overflow-x-auto pb-1">
+                        <nav className="folia-search-source-nav flex gap-2 overflow-x-auto pb-1">
                             {sources.map(source => (
                                 <button
                                     type="button"
@@ -154,7 +155,7 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                                             onSubmitSearch(source);
                                         }
                                     }}
-                                    className={`rounded-full px-4 py-2 text-xs font-medium transition-colors ${
+                                    className={`folia-search-source-button rounded-full px-4 py-2 text-xs font-medium transition-colors ${
                                         source === searchSourceTab
                                             ? 'shadow-sm'
                                             : isDaylight
@@ -171,13 +172,13 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                             ))}
                         </nav>
                         {searchSourceTab === 'all' && (
-                            <div className="text-[11px] opacity-50" style={{ color: theme.primaryColor }}>
+                            <div className="folia-search-source-description text-[11px] opacity-50" style={{ color: theme.primaryColor }}>
                                 {t('search.sourceAllDesc')}
                             </div>
                         )}
                     </header>
 
-                    <div className="mx-auto mt-3 min-h-0 w-full max-w-5xl flex-1">
+                    <div className="folia-search-results-area mx-auto mt-3 min-h-0 w-full max-w-5xl flex-1">
                         {isSearching ? (
                             <div className="flex h-full items-center justify-center">
                                 <Loader2 className="h-9 w-9 animate-spin opacity-45" />
@@ -205,11 +206,17 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                                         tracks={results}
                                         scrollTop={scrollTop}
                                         isDaylight={isDaylight}
+                                        isCompact={isAndroidCapacitor}
                                         onScrollTopChange={setSearchScrollTop}
                                         onPlayTrack={onPlayTrack}
                                         onAddTrackToQueue={onAddTrackToQueue}
                                         onOpenArtist={onOpenArtist}
                                         onOpenAlbum={onOpenAlbum}
+                                        hasMore={hasMore}
+                                        isLoadingMore={isLoadingMore}
+                                        onLoadMore={onLoadMore}
+                                        loadMoreLabel={t('home.loadMore')}
+                                        loadingMoreLabel={t('localMusic.searching')}
                                     />
                                 </div>
                                 {searchError ? (
@@ -224,13 +231,13 @@ const SearchWorkspace: React.FC<SearchWorkspaceProps> = ({
                                             {t('search.retry')}
                                         </button>
                                     </div>
-                                ) : hasMore && (
-                                    <div className="flex shrink-0 justify-center py-3">
+                                ) : hasMore && !isAndroidCapacitor && (
+                                    <div className="folia-search-load-more flex shrink-0 justify-center py-3">
                                         <button
                                             type="button"
                                             disabled={isLoadingMore}
                                             onClick={onLoadMore}
-                                            className={`rounded-full border px-5 py-2 text-sm disabled:opacity-50 ${
+                                            className={`folia-search-load-more-button rounded-full border px-5 py-2 text-sm disabled:opacity-50 ${
                                                 isDaylight
                                                     ? 'border-black/10 bg-black/5 hover:bg-black/10'
                                                     : 'border-white/10 bg-white/5 hover:bg-white/10'

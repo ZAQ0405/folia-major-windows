@@ -87,7 +87,7 @@ const OnlineLyricsTab: React.FC<OnlineLyricsTabProps> = ({
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col gap-4 pt-0 px-2"
+            className="folia-panel-lyrics-root flex flex-col gap-4 pt-0 px-2"
         >
             <ReplayGainControl
                 values={song.replayGain}
@@ -96,7 +96,7 @@ const OnlineLyricsTab: React.FC<OnlineLyricsTabProps> = ({
                 isDaylight={isDaylight}
             />
 
-            <div className="space-y-2">
+            <div className="folia-panel-online-lyrics-settings flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                         <label className="text-[12px] font-bold opacity-40 uppercase tracking-widest flex items-center gap-1.5">

@@ -149,6 +149,7 @@ const AudioEqualizerDialog: React.FC<AudioEqualizerDialogProps> = ({ isDaylight,
             title={t('ui.equalizerTitle')}
             description={t('ui.equalizerDescription')}
             maxWidthClass="max-w-2xl"
+            fitViewport
         >
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                 <button

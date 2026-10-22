@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SongResult } from '@/types';
+import { usePlaybackModeStore } from '@/stores/usePlaybackModeStore';
 
 // test/unit/automix/stemWaitsForBytes.test.ts
 // Separation may read cached bytes and never download any, so for an online track it is asked at
@@ -58,6 +59,7 @@ const request = (song: SongResult) => ({
 
 describe('a window whose bytes are not cached yet', () => {
     beforeEach(async () => {
+        usePlaybackModeStore.setState({ providerPlaybackModes: { kugou: 'source' } });
         (globalThis as { window?: object }).window = {
             electron: {
                 separateStems: vi.fn(),

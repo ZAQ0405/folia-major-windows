@@ -1,6 +1,6 @@
-import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import React, { startTransition, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useMotionValue, animate, AnimatePresence, useDragControls } from 'framer-motion';
-import { ChevronLeft, Disc, Download, PanelsTopLeft, Play, Plus, Loader2, Heart, ListPlus, Pencil, RefreshCw, Trash2, Star, Tags } from 'lucide-react';
+import { ChevronLeft, Disc, Download, PanelsTopLeft, Play, Plus, Loader2, Heart, ListPlus, Pencil, RefreshCw, Trash2, Star, Tags, X } from 'lucide-react';
 import GridPanelToggleIndicator from './folia-grid/GridPanelToggleIndicator';
 import { useTranslation } from 'react-i18next';
 import { SongResult, type LocalSong, type StatusMessage, Theme, type UnifiedSong } from '../types';
@@ -16,11 +16,12 @@ import { getProviderCacheKey, getProviderCacheWithLegacyMigration } from '../ser
 import { getPlaybackSongKey } from '../utils/appPlaybackGuards';
 import { useFoliaHexViewport } from './folia-grid/useFoliaHexViewport';
 import { PolaroidCard, type GridItem } from './folia-grid/PolaroidCard';
-import { squareGridCardBox } from './folia-grid/gridCardLayout';
+import { resolveGridContentDragBounds, squareGridCardBox } from './folia-grid/gridCardLayout';
 import {
     applyHexCardFrameStyles,
     computeHexCardFrame,
     createHexCardFrameStyleCache,
+    type HexCardFrame,
     type HexCardFrameStyleCache,
 } from './folia-grid/hexCardTransform';
 import PlaylistSelectionDialog from './shared/PlaylistSelectionDialog';
@@ -47,6 +48,7 @@ import { useGridSurfaceRegistration } from '../hooks/useGridSurfaceRegistration'
 import { OmniError, type MediaId, type ProviderCollection } from '../types/onlineMusic';
 import { useSidePanelBottomPx } from '../hooks/usePlayerBottomBarBottomPx';
 import { useGridViewSettingsStore } from '../stores/useGridViewSettingsStore';
+import { isAndroidCapacitor } from '../utils/runtimePlatform';
 
 export interface GridViewSourceActions {
     local?: {
@@ -182,6 +184,9 @@ const resolveGridViewCardBox = (width: number) => {
 };
 
 const GRID_VIEW_RENDER_BUFFER_FACTOR = 0.75;
+// Mount roughly five times as many Android cards as the regular viewport radius would render.
+// Card count grows with covered area, so scale total radius by sqrt(5), not 5x.
+const GRID_VIEW_ANDROID_PRELOAD_CARD_MULTIPLIER = 5;
 const GRID_VIEW_CARD_VISIBILITY_BUFFER = 96;
 const GRID_SEARCH_DEBOUNCE_MS = 80;
 const TRACK_REMOVAL_ANIMATION_MS = 460;
@@ -325,13 +330,20 @@ export const GridView: React.FC<GridViewProps> = ({
         return viewportRadius + cardRadius + 200; // 200px buffer to prevent visual pop-in during fast drags
     }, [containerSize, layoutConfig]);
 
-    const renderRadius = useMemo(() => (
-        clipRadius + Math.max(layoutConfig.spacingX, layoutConfig.spacingY) * GRID_VIEW_RENDER_BUFFER_FACTOR
-    ), [clipRadius, layoutConfig.spacingX, layoutConfig.spacingY]);
+    const renderRadius = useMemo(() => {
+        const baseRadius = clipRadius
+            + Math.max(layoutConfig.spacingX, layoutConfig.spacingY) * GRID_VIEW_RENDER_BUFFER_FACTOR;
+        return isAndroidCapacitor
+            ? baseRadius * Math.sqrt(GRID_VIEW_ANDROID_PRELOAD_CARD_MULTIPLIER)
+            : baseRadius;
+    }, [clipRadius, layoutConfig.spacingX, layoutConfig.spacingY, isAndroidCapacitor]);
 
     const renderRing = useMemo(() => (
         Math.ceil(renderRadius / Math.min(layoutConfig.spacingX, layoutConfig.spacingY)) + 1
     ), [layoutConfig.spacingX, layoutConfig.spacingY, renderRadius]);
+    const isCompactAndroidGrid = isAndroidCapacitor
+        && containerSize.width <= 900
+        && containerSize.height <= 420;
 
     const cardFrameOptions = useMemo(() => ({
         clipRadius,
@@ -343,8 +355,20 @@ export const GridView: React.FC<GridViewProps> = ({
         cardWidth: layoutConfig.cardWidth,
         cardHeight: layoutConfig.cardHeight,
         visibilityBuffer: GRID_VIEW_CARD_VISIBILITY_BUFFER,
-        minScale: minCardScale,
-        minOpacity: minCardOpacity,
+        // Keep the near cards large enough to cover the wall while a tapped Android card
+        // recenters; the default deep falloff leaves conspicuous holes during that transition.
+        minScale: isCompactAndroidGrid
+            ? Math.max(minCardScale, Math.max(0.42, Math.min(1.1, (containerSize.height - 12) / (layoutConfig.cardHeight * 1.18))) * 0.9)
+            : minCardScale,
+        // Opacity falloff during a finger drag makes covers look like they flash black against
+        // the dark wallpaper. Keep mounted Android cards fully opaque; viewport clipping still
+        // removes offscreen cards and desktop retains the depth fade.
+        minOpacity: isCompactAndroidGrid ? 1 : minCardOpacity,
+        // On compact Android landscape screens, fit the focused polaroid (including its
+        // longest printed label) into the actual unobstructed viewport instead of cropping it.
+        centerScale: isCompactAndroidGrid
+            ? Math.max(0.42, Math.min(1.1, (containerSize.height - 12) / (layoutConfig.cardHeight * 1.18)))
+            : undefined,
     }), [
         clipRadius,
         containerSize.height,
@@ -356,6 +380,7 @@ export const GridView: React.FC<GridViewProps> = ({
         layoutConfig.maxDistance,
         minCardOpacity,
         minCardScale,
+        isCompactAndroidGrid,
     ]);
 
     const navigationStorageKey = useMemo(() => {
@@ -899,12 +924,21 @@ export const GridView: React.FC<GridViewProps> = ({
                     const addedCount = currentTracks.length - previousLength;
                     currentOffset = page.nextOffset;
                     const nextTracks = [...currentTracks];
-                    if (isDraggingRef.current) {
+                    if (isDraggingRef.current && !isAndroidCapacitor) {
                         pendingBackgroundTracksRef.current = nextTracks;
                         pendingBackgroundOffsetRef.current = currentOffset;
                     } else {
-                        setTracks(nextTracks);
-                        setOffset(currentOffset);
+                        const publishTracks = () => {
+                            setTracks(nextTracks);
+                            setOffset(currentOffset);
+                        };
+                        if (isAndroidCapacitor && isDraggingRef.current) {
+                            // Keep Android's finite spiral expanding while the user is still
+                            // dragging, but let React commit the larger data page at idle priority.
+                            startTransition(publishTracks);
+                        } else {
+                            publishTracks();
+                        }
                     }
                     saveToCache(CACHE_KEY, { tracks: currentTracks, snapshotTime: targetTime, schemaVersion: CACHE_SCHEMA_VERSION });
 
@@ -1275,7 +1309,6 @@ export const GridView: React.FC<GridViewProps> = ({
     const {
         coords: baseCoords,
         renderedIndexes,
-        renderedIndexesRef,
         updateRenderedIndexesForViewport,
     } = useFoliaHexViewport({
         itemCount: gridItems.length,
@@ -1284,12 +1317,23 @@ export const GridView: React.FC<GridViewProps> = ({
         renderRadius,
         renderRing,
         fallbackIndexRef: focusedIndexRef,
+        // Mount newly needed tiles in the same frame; stable refs and DOM-owned transforms keep
+        // this urgent update from resetting every already-mounted card during a drag.
+        deferUpdates: false,
     });
     const gridCoverUrls = useMemo(() => gridItems.map(item => item.coverUrl), [gridItems]);
     useLocalCoverPreloader(gridCoverUrls, renderedIndexes);
 
     const dragBounds = useMemo(() => {
         if (baseCoords.length === 0) return { left: 0, right: 0, top: 0, bottom: 0 };
+
+        if (isAndroidCapacitor) {
+            return resolveGridContentDragBounds(baseCoords, containerSize, {
+                width: layoutConfig.cardWidth,
+                height: layoutConfig.cardHeight,
+                minScale: cardFrameOptions.minScale,
+            });
+        }
 
         let minX = Infinity;
         let maxX = -Infinity;
@@ -1312,7 +1356,7 @@ export const GridView: React.FC<GridViewProps> = ({
             top: -maxY - bufferY,
             bottom: -minY + bufferY,
         };
-    }, [baseCoords, layoutConfig, containerSize]);
+    }, [baseCoords, cardFrameOptions.minScale, isAndroidCapacitor, layoutConfig, containerSize]);
 
     const commitFocusedIndex = useCallback((index = focusedIndexRef.current) => {
         if (pendingFocusCommitTimeoutRef.current) {
@@ -1357,8 +1401,15 @@ export const GridView: React.FC<GridViewProps> = ({
         updateRenderedIndexesForViewport(targetX, targetY, true);
 
         if (snap) {
-            animate(dragX, targetX, { type: 'spring', stiffness: 220, damping: 28 });
-            animate(dragY, targetY, { type: 'spring', stiffness: 220, damping: 28 });
+            if (isCompactAndroidGrid) {
+                // A long spring makes the focused card grow while its neighbors shrink away,
+                // exposing gaps in the collage on compact Android screens.
+                animate(dragX, targetX, { type: 'tween', duration: 0.24, ease: [0.22, 1, 0.36, 1] });
+                animate(dragY, targetY, { type: 'tween', duration: 0.24, ease: [0.22, 1, 0.36, 1] });
+            } else {
+                animate(dragX, targetX, { type: 'spring', stiffness: 220, damping: 28 });
+                animate(dragY, targetY, { type: 'spring', stiffness: 220, damping: 28 });
+            }
         } else {
             dragX.set(targetX);
             dragY.set(targetY);
@@ -1486,6 +1537,13 @@ export const GridView: React.FC<GridViewProps> = ({
         updateRenderedIndexesForViewport(dragX.get(), dragY.get(), true);
     }, [dragX, dragY, updateRenderedIndexesForViewport]);
 
+    // Keep wrapper refs stable across viewport-window updates. Recreating inline ref callbacks here
+    // detaches and reattaches every mounted card whenever the drag crosses a hex cell.
+    const cardWrapperRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const cardFrameStyleCachesRef = useRef<(HexCardFrameStyleCache | undefined)[]>([]);
+    const latestCardFramesRef = useRef<(HexCardFrame | undefined)[]>([]);
+    const cardWrapperRefCallbacksRef = useRef<Array<React.RefCallback<HTMLDivElement> | undefined>>([]);
+
     // Memoize only the nearby card set so React keeps heavy image/button trees out of the drag hot path
     const memoizedCards = useMemo(() => {
         return renderedIndexes.map((idx) => {
@@ -1496,49 +1554,57 @@ export const GridView: React.FC<GridViewProps> = ({
             const initialDx = dragX.get();
             const initialDy = dragY.get();
             const initialFrame = computeHexCardFrame(coord, initialDx, initialDy, cardFrameOptions);
+            latestCardFramesRef.current[idx] = initialFrame;
+            const cardRef = cardWrapperRefCallbacksRef.current[idx] ?? (cardWrapperRefCallbacksRef.current[idx] = (el) => {
+                if (el) {
+                    cardWrapperRefs.current[idx] = el;
+                    const frame = latestCardFramesRef.current[idx];
+                    const cache: HexCardFrameStyleCache = isAndroidCapacitor ? {} : frame ? createHexCardFrameStyleCache(frame) : {};
+                    if (isAndroidCapacitor && frame) applyHexCardFrameStyles(el, frame, cache);
+                    cardFrameStyleCachesRef.current[idx] = cache;
+                    return;
+                }
 
-            const animateEntrance = shouldAnimateItemEntrance(String(item.id));
+                cardWrapperRefs.current[idx] = null;
+                cardFrameStyleCachesRef.current[idx] = undefined;
+            });
+
+            const animateEntrance = !isAndroidCapacitor && shouldAnimateItemEntrance(String(item.id));
             const trackKey = String(item.id);
             const isRemovingTrack = removingTrackKeys.has(trackKey);
             return (
                 <div
                     key={`${mode}-${item.id}`}
                     data-folia-grid-item-id={String(item.id)}
-                    ref={(el) => {
-                        if (el) {
-                            cardWrapperRefs.current[idx] = el;
-                            cardFrameStyleCachesRef.current[idx] = createHexCardFrameStyleCache(initialFrame);
-                            return;
-                        }
-
-                        if (cardWrapperRefs.current[idx]?.dataset.foliaGridItemId === String(item.id)) {
-                            cardWrapperRefs.current[idx] = null;
-                            cardFrameStyleCachesRef.current[idx] = undefined;
-                        }
-                    }}
+                    ref={cardRef}
                     className="absolute select-none pointer-events-auto folia-grid-card-frame"
                     style={{
                         transformOrigin: 'center center',
                         contain: 'layout style',
-                        backfaceVisibility: 'hidden',
-                        perspective: '1200px',
-                        display: initialFrame.display || undefined,
-                        transform: initialFrame.transform,
-                        opacity: initialFrame.opacity,
-                        zIndex: initialFrame.zIndex,
-                        '--queue-opacity': initialFrame.queueOpacity,
-                        '--queue-pe': initialFrame.queuePointerEvents,
-                        '--play-opacity': initialFrame.playOpacity,
-                        '--play-scale': initialFrame.playScale,
-                        '--play-pe': initialFrame.playPointerEvents,
+                        ...(!isAndroidCapacitor ? {
+                            display: initialFrame.display || undefined,
+                            transform: initialFrame.transform,
+                            opacity: initialFrame.opacity,
+                            zIndex: initialFrame.zIndex,
+                            '--queue-opacity': initialFrame.queueOpacity,
+                            '--queue-pe': initialFrame.queuePointerEvents,
+                            '--play-opacity': initialFrame.playOpacity,
+                            '--play-scale': initialFrame.playScale,
+                            '--play-pe': initialFrame.playPointerEvents,
+                        } : {}),
                     } as React.CSSProperties}
                 >
                     <motion.div
                         initial={animateEntrance ? { opacity: 0, scale: 0.98, rotateY: -90 } : false}
-                        animate={isRemovingTrack
-                            ? { opacity: [1, 1, 0], scale: [1, 0.98, 0.96], rotateY: [0, 180, 180] }
-                            : { opacity: 1, scale: 1, rotateY: 0 }}
-                        exit={{
+                        // Android's card frame is already transformed by the shared rAF loop.
+                        // Avoid a second, permanent Motion transform on ordinary cards: nested
+                        // transforms can expose stale/transparent tiles while a tapped card grows.
+                        animate={isAndroidCapacitor && !isRemovingTrack
+                            ? undefined
+                            : isRemovingTrack
+                                ? { opacity: [1, 1, 0], scale: [1, 0.98, 0.96], rotateY: [0, 180, 180] }
+                                : { opacity: 1, scale: 1 }}
+                        exit={isAndroidCapacitor ? undefined : {
                             opacity: 0,
                             scale: 0.98,
                             rotateY: 90,
@@ -1548,14 +1614,14 @@ export const GridView: React.FC<GridViewProps> = ({
                             ? { duration: TRACK_REMOVAL_ANIMATION_MS / 1000, times: [0, 0.72, 1], ease: TRACK_REMOVAL_BEZIER }
                             : { duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
                         style={{
-                            transformStyle: 'preserve-3d',
+                            transformStyle: isRemovingTrack ? 'preserve-3d' : 'flat',
                             transformOrigin: 'center center',
-                            willChange: 'transform, opacity',
+                            willChange: isRemovingTrack ? 'transform, opacity' : undefined,
                             pointerEvents: isRemovingTrack ? 'none' : undefined,
                             position: 'relative',
                         }}
                     >
-                        <div style={{ backfaceVisibility: 'hidden' }}>
+                        <div style={isRemovingTrack ? { backfaceVisibility: 'hidden' } : undefined}>
                             <PolaroidCard
                                 item={item}
                                 isDaylight={isDaylight}
@@ -1597,20 +1663,23 @@ export const GridView: React.FC<GridViewProps> = ({
                                     }
                                 }}
                                 isFocused={idx === focusedIndex}
+                                eagerCover={isAndroidCapacitor}
                             />
                         </div>
-                        <div
-                            aria-hidden="true"
-                            className="absolute inset-0 rounded-xl border shadow-lg theme-polaroid-card flex items-center justify-center"
-                            style={{
-                                backfaceVisibility: 'hidden',
-                                transform: 'rotateY(180deg)',
-                            }}
-                        >
-                            <div className="w-[58%] aspect-square rounded-full border border-current flex items-center justify-center opacity-30">
-                                <Disc className="w-1/2 h-1/2" />
+                        {isRemovingTrack && (
+                            <div
+                                aria-hidden="true"
+                                className="absolute inset-0 rounded-xl border shadow-lg theme-polaroid-card flex items-center justify-center"
+                                style={{
+                                    backfaceVisibility: 'hidden',
+                                    transform: 'rotateY(180deg)',
+                                }}
+                            >
+                                <div className="w-[58%] aspect-square rounded-full border border-current flex items-center justify-center opacity-30">
+                                    <Disc className="w-1/2 h-1/2" />
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </motion.div>
                 </div>
             );
@@ -1643,9 +1712,6 @@ export const GridView: React.FC<GridViewProps> = ({
     ]);
 
     // Refs for direct DOM manipulation — eliminates per-card useTransform subscriptions
-    const cardWrapperRefs = useRef<(HTMLDivElement | null)[]>([]);
-    const cardFrameStyleCachesRef = useRef<(HexCardFrameStyleCache | undefined)[]>([]);
-
     // Cleanup deferred focus state commits on unmount
     useEffect(() => {
         return () => {
@@ -1672,12 +1738,11 @@ export const GridView: React.FC<GridViewProps> = ({
 
                 let closestIdx = focusedIndexRef.current;
                 let minDistSq = Infinity;
-                const activeIndexes = renderedIndexesRef.current;
-
-                for (let activeIndex = 0; activeIndex < activeIndexes.length; activeIndex++) {
-                    const i = activeIndexes[activeIndex];
+                for (let i = 0; i < cardWrapperRefs.current.length; i++) {
                     const coord = baseCoords[i];
                     if (!coord) continue;
+                    const el = cardWrapperRefs.current[i];
+                    if (!el) continue;
                     const frame = computeHexCardFrame(coord, dx, dy, cardFrameOptions);
 
                     // Track closest card for focusedIndex
@@ -1686,8 +1751,6 @@ export const GridView: React.FC<GridViewProps> = ({
                         closestIdx = i;
                     }
 
-                    const el = cardWrapperRefs.current[i];
-                    if (!el) continue;
                     const cache = cardFrameStyleCachesRef.current[i] ?? {};
                     cardFrameStyleCachesRef.current[i] = cache;
                     applyHexCardFrameStyles(el, frame, cache);
@@ -1695,6 +1758,7 @@ export const GridView: React.FC<GridViewProps> = ({
 
                 // Keep continuous focus out of React state during drag frames.
                 focusedIndexRef.current = closestIdx;
+
             });
         };
 
@@ -1974,6 +2038,7 @@ export const GridView: React.FC<GridViewProps> = ({
             {/* Honeycomb Drag/Viewport Canvas Area */}
             <div
                 ref={containerRef}
+                data-folia-grid-track-viewport
                 onPointerDown={(event) => {
                     if (event.button !== 0) return; // 仅限鼠标左键或主要指针拖动
 
@@ -2000,7 +2065,7 @@ export const GridView: React.FC<GridViewProps> = ({
 
                     dragControls.start(event);
                 }}
-                className="w-full flex-1 relative flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden"
+                className="folia-grid-track-viewport w-full flex-1 relative flex items-center justify-center cursor-grab active:cursor-grabbing overflow-hidden"
                 style={{ touchAction: 'none' }}
             >
                 {showLoading ? (
@@ -2022,7 +2087,8 @@ export const GridView: React.FC<GridViewProps> = ({
                         dragListener={false}
                         dragControls={dragControls}
                         dragConstraints={dragBounds}
-                        dragElastic={0.05}
+                        dragElastic={isAndroidCapacitor ? 0 : 0.05}
+                        dragMomentum={!isAndroidCapacitor}
                         dragTransition={{ power: 0.16, timeConstant: 220 }}
                         onDragStart={() => {
                             if (pendingFocusCommitTimeoutRef.current) {
@@ -2057,14 +2123,23 @@ export const GridView: React.FC<GridViewProps> = ({
                             animate={{ opacity: 1, x: 0, scale: 1 }}
                             exit={{ opacity: 0, x: -60, scale: 0.95 }}
                             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-                            className="absolute left-6 top-24 w-80 rounded-3xl z-[80] overflow-y-auto overscroll-contain hide-scrollbar flex flex-col p-6 shadow-2xl border backdrop-blur-2xl pointer-events-auto theme-glass-panel"
+                            className="folia-grid-cut-in-info-panel absolute left-6 top-24 w-80 rounded-3xl z-[80] overflow-y-auto overscroll-contain hide-scrollbar flex flex-col p-6 shadow-2xl border backdrop-blur-2xl pointer-events-auto theme-glass-panel"
                             style={{
                                 bottom: bottomBarPanelBottomPx,
                                 boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)',
                             }}
                         >
+                            <button
+                                type="button"
+                                onClick={() => setShowCutInPanel(false)}
+                                aria-label={t('ui.close')}
+                                title={t('ui.close')}
+                                className="absolute right-2 top-2 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white/80 backdrop-blur-md transition-colors hover:bg-black/70 hover:text-white"
+                            >
+                                <X size={16} />
+                            </button>
                             {/* Cover Image */}
-                            <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-lg mb-4 bg-zinc-800/20 relative shrink-0">
+                            <div className="folia-grid-cut-in-info-cover w-full aspect-square rounded-2xl overflow-hidden shadow-lg mb-4 bg-zinc-800/20 relative shrink-0">
                                 {infoPanelCoverUrl ? (
                                     <img src={getSizedCoverUrl(toHttps(infoPanelCoverUrl), 512)} alt={infoCollection?.name || title} decoding="async" className="w-full h-full object-cover select-none pointer-events-none" />
                                 ) : (
@@ -2098,7 +2173,7 @@ export const GridView: React.FC<GridViewProps> = ({
 
                             {/* Title & Creator */}
                             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain custom-scrollbar pr-1 space-y-4 text-left min-w-0">
-                                <div>
+                                <div className="folia-grid-cut-in-info-title">
                                     {(isLocalPlaylistCollection || isNavidromePlaylistCollection || isPersonalPlaylistCollection) && isEditMode ? (
                                         <input
                                             value={editableTitle}
@@ -2218,7 +2293,7 @@ export const GridView: React.FC<GridViewProps> = ({
 
                             {/* Buttons Area */}
                             <div
-                                className="space-y-2 mt-4 pt-4 border-t shrink-0"
+                                className="folia-grid-cut-in-actions space-y-2 mt-4 pt-4 border-t shrink-0"
                                 style={{ borderTopColor: 'color-mix(in srgb, var(--text-primary) 12%, transparent)' }}
                             >
                                 <button

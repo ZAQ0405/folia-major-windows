@@ -17,6 +17,7 @@ import { isNeteaseScrobbleReady } from '../../../services/onlineMusic/playbackRe
 import JsMusicSourcesSection from './JsMusicSourcesSection';
 import { usePlaybackModeStore } from '../../../stores/usePlaybackModeStore';
 import type { PlaybackMode } from '../../../types/playbackMode';
+import ProviderPlaybackModesSection from './ProviderPlaybackModesSection';
 
 // src/components/modal/settings/PlaybackSettingsSubview.tsx
 // Playback behavior and output-device settings extracted from the global settings modal.
@@ -255,6 +256,12 @@ const PlaybackSettingsSubview: React.FC<PlaybackSettingsSubviewProps> = ({
                     </div>
                 </div>
             </SettingsAnchor>
+
+            <ProviderPlaybackModesSection
+                isDaylight={isDaylight}
+                settingsCardClass={settingsCardClass}
+                theme={theme}
+            />
 
             <SettingsAnchor anchorId="scrobbleSettings" label={t('options.scrobbleSettings')}>
                 <SettingsSectionHeading icon={Radio} label={t('options.scrobbleSettings')} />

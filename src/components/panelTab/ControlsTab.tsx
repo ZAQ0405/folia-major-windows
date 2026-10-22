@@ -108,9 +108,9 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="relative"
+            className="folia-panel-controls-root relative"
         >
-            <div className="space-y-4">
+            <div className="folia-panel-controls-stack">
                 <SongActionRow
                     loopMode={loopMode}
                     onToggleLoop={onToggleLoop}
@@ -126,7 +126,7 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
                     isDaylight={isDaylight}
                 />
 
-                <div className="pt-2 border-t border-white/5 space-y-3">
+                <div className="folia-panel-controls-section flex flex-col pt-2 border-t border-white/5 gap-3">
                     <VolumeRow
                         volume={volume}
                         isMuted={isMuted}
@@ -155,7 +155,7 @@ const ControlsTab: React.FC<ControlsTabProps> = ({
                 </div>
 
                 {!jizuraEnabled && (
-                    <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+                    <div className="folia-panel-controls-footer pt-2 border-t border-white/5 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <button
                                 type="button"

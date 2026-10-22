@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { squareGridCardBox } from '../../../src/components/folia-grid/gridCardLayout';
+import { resolveGridContentDragBounds, squareGridCardBox } from '../../../src/components/folia-grid/gridCardLayout';
 
 // test/unit/gridView/gridCardLayout.test.ts
 // The square-card option changes the wall's whole rhythm, not just one card's height. The first
@@ -53,5 +53,28 @@ describe('squareGridCardBox', () => {
         const box = { cardWidth: 200, cardHeight: 200, spacingX: 240, spacingY: 190 };
 
         expect(squareGridCardBox(box)).toEqual(box);
+    });
+});
+
+describe('resolveGridContentDragBounds', () => {
+    const viewport = { width: 390, height: 780 };
+    const card = { width: 180, height: 280, minScale: 0.45 };
+
+    it('uses the true extent of every song instead of truncating to complete spiral rings', () => {
+        const bounds = resolveGridContentDragBounds([
+            { baseX: 0, baseY: 0 },
+            { baseX: 1200, baseY: 800 },
+            { baseX: 0, baseY: 1600 },
+        ], viewport, card);
+
+        expect(bounds.left).toBeCloseTo(-1052.79);
+        expect(bounds.right).toBeCloseTo(-147.21);
+        expect(bounds.top).toBeCloseTo(-1284.34);
+        expect(bounds.bottom).toBeCloseTo(-315.66);
+    });
+
+    it('keeps a one-song collection centered when its complete content fits the viewport', () => {
+        expect(resolveGridContentDragBounds([{ baseX: 0, baseY: 0 }], viewport, card))
+            .toEqual({ left: 0, right: 0, top: 0, bottom: 0 });
     });
 });

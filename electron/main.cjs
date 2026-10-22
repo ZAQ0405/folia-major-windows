@@ -1960,6 +1960,11 @@ mainWindowSkipTaskbarEnabled = readStoredBoolean(HIDE_TASKBAR_ICON_SETTING_KEY, 
 remoteControlAlwaysOnTop = readStoredBoolean(REMOTE_CONTROL_ALWAYS_ON_TOP_SETTING_KEY, true);
 remoteControlSkipTaskbarEnabled = readStoredBoolean(REMOTE_CONTROL_SKIP_TASKBAR_SETTING_KEY, false);
 mainWindowAlwaysOnTop = readStoredBoolean(MAIN_WINDOW_ALWAYS_ON_TOP_SETTING_KEY, false);
+// Transparent player windows are overlays by design. Preserve that posture across app restarts.
+if (isTransparentPlayerBackgroundEnabled() && !isWallpaperModeEnabled()) {
+  mainWindowAlwaysOnTop = true;
+  store.set(MAIN_WINDOW_ALWAYS_ON_TOP_SETTING_KEY, true);
+}
 
 const stageApi = createStageApi({
   app,
@@ -2372,7 +2377,9 @@ function setMainWindowAlwaysOnTop(enabled) {
     return mainWindowAlwaysOnTop;
   }
 
-  mainWindowAlwaysOnTop = Boolean(enabled);
+  // A transparent player window remains an overlay even if the tray toggle is used while it is
+  // active. The user can turn topmost off after disabling transparent player background.
+  mainWindowAlwaysOnTop = Boolean(enabled) || (isTransparentPlayerBackgroundEnabled() && !isWallpaperModeEnabled());
   store.set(MAIN_WINDOW_ALWAYS_ON_TOP_SETTING_KEY, mainWindowAlwaysOnTop);
   applyMainWindowAlwaysOnTop();
   patchRemoteControlSnapshot({
@@ -4967,6 +4974,9 @@ async function setMainWindowTransparentMode(enabled, handoff = null) {
       mainWindow.webContents.send('wallpaper-transparent-refused', getPublicSettings());
     }
     return false;
+  }
+  if (nextEnabled && !isWallpaperModeEnabled()) {
+    setMainWindowAlwaysOnTop(true);
   }
   patchRemoteControlSnapshot({
     transparentModeEnabled: nextEnabled,

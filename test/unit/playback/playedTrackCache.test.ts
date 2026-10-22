@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SongResult } from '../../../src/types';
+import { usePlaybackModeStore } from '../../../src/stores/usePlaybackModeStore';
 
 const hasCachedSongAudio = vi.fn<(song: SongResult) => Promise<boolean>>();
 const hasCachedSongCover = vi.fn<(song: SongResult) => Promise<boolean>>();
@@ -40,6 +41,7 @@ describe('cachePlayedTrackAssets', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        usePlaybackModeStore.getState().setProviderPlaybackMode('netease', 'source');
         hasCachedSongAudio.mockResolvedValue(false);
         hasCachedSongCover.mockResolvedValue(false);
         saveAudioBlob.mockResolvedValue(undefined);

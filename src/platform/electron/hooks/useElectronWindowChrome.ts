@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
-import { useAppChromeStore } from '../stores/useAppChromeStore';
-import { usePlayerChromeSettingsStore } from '../stores/usePlayerChromeSettingsStore';
-import { useClickThroughPointerLock } from './useClickThroughPointerLock';
+import { useAppChromeStore } from '../../../stores/useAppChromeStore';
+import { usePlayerChromeSettingsStore } from '../../../stores/usePlayerChromeSettingsStore';
+import { useClickThroughPointerLock } from '../../../hooks/useClickThroughPointerLock';
 
-// src/hooks/useElectronWindowChrome.ts
+// src/platform/electron/hooks/useElectronWindowChrome.ts
 //
 // Everything the Electron main window needs done to the document and to the click-through state:
 // the transparent document background, discovering and following the main process's click-through

@@ -8,6 +8,15 @@
   src: url('https://cdn.jsdmirror.cn/npm/@fontsource/noto-serif-sc@5.2.9/files/noto-serif-sc-chinese-simplified-400-normal.woff2') format('woff2');
 }
 
+/* Keep collection actions reachable on Android-sized playlist detail panels. */
+
+@media (orientation: landscape) and (max-width: 900px) and (max-height: 420px) {
+  /* Keep the center map action out of the card row, then reserve the dock's
+     footprint so both the cover and its labels remain in the visible stage. */
+
+  /* The expanded dock needs more room; the compact capsule only occupies the far edge. */
+}
+
 @font-face {
   font-family: 'Folia Noto Serif SC';
   font-style: normal;
@@ -64,51 +73,10 @@ body {
    the preferred design ratio, but it is not a letterbox constraint: the stage
    fills the real landscape viewport so unusual device ratios do not produce
    black side gaps. Desktop/Electron never enters this class. */
-.folia-android-stage-viewport {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: inherit;
-}
-
-.folia-android-stage {
-  position: relative;
-  flex: 1 1 auto;
-  width: 100%;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  isolation: isolate;
-}
 
 /* The physical WebView may still report a mobile width, while the stage is
    already a wide layout. Restore the dialog framing within the Android stage
    without changing the browser/mobile or Windows variants. */
-.folia-android-stage .folia-settings-modal {
-  align-items: center;
-  padding: 3rem 1.25rem;
-}
-
-.folia-android-stage .folia-settings-modal__panel {
-  border-left: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-right: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
-}
-
-.folia-android-stage .folia-settings-modal__decoration {
-  display: block;
-}
-
-.folia-android-stage .folia-settings-modal__content,
-.folia-android-stage .folia-settings-modal .custom-scrollbar {
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-}
 
 /* Android landscape home layout ------------------------------------------------
    The desktop header relies on md: utility classes. The WebView can be only a
@@ -116,530 +84,45 @@ body {
    those utilities would otherwise produce a two-row desktop/mobile hybrid.
    These named regions keep the header in one measured row and let only the
    tab strip scroll horizontally when the device is unusually narrow. */
-.folia-android-shell .folia-home-root {
-  min-width: 0;
-  min-height: 0;
-}
-
-.folia-android-shell .folia-home-header {
-  flex: 0 0 auto;
-  min-width: 0;
-}
-
-.folia-android-shell .folia-home-header-row {
-  grid-template-columns: minmax(6.5rem, 0.85fr) minmax(0, 1.25fr) minmax(10.5rem, 1fr);
-  column-gap: 0.75rem;
-  row-gap: 0;
-  max-width: none;
-  padding: 0.75rem 1rem;
-}
-
-.folia-android-shell .folia-home-header-left,
-.folia-android-shell .folia-home-header-tabs,
-.folia-android-shell .folia-home-header-search {
-  min-width: 0;
-  order: initial;
-}
-
-.folia-android-shell .folia-home-header-left {
-  grid-column: 1;
-  grid-row: 1;
-  overflow: hidden;
-}
-
-.folia-android-shell .folia-home-header-left h1 {
-  min-width: 0;
-  font-size: clamp(1rem, 3.2vw, 1.5rem);
-  white-space: nowrap;
-}
-
-.folia-android-shell .folia-home-header-tabs {
-  grid-column: 2;
-  grid-row: 1;
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.folia-android-shell .folia-home-header-tabs > div {
-  max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
-  white-space: nowrap;
-}
-
-.folia-android-shell .folia-home-header-tabs > div::-webkit-scrollbar {
-  display: none;
-}
-
-.folia-android-shell .folia-home-header-tabs button {
-  flex: 0 0 auto;
-  padding-inline: 0.7rem;
-}
-
-.folia-android-shell .folia-home-header-search {
-  grid-column: 3;
-  grid-row: 1;
-  justify-content: stretch;
-}
-
-.folia-android-shell .folia-home-header-search form {
-  width: 100%;
-  min-width: 0;
-}
-
-.folia-android-shell .folia-home-canvas {
-  min-width: 0;
-  min-height: 0;
-  padding: 0 0.75rem 0.75rem;
-}
-
-.folia-android-shell .folia-grid3d-slider {
-  min-height: 0;
-}
 
 /* Do not expose the first pass rendered with the WebView viewport size. The
    ResizeObserver measures the real canvas on the next frame; keeping this pass
    invisible prevents the card from visibly shrinking during startup. */
-.folia-android-shell .folia-grid3d-slider--measure-pending {
-  visibility: hidden;
-}
-
-.folia-android-shell .folia-grid3d-scroll {
-  min-height: 0;
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
-  scroll-behavior: auto !important;
-  scroll-snap-type: none !important;
-  overscroll-behavior-x: none;
-  -webkit-overflow-scrolling: auto;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.folia-android-shell .folia-grid3d-scroll::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
-}
-
-.folia-android-shell .folia-grid3d-focused-info {
-  min-height: 0;
-  margin-bottom: 0;
-  padding: 0.35rem 0.75rem 0.5rem;
-}
-
-.folia-android-shell .folia-grid3d-focused-info h3 {
-  font-size: clamp(1rem, 3.6vw, 1.5rem);
-  line-height: 1.2;
-}
 
 /* A Polaroid card already owns its title and metadata. The desktop surface also
    renders a focused summary below the carousel, but on the short Android stage
    that becomes a second title and pushes the card into the header. Keep one
    readable card, then let its cover use the extra vertical space. */
-.folia-android-shell .folia-grid3d-slider--card .folia-grid3d-focused-info {
-  display: none;
-}
-
-.folia-android-shell .folia-grid3d-slider--card .folia-grid3d-card {
-  padding: 0.7rem;
-  border-radius: 1rem;
-}
-
-.folia-android-shell .folia-grid3d-slider--card .folia-grid3d-card-cover {
-  margin-bottom: 0.7rem;
-  border-radius: 0.8rem;
-}
-
-.folia-android-shell .folia-grid3d-slider--card .folia-grid3d-card-details {
-  padding-top: 0.05rem;
-}
-
-.folia-android-shell .folia-grid3d-slider--card .folia-grid3d-card-details h3 {
-  font-size: clamp(0.82rem, 2.4vw, 1rem);
-  line-height: 1.25;
-}
-
-.folia-android-shell .folia-grid3d-slider--card .folia-grid3d-card-details p {
-  line-height: 1.25;
-}
 
 /* Playlist cards on Android are a stable touch surface. Do not let the
    desktop coverflow transforms, hover transitions, or animation frames leak
    into the compact mobile layout. */
-.folia-android-shell .folia-grid3d-slider [data-grid3d-index],
-.folia-android-shell .folia-grid3d-slider [data-grid3d-index] *,
-.folia-android-shell .folia-grid3d-slider .theme-polaroid-card {
-  transition: none !important;
-  animation: none !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-  /* A translucent blur over the animated app background forces the WebView to
-     repaint the whole card on every background frame, which looks like a
-     card flash on Android. Keep the card surface opaque and stable. */
-  background: var(--bg-color) !important;
-}
-
-.folia-android-shell .folia-grid3d-slider [data-grid3d-index] {
-  transform: none !important;
-  opacity: 1 !important;
-}
 
 /* Album and radio overview on Android uses a complete, non-scrolling tile wall.
    The tile width is calculated from the measured stage, while this surface keeps
    labels readable and lets the grid wrap only inside the current frame. */
-.folia-android-shell .folia-grid3d-slider--fit {
-  justify-content: center;
-}
-
-.folia-android-shell .folia-grid3d-slider--fit .folia-grid3d-focused-info {
-  display: none;
-}
-
-.folia-android-shell .folia-android-fit-grid {
-  display: grid;
-  align-content: center;
-  align-items: center;
-  justify-items: center;
-  width: 100%;
-  max-width: 100%;
-  max-height: 100%;
-  overflow: hidden;
-  padding: 0.5rem 0.75rem;
-}
-
-.folia-android-shell .folia-android-fit-card {
-  min-width: 0;
-  width: 100%;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.35rem;
-  padding: 0;
-  border: 0;
-  color: var(--text-primary);
-  text-align: left;
-  background: transparent;
-  cursor: pointer;
-}
-
-.folia-android-shell .folia-android-fit-card:active {
-  transform: none;
-}
-
-.folia-android-shell .folia-android-fit-card__cover {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  aspect-ratio: 1;
-  min-height: 0;
-  overflow: hidden;
-  border-radius: 0.8rem;
-  background: color-mix(in srgb, var(--bg-color) 72%, var(--text-primary) 8%);
-  border: 1px solid color-mix(in srgb, var(--text-primary) 12%, transparent);
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
-}
-
-.folia-android-shell .folia-android-fit-card--card {
-  padding: 0.45rem;
-  border-radius: 0.85rem;
-  background: color-mix(in srgb, var(--bg-color) 92%, var(--text-primary) 4%);
-  border: 1px solid color-mix(in srgb, var(--text-primary) 9%, transparent);
-}
-
-.folia-android-shell .folia-android-fit-card--card .folia-android-fit-card__cover {
-  border-radius: 0.6rem;
-  box-shadow: none;
-}
-
-.folia-android-shell .folia-android-fit-card__details {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  padding: 0 0.1rem 0.1rem;
-}
-
-.folia-android-shell .folia-android-fit-card__title,
-.folia-android-shell .folia-android-fit-card__secondary {
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.folia-android-shell .folia-android-fit-card__title {
-  font-size: clamp(0.62rem, 1.8vw, 0.86rem);
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.folia-android-shell .folia-android-fit-card__secondary {
-  font-size: clamp(0.52rem, 1.45vw, 0.68rem);
-  line-height: 1.2;
-  opacity: 0.54;
-}
-
-.folia-android-shell .folia-android-fit-card--skeleton {
-  pointer-events: none;
-}
-
-.folia-android-shell .folia-android-fit-card--skeleton .folia-android-fit-card__cover {
-  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
-  border-color: transparent;
-}
-
-.folia-android-shell .folia-android-fit-empty {
-  grid-column: 1 / -1;
-  width: 100%;
-  padding: 2rem 1rem;
-  text-align: center;
-  font-size: 0.8rem;
-  opacity: 0.55;
-}
 
 /* The account menu belongs to the header zone on Android. Opening it below
    the avatar keeps it away from the playback cards and prevents a tall menu
    from being clipped by the bottom edge. */
-.folia-android-shell .folia-provider-switcher {
-  top: 4.25rem;
-  right: 0.75rem;
-  bottom: auto;
-}
-
-.folia-android-shell .folia-provider-switcher-menu {
-  position: fixed;
-  top: 3.5rem;
-  right: 0.75rem;
-  bottom: auto;
-  width: min(28rem, calc(100vw - 1.5rem));
-  max-height: calc(100dvh - 4rem) !important;
-  overflow: hidden;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-content: start;
-  gap: 0.4rem;
-  transform-origin: top right;
-}
-
-.folia-android-shell .folia-provider-switcher-menu > div:first-child,
-.folia-android-shell .folia-provider-switcher-menu > button {
-  grid-column: 1 / -1;
-}
-
-.folia-android-shell .folia-provider-switcher-menu > div:first-child {
-  padding: 0.1rem 0.35rem 0;
-}
-
-.folia-android-shell .folia-provider-switcher-menu > button {
-  margin-bottom: 0;
-  padding: 0.45rem 0.5rem;
-}
-
-.folia-android-shell .folia-provider-switcher-menu .folia-provider-row {
-  min-width: 0;
-  margin-bottom: 0;
-  gap: 0.35rem;
-  padding: 0.45rem 0.5rem;
-  border-radius: 0.9rem;
-}
-
-.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button {
-  min-width: 0;
-  gap: 0.4rem;
-}
-
-.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > img,
-.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > span:first-child {
-  width: 1.9rem;
-  height: 1.9rem;
-}
-
-.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > span {
-  line-height: 1.15;
-}
-
-.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > span > span {
-  margin-top: 0.12rem;
-  font-size: 0.62rem;
-  line-height: 1.15;
-}
-
-.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > span > span:nth-child(2) {
-  display: none;
-}
-
-.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > span > span:nth-child(3),
-.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > span > span:nth-child(4) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button > svg,
-.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button + button {
-  flex: 0 0 auto;
-}
-
-.folia-android-shell .folia-provider-switcher-menu .folia-provider-row > button + button {
-  width: 1.7rem;
-  height: 1.7rem;
-}
-
-.folia-android-shell .folia-provider-row {
-  gap: 0.5rem;
-  padding: 0.55rem 0.65rem;
-  border-radius: 1rem;
-}
-
-.folia-android-shell .folia-provider-row > button {
-  gap: 0.5rem;
-}
-
-.folia-android-shell .folia-provider-row > button > img,
-.folia-android-shell .folia-provider-row > button > span:first-child {
-  width: 2.25rem;
-  height: 2.25rem;
-}
-
-.folia-android-shell .folia-provider-connect-panel {
-  min-width: 0;
-  display: grid;
-  align-content: start;
-  justify-items: center;
-  row-gap: 0.4rem;
-  overflow: hidden;
-  padding-inline: 0.75rem;
-  padding-top: 0.5rem;
-  padding-bottom: 0.35rem;
-}
-
-.folia-android-shell .folia-provider-connect-panel > :not(:first-child) {
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-}
-
-.folia-android-shell .folia-provider-connect-panel > div:first-child {
-  display: none;
-}
-
-.folia-android-shell .folia-provider-connect-panel > div:nth-child(2) {
-  max-width: 36rem;
-  gap: 0.25rem;
-}
-
-.folia-android-shell .folia-provider-connect-panel > div:nth-child(2) h2 {
-  font-size: clamp(0.9rem, 3vw, 1.2rem);
-  line-height: 1.2;
-}
-
-.folia-android-shell .folia-provider-connect-panel > div:nth-child(2) p {
-  font-size: 0.64rem;
-  line-height: 1.2;
-}
-
-.folia-android-shell .folia-provider-connect-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.4rem;
-  max-width: 42rem;
-  padding-top: 0;
-}
-
-.folia-android-shell .folia-provider-connect-actions > button {
-  min-width: 0;
-  min-height: 2.4rem;
-  padding: 0.45rem 0.6rem;
-  gap: 0.4rem;
-  border-radius: 0.9rem;
-  overflow: hidden;
-  font-size: 0.68rem;
-  white-space: nowrap;
-}
-
-.folia-android-shell .folia-provider-connect-actions > button > span:first-child {
-  width: 1.75rem;
-  height: 1.75rem;
-  flex: 0 0 auto;
-}
-
-.folia-android-shell .folia-provider-connect-actions > button > span:nth-child(2) {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.folia-android-shell .folia-provider-connect-actions > button > span:last-child {
-  flex: 0 0 auto;
-  white-space: nowrap;
-  font-size: 0.58rem;
-}
 
 /* Settings keeps the wide navigation selected on Android, but its md: utility
    classes still see the physical WebView width. Restore the two-column panel
    and cap it to the actual adaptive stage. */
-.folia-android-shell .folia-settings-modal {
-  padding: 0.75rem;
-}
-
-.folia-android-shell .folia-settings-modal__panel {
-  width: min(94%, 56rem);
-  height: min(85%, 48rem) !important;
-  max-height: calc(100% - 1.5rem) !important;
-  padding: 1rem;
-  border-radius: 1.5rem;
-}
-
-.folia-android-shell .folia-settings-modal__options {
-  flex-direction: row;
-  gap: 1rem;
-}
-
-.folia-android-shell .folia-settings-modal__content {
-  min-width: 0;
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
-}
 
 /* Shared Android surfaces: keep every overlay inside the usable landscape
    frame and let it scroll internally instead of growing past the screen. */
-.folia-android-shell .folia-unified-panel-surface {
-  width: min(20rem, calc(100vw - 1.5rem));
-  max-height: calc(100dvh - 3.5rem) !important;
-  margin-bottom: 0.5rem;
-  border-radius: 1.25rem;
-}
 
-.folia-android-shell .folia-search-workspace {
-  padding: 0.75rem;
-}
+/* In a short landscape viewport, the square cover in the player panel can occupy
+   half the lyric canvas. Turn it into a compact side rail instead of letting the
+   artwork obscure the lyrics and playback view behind it. */
+@media (orientation: landscape) and (max-height: 360px) {
 
-.folia-android-shell .folia-search-workspace header,
-.folia-android-shell .folia-search-workspace > div {
-  max-width: none;
+  /* Use a compact, balanced media header: navigation first, then artwork and
+     its metadata as one aligned group instead of floating in opposite areas. */
 }
-
-.folia-android-shell .folia-search-workspace header > div:first-child {
-  gap: 0.5rem;
-}
-
-.folia-android-shell .folia-search-workspace header input {
-  min-width: 0;
-  padding-top: 0.65rem;
-  padding-bottom: 0.65rem;
-}
-
-.folia-android-shell .folia-floating-player-controls {
-  max-width: calc(100% - 1.5rem);
-}
-
-.folia-android-shell .folia-floating-player-card {
-  width: 100% !important;
-  max-width: 34rem;
+.folia-unified-panel-tab-label {
+  display: none;
 }
 
 .folia-player-collapsed-meta {
@@ -650,58 +133,46 @@ body {
    bottom playback capsule at the same time. Compact the provider actions into one row and
    lift the panel into the safe area instead of letting the capsule cover its buttons. */
 @media (orientation: landscape) and (max-height: 240px) {
-  .folia-android-shell .folia-home-root {
-    padding-bottom: 0 !important;
-  }
+  /* Use the short landscape width deliberately: preserve every destination tab
+     in the header while keeping search reachable at compact widths. */
 
-  .folia-android-shell .folia-home-canvas {
-    padding-bottom: 5.25rem;
-  }
+  /* Settings uses its full-height surface and a horizontal section strip here.
+     The old wide sidebar left only 82px for actual settings at 480x240. */
 
-  .folia-android-shell .folia-provider-connect-panel {
-    justify-content: flex-start;
-    row-gap: 0.2rem;
-    padding-top: 0.15rem;
-    padding-bottom: 0;
-  }
+  /* On the guest home screen the account actions and search-only shortcut replace
+     the redundant floating account-switch button, which otherwise covers controls. */
+}
 
-  .folia-android-shell .folia-provider-connect-panel > div:nth-child(2) {
-    gap: 0.1rem;
-  }
+@media (orientation: landscape) and (max-width: 380px) and (max-height: 240px) {
+  /* At phone-sized landscape widths, keep the category rail visible as a second
+     header row instead of leaving half of its destinations underneath search. */
+}
 
-  .folia-android-shell .folia-provider-connect-panel > div:nth-child(2) h2 {
-    font-size: 0.95rem;
-    line-height: 1.05;
-  }
+/* At compact Android landscape widths the framework's md:flex-row utility can
+   activate before there is enough room for a sidebar. Stack section chips over
+   the settings content and reserve the remaining height for the scroll area. */
 
-  .folia-android-shell .folia-provider-connect-panel > div:nth-child(2) p {
-    font-size: 0.55rem;
-    line-height: 1.05;
-  }
+/* The default 320px-tall emulator landscape viewport leaves only 272px for
+   WebView content. Trim the collapsed dock by a few pixels so it clears the
+   last row of provider actions without reducing the play / collapse targets. */
 
-  .folia-android-shell .folia-provider-connect-actions {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.3rem;
-    padding-top: 0;
-  }
+/* A low-height landscape viewport needs the settings themselves on screen, not
+   a large title stack. The selected chip already names the settings category,
+   so remove the duplicate section intro and tighten only the visual hierarchy
+   chrome while preserving readable labels and full-size switches. */
+@media (orientation: landscape) and (max-height: 320px) {
 
-  .folia-android-shell .folia-provider-connect-actions > button {
-    min-height: 2.05rem;
-    padding: 0.25rem 0.3rem;
-    gap: 0.25rem;
-    border-radius: 0.65rem;
-    font-size: 0.58rem;
-  }
+  /* A language preference is one control, not a full-height form card. Keep
+     its label and selector together in a compact two-column row. */
 
-  .folia-android-shell .folia-provider-connect-actions > button > span:first-child {
-    width: 1.35rem;
-    height: 1.35rem;
-    font-size: 0.55rem;
-  }
+  /* Turn the large picture cards into compact illustrated choices: keep the
+     visual cue, but give the short landscape viewport back to actual settings. */
 
-  .folia-android-shell .folia-provider-connect-actions > button > span:last-child {
-    display: none;
-  }
+@media (orientation: landscape) and (min-width: 560px) and (max-height: 320px) {
+  /* On a wide, short phone/tablet landscape screen, use the unused horizontal
+     room to show related compact preference cards side by side. Complex rows
+     that need width retain the full span. */
+}
 }
 
 /* The Android player capsule is intentionally floating above the scene. Keep
@@ -711,119 +182,39 @@ body {
 @media (orientation: landscape) {
   /* Give the compact Android player a clear hierarchy: track and playback
      first, timeline second, instead of a bare progress capsule. */
-  .folia-android-shell .folia-floating-player-controls {
-    width: min(30rem, calc(100vw - 2rem));
-    max-width: none;
-  }
 
-  /* Keep the Android home dock on the same edge when expanding. Only its width
-     changes, so the collapse action stays in a predictable touch location. */
-  .folia-android-shell .folia-player-home-anchor:has(.folia-floating-player-card[data-expanded="false"]) {
-    width: min(16rem, calc(100vw - 1.5rem));
-    max-width: none;
-  }
+  /* Keep the Android home dock compact and anchored on the same edge in both
+     states. Expansion adds a larger seek target, not a full-screen-width bar. */
 
-  .folia-android-shell .folia-player-home-anchor:has(.folia-floating-player-card[data-expanded="true"]) {
-    width: min(30rem, calc(100vw - 1.5rem));
-    max-width: none;
-  }
-
-  .folia-android-shell .folia-floating-player-card[data-expanded="false"] {
-    width: 100% !important;
-    padding: 0.65rem 0.8rem;
-    border: 1px solid rgb(255 255 255 / 12%);
-    border-radius: 1.15rem;
-    background: rgb(16 18 24 / 82%);
-    box-shadow: 0 8px 28px rgb(0 0 0 / 28%);
-  }
-
-  .folia-android-shell .folia-player-collapsed-meta {
-    display: flex;
-    width: 100%;
-    gap: 0.55rem;
-  }
-
-  .folia-android-shell .folia-player-collapsed-meta button {
-    width: 1.65rem;
-    height: 1.65rem;
-  }
-
-  .folia-android-shell .folia-floating-player-card[data-expanded="false"] {
-    padding: 0.45rem 0.65rem 0.35rem;
-    border-radius: 1rem;
-  }
-
-  .folia-android-shell .folia-player-collapsed-view {
-    position: relative;
-    height: 2rem;
-    padding: 0;
-  }
-
-  .folia-android-shell .folia-player-mini-progress {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: -0.15rem;
-    height: 0.125rem;
-  }
-
-  .folia-android-shell .folia-player-mini-progress > div {
-    height: 0.125rem;
-    gap: 0;
-  }
-
-  .folia-android-shell .folia-player-mini-progress > div > span {
-    display: none;
-  }
-
-  .folia-android-shell .folia-player-mini-progress > div > div {
-    height: 0.125rem;
-  }
-
-  .folia-android-shell .folia-player-mini-progress > div > div > div {
-    border-radius: 999px;
-  }
-
-  .folia-android-shell .folia-player-expand-toggle,
-  .folia-android-shell .folia-player-collapse-toggle {
-    display: flex;
-    color: var(--text-secondary);
-    background: rgb(255 255 255 / 8%);
-  }
-
-  .folia-android-shell .folia-player-collapsed-view > div:last-child > span {
-    font-size: 0.58rem;
-  }
+  /* Hover-only previous/next affordances disappear on touch screens. Keep them
+     visible in the expanded Android player and give each arrow a finger-sized target. */
 
   /* The account switcher is a focused overlay. Do not leave the playback
      capsule peeking out from both sides of it while the user is choosing an
      account; it returns automatically as soon as the switcher closes. */
-  .folia-android-shell:has(.folia-provider-switcher-menu) .folia-floating-player-controls {
-    display: none !important;
-  }
 
   /* Keep the floating player from covering QR codes and controls in the
      provider login dialog. The player returns when the dialog is dismissed. */
-  .folia-android-shell:has(.folia-provider-login-modal) .folia-floating-player-controls {
-    display: none !important;
-  }
+
+  /* Settings occupies the landscape work area; keep its close button and
+     controls unobstructed. Hiding this visual overlay does not pause playback,
+     and the dock's folded/expanded state is restored when settings closes. */
 
   /* This is a floating overlay, not a flex child. Reserving a desktop-sized
      footer in the short landscape canvas compresses playlist cards vertically;
      keep the scene geometry steady while the dock grows over empty canvas space. */
-  .folia-android-shell:has(.folia-floating-player-card) .folia-home-root {
-    padding-bottom: 0 !important;
-  }
 
-  .folia-android-shell:has(.folia-floating-player-card) .folia-home-canvas {
-    padding-bottom: 0 !important;
-  }
+  /* The desktop visualizer workbench switches to two columns at 1024px. An
+     Android landscape WebView is intentionally much narrower, so keep preview
+     and editing controls side-by-side and give scrolling to the settings pane. */
 
-  /* The expanded queue poster already identifies the current track. Its
-     separate now-playing toast would sit over the poster wall on Android. */
-  .folia-android-shell:has(.lattice-root) .folia-now-playing-toast {
-    display: none !important;
-  }
+  /* The command palette pins transport shortcuts below its scrolling surface.
+     The desktop top offset leaves those shortcuts under Android navigation on a
+     short landscape screen, so anchor the whole stack below the status bar and
+     make only the result/list surface consume the remaining height. */
+
+  /* Lattice owns play/pause, progress, and open-player actions on its focused
+     poster. Suppress only the duplicate global dock on this surface. */
 }
 
 @media (max-width: 768px) {
@@ -831,7 +222,7 @@ body {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
-  
+
   .mobile-hide-scrollbar::-webkit-scrollbar {
     display: none;
     width: 0;
@@ -936,6 +327,8 @@ body {
   border-color: color-mix(in srgb, var(--text-primary) 32%, transparent) !important;
 }
 
+/* Keep moving queue-collage cards on Android from repainting translucent surfaces. */
+
 /* Glass panel (search box, sidebar) theme-adaptive styles */
 .theme-glass-panel {
   background-color: color-mix(in srgb, var(--bg-color) 85%, transparent) !important;
@@ -1033,4 +426,23 @@ html[data-click-through='active'] body .click-through-interactive * {
   animation: none;
   max-width: 5rem;
   opacity: 1;
+}
+
+/* Android settings density: apply the same compact rhythm to every options
+   category, not only General. Keep all controls and their short explanations;
+   the available landscape width is used to place independent sections together. */
+@media (orientation: landscape) and (max-height: 360px) {
+
+  /* Simple independent settings pair in the width that would otherwise be
+     empty. Longer editors and multi-step controls retain the full row. */
+}
+
+/* Compact, thumb-friendly search layout for the Android landscape stage. */
+
+/* Keep QR sign-in and its instructions together on short Android landscape screens.
+   The regular modal's generous vertical rhythm is retained on desktop and portrait. */
+@media (orientation: landscape) and (max-height: 360px) {
+
+  /* QQ exposes a login-method picker above its QR code. On short screens put
+     those side by side so the QR and the selected-method/status text stay visible. */
 }

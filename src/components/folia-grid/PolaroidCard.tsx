@@ -41,6 +41,8 @@ export interface PolaroidCardProps {
     onEditLocalMetadata?: () => void;
     openWhenFocusedOnCardClick?: boolean;
     isFocused?: boolean;
+    /** Load covers eagerly when this card is inside a small, virtualized Android viewport. */
+    eagerCover?: boolean;
     /** Artwork fills the whole card and the copy moves onto a scrim over it. */
     fullBleedCover?: boolean;
 }
@@ -71,6 +73,7 @@ export const PolaroidCard = React.memo<PolaroidCardProps>(
         onEditLocalMetadata,
         openWhenFocusedOnCardClick = false,
         isFocused = false,
+        eagerCover = false,
         fullBleedCover = false,
     }) => {
         const isUnavailable = mode === 'tracks' && item.rawTrack ? isSongUnavailable(item.rawTrack) : false;
@@ -171,7 +174,7 @@ export const PolaroidCard = React.memo<PolaroidCardProps>(
                     onClick={handleCardClick}
                 >
                     <div className="absolute inset-0 bg-zinc-200/60 dark:bg-zinc-800/60">
-                        <PolaroidCardCover item={item} isUnavailable={isUnavailable} spinnerSize={56} />
+                        <PolaroidCardCover item={item} isUnavailable={isUnavailable} isFocused={isFocused} eager={eagerCover} spinnerSize={56} />
                     </div>
 
                     <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: scrim }} />
@@ -248,7 +251,7 @@ export const PolaroidCard = React.memo<PolaroidCardProps>(
             >
                 {/* Square Polaroid Photo Area */}
                 <div className="w-full aspect-square rounded-lg overflow-hidden bg-zinc-200/60 dark:bg-zinc-800/60 relative shadow-inner flex items-center justify-center shrink-0">
-                    <PolaroidCardCover item={item} isUnavailable={isUnavailable} />
+                    <PolaroidCardCover item={item} isUnavailable={isUnavailable} isFocused={isFocused} eager={eagerCover} />
 
                     {/* Unavailable Mask/Badge */}
                     {isUnavailable && (
@@ -333,6 +336,7 @@ export const PolaroidCard = React.memo<PolaroidCardProps>(
             prev.cardHeight === next.cardHeight &&
             prev.isEditMode === next.isEditMode &&
             prev.fullBleedCover === next.fullBleedCover &&
+            prev.eagerCover === next.eagerCover &&
             prev.openWhenFocusedOnCardClick === next.openWhenFocusedOnCardClick &&
             Boolean(prev.onEditLocalMetadata) === Boolean(next.onEditLocalMetadata) &&
             prev.isFocused === next.isFocused

@@ -8,6 +8,7 @@ import {
     writeCoverAsset,
     type BinaryAssetWriteResult,
 } from './binaryAssetStore';
+import { getCoverRequestUrl } from '../utils/coverUrl';
 
 interface StoredCoverDescriptor extends BinaryAssetWriteResult { }
 
@@ -22,17 +23,7 @@ const isStoredCoverDescriptor = (value: unknown): value is StoredCoverDescriptor
 
 const buildCoverRequestUrl = (coverUrl: string): string => {
     if (typeof window !== 'undefined' && window.electron) return coverUrl;
-    try {
-        const hostname = new URL(coverUrl).hostname;
-        if (hostname === 'y.gtimg.cn'
-            || hostname === 'kugou.com' || hostname.endsWith('.kugou.com')
-            || hostname === 'kgimg.com' || hostname.endsWith('.kgimg.com')) {
-            return `/api/lyric-proxy?url=${encodeURIComponent(coverUrl)}`;
-        }
-    } catch {
-        return coverUrl;
-    }
-    return coverUrl;
+    return getCoverRequestUrl(coverUrl);
 };
 
 const fetchCoverBlob = async (coverUrl: string): Promise<Blob> => {

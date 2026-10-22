@@ -131,7 +131,10 @@ const QueueTab: React.FC<QueueTabProps> = ({
     isDaylight = false,
 }) => {
     const { t } = useTranslation();
-    const ITEM_HEIGHT = 50;
+    const isCompactAndroidLandscape = typeof window !== 'undefined'
+        && window.matchMedia('(orientation: landscape) and (max-height: 360px)').matches
+        && Boolean(document.querySelector('.folia-android-shell'));
+    const ITEM_HEIGHT = isCompactAndroidLandscape ? 36 : 50;
     const currentSongKey = currentSong ? getPlaybackSongKey(currentSong) : null;
     // Adjust container height calculation if needed, or rely on flex
     // previously CONTAINER_HEIGHT = 200 was passed to List. 
@@ -145,7 +148,7 @@ const QueueTab: React.FC<QueueTabProps> = ({
     // Or better, use Autoizer? No, let's stick to simple fixed height for now but slightly reduced: 300 - 32 (header) = 268?
     // User asked for "about 5 songs height". 5 * 50 = 250.
     // Let's set CONTAINER_HEIGHT to 250.
-    const CONTAINER_HEIGHT = 250;
+    const CONTAINER_HEIGHT = isCompactAndroidLandscape ? 108 : 250;
 
     const listRef = useListRef(null);
     const isInitialMountRef = React.useRef(true);

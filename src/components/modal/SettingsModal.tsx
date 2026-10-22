@@ -376,10 +376,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     };
     const [activeSettingsSection, setActiveSettingsSection] = useState<SettingsSectionId>('appearance');
     const contentScrollRef = useRef<HTMLDivElement>(null);
-    // Matches the md:flex-row split below; the two sidebars are different enough to render separately.
-    // Android runs inside the adaptive landscape stage. Use the desktop settings
-    // navigation there even when the physical WebView viewport is narrow.
-    const isWideSettingsLayout = isAndroidCapacitor || useMediaQuery('(min-width: 768px)');
+    // Android always uses its touch-first section chips; device CSS width can be
+    // inflated by landscape scaling and must not select the desktop sidebar.
+    const isViewportWide = useMediaQuery('(min-width: 768px)');
+    const isWideSettingsLayout = !isAndroidCapacitor && isViewportWide;
     const settingsAnchorStore = useSettingsAnchorStore();
     const settingsAnchors = useSettingsAnchorList(settingsAnchorStore);
 
@@ -1052,10 +1052,17 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         closeSubview();
     };
     const settingsNavGroups = useMemo(
-        () => buildSettingsNavGroups(t, { isElectron }),
-        [t, isElectron],
+        () => buildSettingsNavGroups(t, { isElectron, isAndroidCapacitor }),
+        [t, isElectron, isAndroidCapacitor],
     );
     const activeSettingsNavItem = findSettingsNavItem(settingsNavGroups, activeSettingsSection);
+    useEffect(() => {
+        // Platform changes or a hot update can leave the previously selected section hidden.
+        // Move to a visible section instead of presenting an empty settings panel.
+        if (!activeSettingsNavItem) {
+            setActiveSettingsSection('appearance');
+        }
+    }, [activeSettingsNavItem]);
     const prefersReducedMotion = useReducedMotionFor('settingsScroll');
     const { activeAnchorId, scrollToAnchor } = useSettingsScrollSpy({
         containerRef: contentScrollRef,
@@ -1118,7 +1125,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </button>
 
                 {/* Header / Tabs */}
-                <div className="relative shrink-0 z-10 mb-6 select-none">
+                <div className="folia-settings-modal__tabs relative shrink-0 z-10 mb-6 select-none">
                     <div className="flex items-center gap-5 sm:gap-6">
                         <button
                             onClick={() => handleTabChange('help')}
@@ -1189,6 +1196,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                 I'll iterate through original items and verify.
                             */}
 
+                                {!isAndroidCapacitor && <>
                                 {/* Shortcuts */}
                                 <div>
                                     <h3 className="text-sm font-bold uppercase tracking-wider opacity-50 mb-3 flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
@@ -1233,6 +1241,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
                                     </ul>
                                 </div>
+                                </>}
 
                                 {/* User Guide Button */}
                                 <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -1414,7 +1423,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 utilityGhostButtonClass={utilityGhostButtonClass}
                                             />
                                         )}
-                                        {activeSettingsSection === 'interaction' && (
+                                        {activeSettingsSection === 'interaction' && !isAndroidCapacitor && (
                                             <InteractionSettingsSubview
                                                 isDaylight={isDaylight}
                                                 settingsCardClass={settingsCardClass}
@@ -1550,7 +1559,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                                                 }}
                                             />
                                         )}
-                                        {activeSettingsSection === 'developer' && (
+                                        {activeSettingsSection === 'developer' && !isAndroidCapacitor && (
                                             <DeveloperSettingsSubview
                                                 isDaylight={isDaylight}
                                                 settingsCardClass={settingsCardClass}

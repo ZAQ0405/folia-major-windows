@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Disc } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatGridMapFolderTitle } from '../../utils/gridMapFolderPath';
-import { getSizedCoverUrl } from '../../utils/coverUrl';
+import { getCoverDisplayUrl } from '../../utils/coverUrl';
 import { useHomeLayoutSettingsStore } from '../../stores/useHomeLayoutSettingsStore';
 import { isAndroidCapacitor } from '../../utils/runtimePlatform';
 
@@ -240,12 +240,16 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
     // Android's landscape stage can be much shorter than a desktop window.
     // Size the cards from the actual slider box so the card, gap and title all
     // fit together instead of relying on the browser's mobile breakpoint.
+    const androidCardChromeHeight = grid3dCardStyle === 'card' ? 48 : 0;
     const androidCoverSize = isAndroidCapacitor && containerSize.width > 0 && containerSize.height > 0
         ? Math.max(
-            grid3dCardStyle === 'card' ? 148 : 132,
+            grid3dCardStyle === 'card' ? 84 : 96,
             Math.min(
                 grid3dCardStyle === 'card' ? 224 : 208,
-                Math.floor(Math.min(containerSize.width * 0.34, containerSize.height * 0.72)),
+                Math.floor(Math.min(
+                    containerSize.width * 0.34,
+                    Math.max(1, (containerSize.height - androidCardChromeHeight - 8) / 1.04),
+                )),
             ),
         )
         : null;
@@ -703,7 +707,7 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
         const displayName = getGrid3DSliderDisplayName(item);
         const secondaryText = getGrid3DSliderSecondaryText(item);
         const folderPath = getLocalFolderPath(item);
-        const imageSource = item.coverUrl ? getSizedCoverUrl(item.coverUrl, fitCardSize) : '';
+        const imageSource = item.coverUrl ? getCoverDisplayUrl(item.coverUrl, fitCardSize) : '';
 
         return (
             <button
@@ -855,7 +859,7 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
                                             style={{ width: coverSize, height: coverSize }}
                                         >
                                             {item.coverUrl && (isAndroidCapacitor || loadedIndices.has(index)) ? (
-                                                <img src={getSizedCoverUrl(item.coverUrl, coverSize)} alt={typeof displayName === 'string' ? displayName : ''} loading={isAndroidCapacitor ? 'eager' : 'lazy'} decoding="async" className="w-full h-full object-cover pointer-events-none select-none" />
+                                                <img src={getCoverDisplayUrl(item.coverUrl, coverSize)} alt={typeof displayName === 'string' ? displayName : ''} loading={isAndroidCapacitor ? 'eager' : 'lazy'} decoding="async" className="w-full h-full object-cover pointer-events-none select-none" />
                                             ) : (
                                                 <div className="w-full h-full bg-zinc-800/20 flex items-center justify-center">
                                                     <Disc size={64} className="opacity-20" />
@@ -870,7 +874,7 @@ export const Grid3DSlider: React.FC<Grid3DSliderProps> = ({
                                         >
                                             <div className="folia-grid3d-card-cover w-full aspect-square rounded-lg overflow-hidden bg-zinc-800/20 relative shadow-inner mb-4 flex items-center justify-center">
                                                 {item.coverUrl && (isAndroidCapacitor || loadedIndices.has(index)) ? (
-                                                    <img src={getSizedCoverUrl(item.coverUrl, coverSize)} alt={typeof displayName === 'string' ? displayName : ''} loading={isAndroidCapacitor ? 'eager' : 'lazy'} decoding="async" className="w-full h-full object-cover pointer-events-none select-none" />
+                                                    <img src={getCoverDisplayUrl(item.coverUrl, coverSize)} alt={typeof displayName === 'string' ? displayName : ''} loading={isAndroidCapacitor ? 'eager' : 'lazy'} decoding="async" className="w-full h-full object-cover pointer-events-none select-none" />
                                                 ) : (
                                                     <Disc size={64} className="opacity-20" />
                                                 )}

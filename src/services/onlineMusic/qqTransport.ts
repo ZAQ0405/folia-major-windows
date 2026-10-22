@@ -1,6 +1,7 @@
 import { OnlineProviderError } from '../../types/onlineMusic';
 import { readProviderSessionValue, removeProviderSessionValue, writeProviderSessionValue } from './providerStorage';
-import { resolveAndroidTransportBase } from './androidTransport';
+import { resolveAndroidTransportBase } from '../../platform/android/services/androidTransport';
+import { isAndroidCapacitor } from '../../utils/runtimePlatform';
 
 // src/services/onlineMusic/qqTransport.ts
 
@@ -81,6 +82,7 @@ const resolveApiBase = async (): Promise<string> => {
     }
 
     const base = getWebApiBase();
+    if (isAndroidCapacitor && !base) return 'https://folia-qq.local';
     if (!base) {
         throw new OnlineProviderError('unavailable', 'VITE_QQ_API_BASE is not configured', 'qq');
     }
@@ -166,6 +168,7 @@ const persistConfirmedSession = (operation: QqOperation, body: any): void => {
 
 export const getQqTransportAvailability = () => {
     if (getElectronQqPortReader()) return { configured: true } as const;
+    if (isAndroidCapacitor) return { configured: true } as const;
     return getWebApiBase()
         ? { configured: true } as const
         : { configured: false, reason: 'not-configured' as const };
@@ -174,7 +177,7 @@ export const getQqTransportAvailability = () => {
 // The embedded Node server in qq-music-api 3.1.x exposes the QR routes directly but does not
 // expose the optional /login/channels discovery route. Its QR service already has the canonical
 // QQ and WeChat channels, so callers should use the built-in list without probing a known 404.
-export const isEmbeddedQqTransport = (): boolean => Boolean(getElectronQqPortReader());
+export const isEmbeddedQqTransport = (): boolean => Boolean(getElectronQqPortReader()) || isAndroidCapacitor;
 
 /**
  * Checks the embedded/configured QQMusicApi without requiring an account session.
@@ -245,7 +248,12 @@ export const requestQq = async <T = unknown>(operation: QqOperation, params: QqP
     // Same-origin serverless calls must retain deployment-protection cookies; external qq-music-api instances
     // answer with `Access-Control-Allow-Origin: *`, so those requests still omit browser credentials.
     const credentials: RequestCredentials = isSameOriginBase(base) ? 'same-origin' : 'omit';
-    const response = await fetch(`${base}${endpoint.path}?${query}`, { credentials, headers });
+    const requestUrl = `${base}${endpoint.path}?${query}`;
+    const response = isAndroidCapacitor && !getWebApiBase()
+        ? await (await import('./androidQqRuntime')).requestAndroidQqApi(
+            new Request(requestUrl, { method: 'GET', headers }),
+        )
+        : await fetch(requestUrl, { credentials, headers });
     if (!response.ok) {
         const failure = await readJsonBody(response);
         // A missing, expired, rejected, or non-persisted backend session is surfaced uniformly as 401.

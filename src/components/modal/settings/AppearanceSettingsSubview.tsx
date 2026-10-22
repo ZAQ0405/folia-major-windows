@@ -696,6 +696,7 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
                             <span>{t('options.nativeBlurBackgroundNotice')}</span>
                         </div>
                     )}
+                    <div className="folia-lyrics-animation-options grid gap-3">
                     <div
                         className="group w-full rounded-xl border-2 p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-lg"
                         style={{
@@ -793,6 +794,7 @@ const AppearanceSettingsSubview: React.FC<AppearanceSettingsSubviewProps> = ({
                                 <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${storeVisualizer.jizuraEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
                             </button>
                         </div>
+                    </div>
                     </div>
                     <div className={`p-4 rounded-xl border space-y-4 ${settingsCardClass}`}>
                         <div className="flex items-center justify-between gap-4">

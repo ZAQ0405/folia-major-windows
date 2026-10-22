@@ -112,9 +112,18 @@ export function usePlaybackInteractionBridge({
     const startPlaybackFromInteraction = useCallback(() => {
         void resumePlayback().catch(error => {
             const audioElement = audioRef.current;
-            console.error('[Playback] Resume from interaction failed', {
-                error,
-                audioSrc,
+            const errorDetails = error instanceof Error
+                ? { name: error.name, message: error.message }
+                : { name: typeof error, message: String(error) };
+            let audioSourceOrigin: string | null = null;
+            try {
+                audioSourceOrigin = audioSrc ? new URL(audioSrc).origin : null;
+            } catch {
+                audioSourceOrigin = audioSrc?.startsWith('blob:') ? 'blob:' : null;
+            }
+            const diagnostic = {
+                ...errorDetails,
+                audioSourceOrigin,
                 songId: currentSong?.id ?? null,
                 playerState,
                 paused: audioElement?.paused ?? null,
@@ -125,7 +134,8 @@ export function usePlaybackInteractionBridge({
                 networkState: audioElement?.networkState ?? null,
                 mediaErrorCode: audioElement?.error?.code ?? null,
                 mediaErrorMessage: audioElement?.error?.message ?? null,
-            });
+            };
+            console.error(`[Playback] Resume from interaction failed ${JSON.stringify(diagnostic)}`);
         });
     }, [audioRef, audioSrc, currentSong, playerState, resumePlayback]);
 

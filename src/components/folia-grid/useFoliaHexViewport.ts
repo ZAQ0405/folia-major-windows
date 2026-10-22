@@ -17,6 +17,8 @@ export interface UseFoliaHexViewportOptions {
     renderRing: number;
     fallbackIndexRef?: RefObject<number>;
     coords?: HexGridCoord[];
+    /** Use an urgent render for surfaces where delayed card mounts create visible gaps while dragging. */
+    deferUpdates?: boolean;
 }
 
 export const useFoliaHexViewport = ({
@@ -27,6 +29,7 @@ export const useFoliaHexViewport = ({
     renderRing,
     fallbackIndexRef,
     coords: customCoords,
+    deferUpdates = true,
 }: UseFoliaHexViewportOptions) => {
     const generatedCoordsRef = useRef<HexGridCoord[]>([]);
     const generatedSpacingRef = useRef({ x: spacingX, y: spacingY });
@@ -112,10 +115,14 @@ export const useFoliaHexViewport = ({
 
         lastVisibleCenterKeyRef.current = centerKey;
         renderedIndexesRef.current = nextIndexes;
-        startTransition(() => {
+        if (deferUpdates) {
+            startTransition(() => {
+                setRenderedIndexes(nextIndexes);
+            });
+        } else {
             setRenderedIndexes(nextIndexes);
-        });
-    }, [coordByKey, coords, fallbackIndexRef, renderRadius, renderRing, spacingX, spacingY]);
+        }
+    }, [coordByKey, coords, deferUpdates, fallbackIndexRef, renderRadius, renderRing, spacingX, spacingY]);
 
     return {
         coords,

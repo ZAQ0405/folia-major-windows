@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { neteaseApi } from '@/services/netease';
 import { neteaseProvider } from '@/services/onlineMusic/neteaseProvider';
 import type { UnifiedSong } from '@/types';
@@ -7,6 +7,7 @@ import { parseLyricsAsync } from '@/utils/lyrics/workerClient';
 // test/unit/onlineMusic/neteaseProvider.test.ts
 
 vi.mock('@/services/netease', () => ({
+    getNeteaseTransportAvailability: () => ({ configured: false, reason: 'not-configured' }),
     isSongMarkedUnavailable: (candidate: UnifiedSong) => candidate.privilege?.st === -200,
     neteaseApi: {
         normalizeSongResult: vi.fn((raw: unknown) => raw),
@@ -27,6 +28,8 @@ vi.mock('@/utils/lyrics/workerClient', () => ({
     parseLyricsAsync: vi.fn(),
 }));
 
+vi.mock('@/utils/runtimePlatform', () => ({ isAndroidCapacitor: true }));
+
 const song: UnifiedSong = {
     id: 42,
     name: 'Song',
@@ -38,6 +41,7 @@ const song: UnifiedSong = {
 
 describe('neteaseProvider', () => {
     beforeEach(() => vi.clearAllMocks());
+    afterEach(() => vi.unstubAllGlobals());
 
     it('maps semantic high quality to the NetEase exhigh value', async () => {
         vi.mocked(neteaseApi.getSongUrl).mockResolvedValue({ data: [{ url: 'http://music.test/song.mp3' }] } as any);
@@ -94,6 +98,31 @@ describe('neteaseProvider', () => {
                 }],
             },
         });
+    });
+
+    it('uses the direct NetEase lyric endpoint on Android when the desktop API is not configured', async () => {
+        vi.mocked(neteaseApi.getLyric).mockRejectedValue(new Error('VITE_NETEASE_API_BASE is not configured'));
+        vi.mocked(parseLyricsAsync).mockResolvedValue({
+            lines: [{ words: [], fullText: '直接获取到的歌词', startTime: 1, endTime: 2 }],
+        });
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            json: async () => ({ lyric: '[00:01.00]直接获取到的歌词' }),
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        const androidSong: UnifiedSong = {
+            ...song,
+            sourceRef: {
+                kind: 'online', providerId: 'netease', mediaId: '42',
+                providerData: { url_id: 'direct-lyric-id' },
+            },
+        };
+
+        await expect(neteaseProvider.lyrics!.getLyrics(androidSong)).resolves.toMatchObject({
+            mainText: '[00:01.00]直接获取到的歌词',
+        });
+        expect(String(fetchMock.mock.calls[0][0])).toContain('music.163.com/api/song/lyric');
+        expect(String(fetchMock.mock.calls[0][0])).toContain('id=direct-lyric-id');
     });
 
     it('normalizes search results and paging metadata', async () => {

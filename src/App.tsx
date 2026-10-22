@@ -61,18 +61,19 @@ import { omni } from './services/onlineMusic/omni';
 import { getSongArtistLabel, getSongCoverUrl } from './services/onlineMusic/songMetadata';
 import { isNavidromeEnabled } from './services/navidromeService';
 import { useAppNavigation } from './hooks/useAppNavigation';
+import { isAndroidCapacitor } from './utils/runtimePlatform';
 import { useNeteaseLibrary } from './hooks/useNeteaseLibrary';
 import { useKugouLibrary } from './hooks/useKugouLibrary';
 import { useQqLibrary } from './hooks/useQqLibrary';
 import { useOnlineProviderPlatform } from './hooks/useOnlineProviderPlatform';
 import { useAppPreferences } from './hooks/useAppPreferences';
-import { useElectronPlaybackBridge } from './hooks/useElectronPlaybackBridge';
-import { useElectronDisplaySleepBlocker } from './hooks/useElectronDisplaySleepBlocker';
+import { useElectronPlaybackBridge } from './platform/electron/hooks/useElectronPlaybackBridge';
+import { useElectronDisplaySleepBlocker } from './platform/electron/hooks/useElectronDisplaySleepBlocker';
 import { useSleepTimer } from './hooks/useSleepTimer';
-import { useElectronNeteaseApiStatus } from './hooks/useElectronNeteaseApiStatus';
+import { useElectronNeteaseApiStatus } from './platform/electron/hooks/useElectronNeteaseApiStatus';
 import { useLocalLibraryAutoScan } from './hooks/useLocalLibraryAutoScan';
-import { useElectronVideoExportController } from './hooks/useElectronVideoExportController';
-import { useElectronWindowPlaybackHandoff } from './hooks/useElectronWindowPlaybackHandoff';
+import { useElectronVideoExportController } from './platform/electron/hooks/useElectronVideoExportController';
+import { useElectronWindowPlaybackHandoff } from './platform/electron/hooks/useElectronWindowPlaybackHandoff';
 import { useMediaSessionBridge } from './hooks/useMediaSessionBridge';
 import { usePlayerChromeAutoHide } from './hooks/usePlayerChromeAutoHide';
 import { usePlaybackAudioBridge } from './hooks/usePlaybackAudioBridge';
@@ -137,7 +138,7 @@ import StageSessionEmptyState from './components/app/stage/StageSessionEmptyStat
 import { useVisualizerRendererModel } from './components/visualizer/useVisualizerRendererModel';
 import { useVisualizerTunings } from './components/visualizer/useVisualizerTunings';
 import { usePlaybackRuntimeRefs } from './hooks/usePlaybackRuntimeRefs';
-import { useElectronWindowChrome } from './hooks/useElectronWindowChrome';
+import { useElectronWindowChrome } from './platform/electron/hooks/useElectronWindowChrome';
 import { useTransportCommandRefs } from './hooks/useTransportCommandRefs';
 import { useHomeProviderRefresh } from './hooks/useHomeProviderRefresh';
 import { useAudioOutputDevice } from './hooks/useAudioOutputDevice';
@@ -490,8 +491,11 @@ export default function App() {
     }, [t]);
 
     const {
+        isFloatingPlayerControlsHidden,
         playerChromeVisibilityMode,
         cyclePlayerChromeVisibilityMode,
+        handleAutoHidePointerEnter,
+        handleAutoHidePointerLeave,
     } = usePlayerChromeAutoHide({
         autoHidePlayerChrome,
         initialPlayerChromeHidden: isPlayerChromeHidden,
@@ -1035,6 +1039,7 @@ export default function App() {
 
     useSessionRestoreController({
         userId: user?.id,
+        currentSongRef,
         blobUrlRef,
         currentOnlineAudioUrlFetchedAtRef,
         setLyrics,
@@ -1772,7 +1777,7 @@ export default function App() {
     } = useMemo(() => buildPlayerViewFlags({
         currentView,
         disableHomeDynamicBackground,
-        hidePlayerProgressBar,
+        hidePlayerProgressBar: hidePlayerProgressBar || isAndroidCapacitor,
         hidePlayerTranslationSubtitle,
         hidePlayerRightPanelButton,
         isNowPlayingControlDisabled,
@@ -1787,6 +1792,7 @@ export default function App() {
         disableHomeDynamicBackground,
         duration,
         hidePlayerProgressBar,
+        isAndroidCapacitor,
         hidePlayerRightPanelButton,
         hidePlayerTranslationSubtitle,
         isNowPlayingControlDisabled,
@@ -2217,10 +2223,11 @@ export default function App() {
         seed: visualizerGeometrySeed,
         isObsBrowserSourceRendering,
         shouldPauseVisualizerBackground,
-        hideTranslationSubtitle: shouldHidePlayerTranslationSubtitle,
+        hideTranslationSubtitle: shouldHidePlayerTranslationSubtitle || (isAndroidCapacitor && currentView === 'player'),
         isPlayerPageTransparent,
         onLyricLineSeek: handleMonetLyricLineSeek,
         onBack: navigateBackFromPlayer,
+        onTogglePlayback: togglePlay,
     });
 
     const handlePlayerPanelAlbumSelect = useCallback(async (song: SongResult, album: Album) => {
@@ -2401,6 +2408,10 @@ export default function App() {
         navigateToPlayer,
         navigateFromPlayerCapsule,
         shouldHidePlayerProgressBar,
+        autoHidePlayerChrome,
+        isFloatingPlayerControlsHidden,
+        onAutoHidePointerEnter: handleAutoHidePointerEnter,
+        onAutoHidePointerLeave: handleAutoHidePointerLeave,
         onSeekMainAudio: seekMainAudio,
         onStagePlayerSeek: publishStagePlayerPlaybackUpdate,
         isNowPlayingStageActive,
@@ -2494,7 +2505,10 @@ export default function App() {
             ref={register}
             src={automix.deckSrc(deck)}
             preload="auto"
-            crossOrigin="anonymous"
+            // Many Android music providers return playable media without CORS headers. Keeping
+            // the anonymous mode here makes Chromium reject those streams before decoding them.
+            // Desktop still needs CORS-enabled media for the Web Audio processing graph.
+            crossOrigin={isAndroidCapacitor ? undefined : 'anonymous'}
             loop={effectiveLoopMode === 'one' && automix.activeDeck === deck}
             onLoadStart={(e) => {
                 // Silent unless the invariant breaks. A deck is only ever handed the source the
@@ -2659,6 +2673,23 @@ export default function App() {
             onError={(e) => {
                 const audioElement = e.currentTarget;
                 const isActiveDeck = automix.isActiveDeck(audioElement);
+                let audioSourceOrigin: string | null = null;
+                try {
+                    audioSourceOrigin = audioElement.currentSrc ? new URL(audioElement.currentSrc).origin : null;
+                } catch {
+                    audioSourceOrigin = audioElement.currentSrc.startsWith('blob:') ? 'blob:' : null;
+                }
+                console.error(`[Audio] media element error ${JSON.stringify({
+                    songId: currentSong?.id ?? null,
+                    activeDeck: isActiveDeck,
+                    audioSourceOrigin,
+                    mediaErrorCode: audioElement.error?.code ?? null,
+                    mediaErrorMessage: audioElement.error?.message ?? null,
+                    currentTime: audioElement.currentTime,
+                    duration: Number.isFinite(audioElement.duration) ? audioElement.duration : null,
+                    readyState: audioElement.readyState,
+                    networkState: audioElement.networkState,
+                })}`);
                 const reportedDuration = Number.isFinite(audioElement.duration) && audioElement.duration > 0
                     ? audioElement.duration
                     : duration;
@@ -2719,6 +2750,7 @@ export default function App() {
                             failedSrc,
                             resumeAt: e.currentTarget.currentTime,
                             autoplay: (!e.currentTarget.paused && !e.currentTarget.ended) || playerState === PlayerState.PLAYING || shouldAutoPlay.current,
+                            fallbackQuality: e.currentTarget.error?.code === 4 ? 'standard' : undefined,
                         });
 
                         if (!recovered) {

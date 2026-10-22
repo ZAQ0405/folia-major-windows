@@ -9,7 +9,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const OUTPUT_ROOT = path.join(ROOT, 'release-portable');
+const OUTPUT_ROOT = process.env.FOLIA_PORTABLE_OUTPUT_ROOT
+    ? path.resolve(ROOT, process.env.FOLIA_PORTABLE_OUTPUT_ROOT)
+    : path.join(ROOT, 'release-portable');
+const OUTPUT_RELATIVE_PATH = path.relative(ROOT, OUTPUT_ROOT);
+if (!OUTPUT_RELATIVE_PATH || OUTPUT_RELATIVE_PATH === '..' || OUTPUT_RELATIVE_PATH.startsWith(`..${path.sep}`)) {
+    throw new Error('Portable output must be a child directory of the project root.');
+}
 const APP_ROOT = path.join(OUTPUT_ROOT, 'Folia');
 const RESOURCES_ROOT = path.join(APP_ROOT, 'resources');
 const APP_RESOURCES = path.join(RESOURCES_ROOT, 'app');

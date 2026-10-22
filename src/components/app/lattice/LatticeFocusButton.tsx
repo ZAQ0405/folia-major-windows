@@ -9,6 +9,7 @@ import { PRIMARY_MODIFIER_LABEL } from '../../../utils/platform';
 import { useMediaQuery } from '../../../hooks/useMediaQuery';
 import { usePlayerBottomBarBottomPx } from '../../../hooks/usePlayerBottomBarBottomPx';
 import { SlideActionButton } from '../../shared/SlideActionButton';
+import { isAndroidCapacitor } from '../../../utils/runtimePlatform';
 import './LatticeFocusButton.css';
 
 // src/components/app/lattice/LatticeFocusButton.tsx
@@ -96,7 +97,7 @@ export default function LatticeFocusButton({ isDaylight }: { isDaylight: boolean
                         >
                             <Crosshair aria-hidden="true" />
                             <span>{t('home.latticeFocusCurrent')}</span>
-                            <kbd aria-hidden="true">Shift + ; + C</kbd>
+                            {!isAndroidCapacitor && <kbd aria-hidden="true">Shift + ; + C</kbd>}
                         </button>
                         <button
                             type="button"
@@ -119,7 +120,7 @@ export default function LatticeFocusButton({ isDaylight }: { isDaylight: boolean
                         >
                             <ListMusic aria-hidden="true" />
                             <span>{t('home.latticeOpenQueueCommand')}</span>
-                            <kbd>{queueShortcut}</kbd>
+                            {!isAndroidCapacitor && <kbd>{queueShortcut}</kbd>}
                         </button>
                         <div className="lattice-tools-help-section" role="none">
                             <button
@@ -133,7 +134,7 @@ export default function LatticeFocusButton({ isDaylight }: { isDaylight: boolean
                                 <span className={lightsOn ? 'is-active' : ''}>{t('home.latticeLightsOn')}</span>
                                 <span className={lightsOn ? '' : 'is-active'}>{t('home.latticeLightsOff')}</span>
                             </button>
-                            <button
+                            {!isAndroidCapacitor && <button
                                 type="button"
                                 role="menuitem"
                                 className="lattice-tools-action lattice-tools-help-trigger"
@@ -144,7 +145,7 @@ export default function LatticeFocusButton({ isDaylight }: { isDaylight: boolean
                                 onClick={() => setShowHelp(visible => !visible)}
                             >
                                 <CircleHelp aria-hidden="true" />
-                            </button>
+                            </button>}
                             <AnimatePresence initial={false}>
                                 {showHelp && (
                                     <motion.div

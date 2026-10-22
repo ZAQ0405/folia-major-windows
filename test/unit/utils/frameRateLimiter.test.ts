@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createFrameRateLimitedRaf, installGlobalVisualizerFrameRateLimiter, parseVisualizerFrameRate, setGlobalVisualizerFrameRate, shouldProcessFrameAtRate } from '../../../src/utils/frameRateLimiter';
+import { createFrameRateLimitedRaf, disableGlobalVisualizerFrameRateLimiter, installGlobalVisualizerFrameRateLimiter, parseVisualizerFrameRate, setGlobalVisualizerFrameRate, shouldProcessFrameAtRate } from '../../../src/utils/frameRateLimiter';
 
 // test/unit/utils/frameRateLimiter.test.ts
 
@@ -117,6 +117,38 @@ describe('frameRateLimiter', () => {
             expect(globalThis.window.requestAnimationFrame).not.toBe(originalRequestAnimationFrame);
 
             setGlobalVisualizerFrameRate('off');
+            expect(globalThis.window.requestAnimationFrame).toBe(originalRequestAnimationFrame);
+            expect(globalThis.window.cancelAnimationFrame).toBe(originalCancelAnimationFrame);
+        } finally {
+            Object.defineProperty(globalThis, 'window', {
+                configurable: true,
+                value: previousWindow,
+            });
+        }
+    });
+
+    it('clears persisted frame caps and restores native animation frames', () => {
+        const previousWindow = (globalThis as { window?: Window; }).window;
+        const originalRequestAnimationFrame = () => 1;
+        const originalCancelAnimationFrame = () => undefined;
+        const removedKeys: string[] = [];
+        Object.defineProperty(globalThis, 'window', {
+            configurable: true,
+            value: {
+                requestAnimationFrame: originalRequestAnimationFrame,
+                cancelAnimationFrame: originalCancelAnimationFrame,
+                localStorage: {
+                    getItem: () => '60',
+                    removeItem: (key: string) => removedKeys.push(key),
+                },
+            },
+        });
+
+        try {
+            installGlobalVisualizerFrameRateLimiter(60);
+            disableGlobalVisualizerFrameRateLimiter();
+
+            expect(removedKeys).toEqual(['visualizer_frame_rate']);
             expect(globalThis.window.requestAnimationFrame).toBe(originalRequestAnimationFrame);
             expect(globalThis.window.cancelAnimationFrame).toBe(originalCancelAnimationFrame);
         } finally {

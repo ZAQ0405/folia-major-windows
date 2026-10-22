@@ -10,7 +10,11 @@ import {
 // test/unit/localLibrary/onlineMetadataSearchService.test.ts
 // Verifies metadata-only provider selection and exact manual query forwarding.
 
-vi.mock('@/services/netease', () => ({ neteaseApi: { cloudSearch: vi.fn() } }));
+vi.mock('@/services/netease', () => ({
+    getNeteaseTransportAvailability: () => ({ configured: true }),
+    isSongMarkedUnavailable: () => false,
+    neteaseApi: { cloudSearch: vi.fn() },
+}));
 vi.mock('@/utils/lyrics/providers/qqLyricProvider', () => ({ searchQQLyrics: vi.fn() }));
 
 const song = {

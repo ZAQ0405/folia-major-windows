@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type React from 'react';
 import type { PlayerChromeVisibilityMode } from '../types/remoteControl';
 
@@ -26,11 +26,12 @@ const getNextPlayerChromeVisibilityMode = (mode: PlayerChromeVisibilityMode): Pl
 
 const getInitialPlayerChromeVisibilityMode = (autoHidePlayerChrome: boolean, initialPlayerChromeHidden: boolean): PlayerChromeVisibilityMode => {
     const storedMode = localStorage.getItem(PLAYER_CHROME_VISIBILITY_MODE_STORAGE_KEY);
+    // The explicit auto-hide setting must win over an older saved "always-visible" mode.
+    if (autoHidePlayerChrome) return 'auto-hide';
     if (isPlayerChromeVisibilityMode(storedMode)) {
         return storedMode;
     }
 
-    if (autoHidePlayerChrome) return 'auto-hide';
     return initialPlayerChromeHidden ? 'always-hidden' : 'always-visible';
 };
 
@@ -45,11 +46,37 @@ export const usePlayerChromeAutoHide = ({
     const [playerChromeVisibilityMode, setPlayerChromeVisibilityMode] = useState<PlayerChromeVisibilityMode>(() => (
         getInitialPlayerChromeVisibilityMode(autoHidePlayerChrome, initialPlayerChromeHidden)
     ));
+    const [isFloatingPlayerControlsHidden, setIsFloatingPlayerControlsHidden] = useState(
+        () => playerChromeVisibilityMode !== 'always-visible',
+    );
     const playerChromeVisibilityModeRef = useRef(playerChromeVisibilityMode);
     const timeoutIdRef = useRef<number | undefined>(undefined);
-    const rafIdRef = useRef<number | undefined>(undefined);
     const isSynchronizingPreferenceRef = useRef(false);
     const hasInitializedPreferenceSyncRef = useRef(false);
+
+    const clearAutoHideTimer = useCallback(() => {
+        window.clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = undefined;
+    }, []);
+
+    const scheduleAutoHide = useCallback((delay: number) => {
+        clearAutoHideTimer();
+        timeoutIdRef.current = window.setTimeout(() => {
+            timeoutIdRef.current = undefined;
+            setIsFloatingPlayerControlsHidden(true);
+        }, delay);
+    }, [clearAutoHideTimer]);
+
+    const handleAutoHidePointerEnter = useCallback(() => {
+        if (playerChromeVisibilityModeRef.current !== 'auto-hide' || suppressPointerReveal) return;
+        clearAutoHideTimer();
+        setIsFloatingPlayerControlsHidden(false);
+    }, [clearAutoHideTimer, suppressPointerReveal]);
+
+    const handleAutoHidePointerLeave = useCallback(() => {
+        if (playerChromeVisibilityModeRef.current !== 'auto-hide' || suppressPointerReveal) return;
+        scheduleAutoHide(220);
+    }, [scheduleAutoHide, suppressPointerReveal]);
 
     const cyclePlayerChromeVisibilityMode = useCallback(() => {
         const nextMode = getNextPlayerChromeVisibilityMode(playerChromeVisibilityModeRef.current);
@@ -88,76 +115,44 @@ export const usePlayerChromeAutoHide = ({
         setPlayerChromeVisibilityMode(nextMode);
     }, [autoHidePlayerChrome, setAutoHidePlayerChromePreference]);
 
-    useEffect(() => {
-        let isThrottled = false;
-
-        const clearAutoHideTimer = () => {
-            window.clearTimeout(timeoutIdRef.current);
-            timeoutIdRef.current = undefined;
-        };
-
-        const scheduleAutoHide = (delay: number) => {
-            clearAutoHideTimer();
-            timeoutIdRef.current = window.setTimeout(() => {
-                timeoutIdRef.current = undefined;
-                setIsPlayerChromeHidden(true);
-            }, delay);
-        };
-
-        const showAndResetTimer = () => {
-            setIsPlayerChromeHidden(false);
-            scheduleAutoHide(3000);
-        };
-
-        const handleMouseOut = (event: MouseEvent) => {
-            const hasLeftWindow = !event.relatedTarget || event.clientY <= 0 || event.clientX <= 0
-                || event.clientX >= window.innerWidth || event.clientY >= window.innerHeight;
-            if (hasLeftWindow) {
-                scheduleAutoHide(300);
-            }
-        };
-
-        const handleMouseMove = () => {
-            if (isThrottled) return;
-            isThrottled = true;
-            rafIdRef.current = requestAnimationFrame(() => {
-                showAndResetTimer();
-                isThrottled = false;
-            });
-        };
-
+    useLayoutEffect(() => {
         if (playerChromeVisibilityMode === 'always-hidden') {
             setIsPlayerChromeHidden(true);
+            setIsFloatingPlayerControlsHidden(true);
             return clearAutoHideTimer;
         }
 
         if (playerChromeVisibilityMode === 'always-visible') {
             setIsPlayerChromeHidden(false);
+            setIsFloatingPlayerControlsHidden(false);
             return clearAutoHideTimer;
         }
 
-        // Click-through still forwards mouse-move into the renderer, so auto-hide would read the
-        // cursor passing over an untouchable window as user presence and pop the chrome back up.
+        // Auto-hide is deliberately local to the floating playback dock. Do not toggle the
+        // shared chrome flag: side-panel buttons and other spaces use that flag independently.
+        setIsPlayerChromeHidden(false);
+
+        // Click-through still forwards pointer events into the renderer, so the hidden bar must
+        // stay hidden while the window is intentionally letting clicks pass through.
         if (suppressPointerReveal) {
             clearAutoHideTimer();
-            setIsPlayerChromeHidden(true);
+            setIsFloatingPlayerControlsHidden(true);
             return clearAutoHideTimer;
         }
 
-        showAndResetTimer();
-        window.addEventListener('mouseout', handleMouseOut);
-        window.addEventListener('mousemove', handleMouseMove);
-
+        // Auto-hide mode is hover-only: start concealed and reveal only from the bar's hotspot.
+        clearAutoHideTimer();
+        setIsFloatingPlayerControlsHidden(true);
         return () => {
             clearAutoHideTimer();
-            if (rafIdRef.current !== undefined) {
-                cancelAnimationFrame(rafIdRef.current);
-                rafIdRef.current = undefined;
-            }
-            window.removeEventListener('mouseout', handleMouseOut);
-            window.removeEventListener('mousemove', handleMouseMove);
         };
-    }, [playerChromeVisibilityMode, suppressPointerReveal, setIsPlayerChromeHidden]);
+    }, [playerChromeVisibilityMode, suppressPointerReveal, setIsPlayerChromeHidden, clearAutoHideTimer]);
 
-    return { playerChromeVisibilityMode, cyclePlayerChromeVisibilityMode };
+    return {
+        isFloatingPlayerControlsHidden,
+        playerChromeVisibilityMode,
+        cyclePlayerChromeVisibilityMode,
+        handleAutoHidePointerEnter,
+        handleAutoHidePointerLeave,
+    };
 };

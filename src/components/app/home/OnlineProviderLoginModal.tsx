@@ -90,30 +90,37 @@ const OnlineProviderLoginModal = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="folia-provider-login-modal absolute inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xl p-4"
+            className="folia-provider-login-modal absolute inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-black/60 backdrop-blur-xl p-2 sm:p-4"
             role="dialog"
             aria-modal="true"
             aria-label={title}
+            data-folia-keyboard-window="true"
+            onKeyDown={event => {
+                if (event.key !== 'Escape') return;
+                event.preventDefault();
+                event.stopPropagation();
+                onClose();
+            }}
         >
             <motion.div
                 initial={{ scale: 0.92, opacity: 0, y: 24 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.92, opacity: 0, y: 12 }}
                 transition={{ type: 'spring', bounce: 0, duration: 0.5 }}
-                className="bg-zinc-900/90 border border-white/10 p-8 rounded-3xl max-w-sm w-full text-center relative shadow-2xl"
+                className="folia-provider-login-card relative my-auto max-h-[calc(100dvh-1rem)] w-full max-w-sm overflow-y-auto overscroll-contain rounded-3xl border border-white/10 bg-zinc-900/90 p-5 text-center shadow-2xl sm:p-8"
             >
                 <button
                     type="button"
                     onClick={onClose}
                     aria-label={closeLabel}
-                    className="absolute top-4 right-4 opacity-40 hover:opacity-100 rounded-full bg-white/5 p-1 transition-colors cursor-pointer"
+                    className="absolute right-3 top-3 z-10 rounded-full bg-zinc-700/90 p-2 text-white opacity-100 shadow-md transition-colors hover:bg-zinc-600 cursor-pointer sm:right-4 sm:top-4"
                     style={{ color: 'var(--text-primary)' }}
                 >
                     <X size={16} />
                 </button>
-                <h3 className="text-lg font-bold mb-6" style={{ color: 'var(--text-primary)' }}>{title}</h3>
+                <h3 className="folia-provider-login-title text-lg font-bold mb-6" style={{ color: 'var(--text-primary)' }}>{title}</h3>
                 {loginMethods && (
-                    <div className="mb-5">
+                    <div className="folia-provider-login-methods mb-5">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] opacity-45 mb-1.5" style={{ color: 'var(--text-secondary)' }}>
                             {loginMethods.title}
                         </p>
@@ -182,9 +189,9 @@ const OnlineProviderLoginModal = ({
                             {credentialSubmitting ? credentialLogin.submittingLabel : credentialLogin.submitLabel}
                         </button>
                     </form>
-                ) : <div className="relative inline-block bg-white p-2 rounded-xl mb-4 shadow-inner">
+                ) : <div className="folia-provider-login-qr relative inline-block bg-white p-2 rounded-xl mb-4 shadow-inner">
                     {backendFailure ? (
-                        <div className="w-40 h-40 flex flex-col items-center justify-center gap-1.5 rounded-lg bg-red-50 px-3 text-center">
+                        <div className="folia-provider-login-qr-content w-40 h-40 flex flex-col items-center justify-center gap-1.5 rounded-lg bg-red-50 px-3 text-center">
                             <AlertTriangle className="text-red-500 shrink-0" size={22} />
                             <p className="text-[11px] font-semibold leading-snug text-red-600">{backendFailure.title}</p>
                             {backendFailure.detail && (
@@ -194,24 +201,24 @@ const OnlineProviderLoginModal = ({
                             )}
                         </div>
                     ) : awaitingMethod ? (
-                        <div className="w-40 h-40 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-4 text-center text-[11px] font-medium leading-snug text-gray-400">
+                        <div className="folia-provider-login-qr-content w-40 h-40 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-4 text-center text-[11px] font-medium leading-snug text-gray-400">
                             {loginMethods?.pendingText}
                         </div>
                     ) : qrCodeImg ? (
-                        <img src={qrCodeImg} alt="QR Code" className="w-40 h-40" />
+                        <img src={qrCodeImg} alt="QR Code" className="folia-provider-login-qr-content w-40 h-40" />
                     ) : (
-                        <div className="w-40 h-40 flex items-center justify-center bg-gray-100 rounded-lg">
+                        <div className="folia-provider-login-qr-content w-40 h-40 flex items-center justify-center bg-gray-100 rounded-lg">
                             <Loader2 className="animate-spin text-gray-400" size={24} />
                         </div>
                     )}
                 </div>}
                 {loginMethods && !awaitingMethod && (
-                    <p className="text-[11px] font-medium opacity-45" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="folia-provider-login-current text-[11px] font-medium opacity-45" style={{ color: 'var(--text-secondary)' }}>
                         {loginMethods.currentText}
                     </p>
                 )}
                 {/* 步骤一不显示状态文案：关窗重开时 hook 里还留着上一轮的状态，照原样显示会是过期信息。 */}
-                {!credentialLogin && <p className={`text-xs font-medium mt-2 ${state === 'confirmed' ? 'text-green-400' : 'opacity-60'}`} style={{ color: state === 'confirmed' ? undefined : 'var(--text-secondary)' }}>
+                {!credentialLogin && <p className={`folia-provider-login-status text-xs font-medium mt-2 ${state === 'confirmed' ? 'text-green-400' : 'opacity-60'}`} style={{ color: state === 'confirmed' ? undefined : 'var(--text-secondary)' }}>
                     {awaitingMethod || backendFailure ? '' : statusText}
                 </p>}
                 {backendFailure && (
@@ -233,7 +240,7 @@ const OnlineProviderLoginModal = ({
                         {retryLabel}
                     </button>
                 )}
-                <p className="text-[10px] opacity-30 mt-6" style={{ color: 'var(--text-secondary)' }}>{note}</p>
+                <p className="folia-provider-login-note text-[10px] opacity-30 mt-6" style={{ color: 'var(--text-secondary)' }}>{note}</p>
             </motion.div>
         </motion.div>
     );

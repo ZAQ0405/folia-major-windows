@@ -18,6 +18,7 @@ import { usePlaybackStore } from '../stores/usePlaybackStore';
 import { usePlaybackEntryViewStore } from '../stores/usePlaybackEntryViewStore';
 import { setStatusMessage } from '../stores/useStatusMessageStore';
 import i18n from '../i18n/config';
+import { isAndroidCapacitor } from '../utils/runtimePlatform';
 
 // src/hooks/useAppNavigation.ts
 
@@ -335,6 +336,71 @@ export function useAppNavigation() {
         }
         navigateDirectHome();
     }, [navigateDirectHome]);
+
+    useEffect(() => {
+        if (!isAndroidCapacitor) return;
+
+        let disposed = false;
+        let removeListener: (() => Promise<void>) | undefined;
+
+        void import('@capacitor/app').then(async ({ App }) => {
+            const listener = await App.addListener('backButton', () => {
+                const blockingSurface = document.querySelector<HTMLElement>(
+                    '[data-folia-keyboard-window="true"], [aria-modal="true"], .folia-provider-switcher-menu, .folia-search-workspace',
+                );
+                const hasBlockingSurface = Boolean(blockingSurface);
+                const activeElement = document.activeElement;
+                const keyTarget = blockingSurface
+                    || (currentView === 'lattice'
+                        ? document.querySelector<HTMLElement>('.lattice-field')
+                        : activeElement instanceof HTMLElement ? activeElement : document.body);
+                const escape = new KeyboardEvent('keydown', {
+                    key: 'Escape',
+                    code: 'Escape',
+                    bubbles: true,
+                    cancelable: true,
+                });
+
+                // Reuse each surface's existing Escape ladder (modal -> panel -> page).
+                // The provider switcher does not cancel Escape, so remember that it was
+                // open and never let the same back press fall through to page navigation.
+                keyTarget?.dispatchEvent(escape);
+                if (escape.defaultPrevented || hasBlockingSurface) return;
+
+                const historyState = window.history.state as NavigationHistoryState | null;
+                if (getAppHistoryIndex(historyState) > 0) {
+                    window.history.back();
+                    return;
+                }
+
+                if (currentView === 'player') {
+                    navigateBackFromPlayer();
+                    return;
+                }
+                if (currentView === 'lattice') {
+                    navigateBackFromLattice();
+                    return;
+                }
+
+                // At the root, keep the activity in the background rather than killing
+                // playback or dropping the in-memory queue.
+                void App.minimizeApp();
+            });
+
+            if (disposed) {
+                await listener.remove();
+            } else {
+                removeListener = () => listener.remove();
+            }
+        }).catch(error => {
+            console.warn('[useAppNavigation] Android back-button listener unavailable:', error);
+        });
+
+        return () => {
+            disposed = true;
+            if (removeListener) void removeListener();
+        };
+    }, [currentView, navigateBackFromLattice, navigateBackFromPlayer]);
 
     const navigateToSearch = useCallback(({
         query,

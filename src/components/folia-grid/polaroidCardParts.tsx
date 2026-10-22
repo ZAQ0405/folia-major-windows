@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Disc, Play, Plus, X } from 'lucide-react';
 import type { SongResult, UnifiedSong } from '../../types';
-import { getSizedCoverUrl } from '../../utils/coverUrl';
+import { getCoverDisplayUrl } from '../../utils/coverUrl';
 import { canResolveSongCatalogRef } from '../../services/onlineMusic/catalogRefs';
 import { resolveGridTrackArtistTargetId } from './gridTrackNavigation';
+import { getPlaybackSongKey } from '../../utils/appPlaybackGuards';
+import { resolveSongArtwork } from '../../services/onlineMusic/songArtwork';
 
 // src/components/folia-grid/polaroidCardParts.tsx
 // The pieces both PolaroidCard layouts share: the cover image with its spinner placeholder, the
@@ -42,8 +44,25 @@ export const PolaroidCardCover: React.FC<{
     item: GridItem;
     isUnavailable: boolean;
     spinnerSize?: number;
-}> = ({ item, isUnavailable, spinnerSize = 48 }) => {
-    if (!item.coverUrl) {
+    isFocused?: boolean;
+    eager?: boolean;
+}> = ({ item, isUnavailable, spinnerSize = 48, isFocused = false, eager = false }) => {
+    const trackKey = item.rawTrack ? getPlaybackSongKey(item.rawTrack) : String(item.id);
+    const [cachedCover, setCachedCover] = useState<{ key: string; url: string } | null>(null);
+    const [failedPrimaryCoverKey, setFailedPrimaryCoverKey] = useState<string | null>(null);
+    const cachedCoverUrl = cachedCover?.key === trackKey ? cachedCover.url : undefined;
+    const sourceCoverUrl = item.coverUrl && failedPrimaryCoverKey !== trackKey ? item.coverUrl : cachedCoverUrl;
+
+    useEffect(() => {
+        if (item.coverUrl || !item.rawTrack || cachedCover?.key === trackKey) return;
+        let active = true;
+        void resolveSongArtwork(item.rawTrack).then(url => {
+            if (active && url) setCachedCover({ key: trackKey, url });
+        }).catch(() => undefined);
+        return () => { active = false; };
+    }, [cachedCover?.key, item.coverUrl, item.rawTrack, trackKey]);
+
+    if (!sourceCoverUrl) {
         return (
             <div className="absolute inset-0 bg-zinc-300/40 dark:bg-zinc-700/40 flex items-center justify-center">
                 <Disc size={spinnerSize} className="opacity-20" style={{ color: 'var(--text-primary)' }} />
@@ -54,13 +73,15 @@ export const PolaroidCardCover: React.FC<{
     return (
         <>
             <img
-                src={getSizedCoverUrl(item.coverUrl, 512)}
+                src={getCoverDisplayUrl(sourceCoverUrl, 512)}
                 alt={typeof item.name === 'string' ? item.name : ''}
-                loading="lazy"
+                loading={isFocused || eager ? 'eager' : 'lazy'}
+                fetchPriority={isFocused ? 'high' : 'auto'}
                 decoding="async"
                 ref={(el) => {
-                    if (el && el.complete) {
+                    if (el && el.complete && el.naturalWidth > 0) {
                         el.style.opacity = isUnavailable ? '0.3' : '1';
+                        el.style.display = '';
                         const placeholder = el.nextElementSibling as HTMLElement;
                         if (placeholder) {
                             placeholder.style.opacity = '0';
@@ -71,6 +92,7 @@ export const PolaroidCardCover: React.FC<{
                 onLoad={(e) => {
                     const img = e.currentTarget;
                     img.style.opacity = isUnavailable ? '0.3' : '1';
+                    img.style.display = '';
                     const placeholder = img.nextElementSibling as HTMLElement;
                     if (placeholder) {
                         placeholder.style.opacity = '0';
@@ -78,6 +100,16 @@ export const PolaroidCardCover: React.FC<{
                             placeholder.style.display = 'none';
                         }, 350);
                     }
+                }}
+                onError={(e) => {
+                    const img = e.currentTarget;
+                    img.style.opacity = '0';
+                    img.style.display = 'none';
+                    if (!item.rawTrack || cachedCoverUrl) return;
+                    setFailedPrimaryCoverKey(trackKey);
+                    void resolveSongArtwork(item.rawTrack).then(url => {
+                        if (url) setCachedCover({ key: trackKey, url });
+                    }).catch(() => undefined);
                 }}
                 className="w-full h-full object-cover transition-opacity duration-350 pointer-events-none select-none opacity-0"
             />

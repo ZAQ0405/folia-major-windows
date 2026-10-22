@@ -54,8 +54,9 @@ export const useWallCameraPan = ({
             return;
         }
         animationRef.current = animate(0, 1, {
-            duration: 0.42,
-            ease: [0.22, 1, 0.36, 1],
+            // Match poster resizing so the foreground card doesn't outrun the moving wall.
+            duration: 0.5,
+            ease: [0.4, 0, 0.2, 1],
             onUpdate: progress => applyCamera({
                 x: from.x + (target.x - from.x) * progress,
                 y: from.y + (target.y - from.y) * progress,

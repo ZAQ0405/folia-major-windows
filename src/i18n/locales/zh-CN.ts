@@ -601,6 +601,8 @@ export default {
     "panelHint": "点击标题展开左侧面板",
     "play": "播放",
     "pause": "暂停",
+    "expandPlayerBar": "展开播放控制",
+    "collapsePlayerBar": "收起播放控制",
     "close": "关闭",
     "volume": "音量",
     "openEqualizer": "打开音频均衡器",
@@ -1440,15 +1442,15 @@ export default {
     "hidePlayerTranslationSubtitleDesc": "不影响使用独立字幕的动画模式。",
     "hidePlayerRightPanelButton": "隐藏右侧按钮",
     "transparentPlayerBackground": "播放页透明背景",
-    "transparentPlayerBackgroundDesc": "仅对播放页生效。开启后会切换到透明窗口模式，适合 OBS 浏览器源或抠像叠加场景。",
+    "transparentPlayerBackgroundDesc": "仅对播放页生效。桌面版开启后窗口会自动置顶；点击标题栏锁定按钮可让鼠标操作后方窗口，Folia 仍保持置顶。",
     "enablePlayerPageNativeBlur": "开启播放页原生毛玻璃背景",
     "enablePlayerPageNativeBlurDesc": "开启后，播放页的主题、图片、Monet 等背景将不再显示，并由系统原生毛玻璃替代。仅在非透明模式和桌面端生效；系统原生效果会消耗更多性能，并可能在移动窗口时产生卡顿。",
     "nativeBlurConfirmTitle": "系统毛玻璃效果",
     "nativeBlurConfirmDesc": "开启后，窗口会变为系统毛玻璃效果的半透明背景，Folia 的各种背景将不再显示。如果系统不支持，则会显示为白色不透明背景。",
     "nativeBlurConfirmAction": "我明白，这会让背景调整无效",
     "nativeBlurBackgroundNotice": "当前已开启原生毛玻璃背景，背景设置无效",
-    "autoHidePlayerChrome": "自动隐藏控制栏",
-    "autoHidePlayerChromeDesc": "开启后，自动隐藏播放页的进度条和右侧按钮。",
+    "autoHidePlayerChrome": "播放控制栏自动隐藏",
+    "autoHidePlayerChromeDesc": "开启后，播放页和队列拼贴中的播放控制栏会自动淡出；鼠标移到播放条原位置即可渐显。",
     "stageTrackPill": "歌曲信息卡片",
     "stageTrackPillDesc": "播放器和播放队列左下角的正在播放卡片：显示一段时间后自动隐藏，或保持常驻/隐藏。",
     "stageTrackPillMode_auto": "限时显示",
@@ -1569,6 +1571,8 @@ export default {
     "jizuraRandomDesc": "重新随机当前歌曲的 JIZURA 歌词 MV",
     "jizuraSaveRandom": "固定本曲",
     "jizuraSaveRandomDesc": "保存当前随机到的 JIZURA 方案，之后播放本曲时固定使用",
+    "jizuraUnfixSong": "取消固定",
+    "jizuraUnfixSongDesc": "取消本曲的 JIZURA 歌词 MV 固定方案，恢复随机方案",
     "jizuraCustomizeSong": "定制此曲",
     "jizuraCustomizeSongDesc": "打开当前歌曲的 JIZURA 歌词 MV 定制",
     "foliaRandomPerSong": "逐曲随机 Folia 歌词动画",
@@ -2229,6 +2233,11 @@ export default {
     "playbackModeOfficialDesc": "使用当前歌曲所属平台的官方播放接口；已登录账号继续提供账号数据和歌单。",
     "playbackModeSource": "音源通道",
     "playbackModeSourceDesc": "使用 LX 音源播放内核和已启用的 JS 音源；不会调用官方播放接口。",
+    "providerPlaybackModes": "按平台选择播放渠道",
+    "providerPlaybackModesDesc": "每个平台可以单独使用正版或音源；未单独设置的平台跟随上面的全局模式。账号登录只影响账号数据，不会自动改变这里的选择。",
+    "providerPlaybackModeInherit": "跟随全局",
+    "providerPlaybackModeOfficial": "正版",
+    "providerPlaybackModeSource": "音源",
     "jsMusicSources": "JS 音源",
     "jsMusicSourcesDesc": "导入兼容 LX Music 的 JavaScript 音源。音源代码会在隔离 Worker 中运行，仅用于请求歌曲播放地址；请只导入你信任的文件。选择音源通道后会按列表顺序尝试，不会自动切换到正版播放。",
     "jsMusicSourceImport": "导入 JS 音源",
@@ -2432,6 +2441,25 @@ export default {
       "latticeArtworkEfficiency": {
         "title": "Lattice 封面加载更轻量",
         "description": "Lattice 会按海报实际显示尺寸加载封面，并在展开歌曲前预热大图，减少不必要的图片解码，同时保持展开过程清晰流畅。"
+      }
+    },
+    "v0_7_9": {
+      "intro": "0.7.9 新增各平台独立播放通道、本地收藏、Folia 与 JIZURA 分开配置，以及只在悬停时显示的播放条。",
+      "providerPlaybackModes": {
+        "title": "每个平台都能单独选播放通道",
+        "description": "可分别为各音乐平台选择正版或音源播放；登录主要用于读取账号信息和平台歌单，不会替你切换播放方式。"
+      },
+      "localFavoritePlaylist": {
+        "title": "我喜欢始终是本地歌单",
+        "description": "无论是否登录，点击“我喜欢”都会进入本地收藏；登录平台账号后，平台歌单仍可单独读取。"
+      },
+      "independentLyricVisualizers": {
+        "title": "Folia 动画与 JIZURA 歌词 MV 分开配置",
+        "description": "两套歌词视觉模式独立运行。JIZURA 支持随机、逐曲定制，并可保存喜欢的随机效果。"
+      },
+      "hoverOnlyPlayerControls": {
+        "title": "播放条仅在悬停时显示",
+        "description": "开启自动隐藏后，播放条默认完全不可见；鼠标移到播放条位置才会显示，侧边栏等其他控件保持不变。"
       }
     }
   },

@@ -4,7 +4,8 @@ import { getCachedAudioBlob, hasCachedAudio, saveAudioBlob } from '../audioCache
 import { getCachedCoverUrl, hasCachedCover, saveCoverBlob } from '../coverCache';
 import { getFromCache, saveToCache } from '../db';
 import { getLegacySongResourceCacheKeys, getSongPlaybackAudioCacheKey, getSongResourceCacheKey, type SongResourceKind } from './resourceKeys';
-import { getPlaybackMode } from '../../stores/usePlaybackModeStore';
+import { getPlaybackModeForProvider } from '../../stores/usePlaybackModeStore';
+import { getPlaybackSourceRef } from '../../utils/appPlaybackGuards';
 
 // src/services/onlineMusic/resourceCache.ts
 
@@ -38,12 +39,14 @@ export const getCachedSongAudioBlob = async (song: SongResult): Promise<Blob | n
     // Official audio is account-entitlement dependent. A blob fetched before the listener logged
     // into a VIP account may be a preview and must never win over the current provider request.
     // Only LX/source audio is safe to persist and reuse across sessions.
-    if (getPlaybackMode() !== 'source') return null;
+    const sourceRef = getPlaybackSourceRef(song);
+    if (sourceRef.kind !== 'online' || getPlaybackModeForProvider(sourceRef.providerId) !== 'source') return null;
     return getCachedAudioBlob(getSongPlaybackAudioCacheKey(song, 'source'));
 };
 
 export const hasCachedSongAudio = async (song: SongResult): Promise<boolean> => {
-    if (getPlaybackMode() !== 'source') return false;
+    const sourceRef = getPlaybackSourceRef(song);
+    if (sourceRef.kind !== 'online' || getPlaybackModeForProvider(sourceRef.providerId) !== 'source') return false;
     return hasCachedAudio(getSongPlaybackAudioCacheKey(song, 'source'));
 };
 

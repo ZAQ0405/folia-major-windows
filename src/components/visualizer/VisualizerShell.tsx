@@ -21,10 +21,13 @@ type VisualizerShellSharedProps = Pick<
     | 'staticMode'
     | 'backgroundStaticMode'
     | 'paused'
+    | 'showText'
     | 'onBack'
+    | 'onTogglePlayback'
     | 'isPanelOpen'
     | 'alwaysShowBackButton'
     | 'onPlayerPanelGuideHotspotChange'
+    | 'isPreviewMode'
 >;
 
 interface VisualizerShellProps {
@@ -68,6 +71,7 @@ const VisualizerShell = forwardRef<HTMLDivElement, VisualizerShellProps>(({
     const resolvedBackgroundStaticMode = sharedProps?.backgroundStaticMode ?? false;
     const resolvedPaused = sharedProps?.paused ?? false;
     const resolvedOnBack = sharedProps?.onBack;
+    const resolvedOnTogglePlayback = sharedProps?.onTogglePlayback;
     const resolvedIsPanelOpen = sharedProps?.isPanelOpen ?? false;
     const onPlayerPanelGuideHotspotChange = sharedProps?.onPlayerPanelGuideHotspotChange;
     const isBackButtonVisible = sharedProps?.alwaysShowBackButton || showBackButton;
@@ -153,6 +157,23 @@ const VisualizerShell = forwardRef<HTMLDivElement, VisualizerShellProps>(({
             onPointerCancel={() => {
                 clearTouchGuideHideTimeout();
                 updatePlayerPanelGuideHotspot(false);
+            }}
+            onClick={(event) => {
+                if (
+                    !resolvedOnTogglePlayback
+                    || !sharedProps?.showText
+                    || sharedProps?.isPreviewMode
+                    || resolvedIsPanelOpen
+                ) {
+                    return;
+                }
+
+                const target = event.target;
+                if (target instanceof Element && target.closest('button, a, input, textarea, select, [role="button"], [data-player-click-ignore]')) {
+                    return;
+                }
+
+                resolvedOnTogglePlayback();
             }}
         >
             {resolvedOnBack && (

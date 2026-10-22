@@ -70,7 +70,7 @@ describe('useQqLibrary refresh', () => {
         }]);
     });
 
-    it('treats a profile with no nickname and no account id as authenticated', async () => {
+    it('keeps the account authenticated but leaves QQ favorites out of provider playlists', async () => {
         const deps = createDeps({
             loadPlaylistPage: vi.fn().mockResolvedValue({
                 items: [collection(7, '我喜欢')],
@@ -85,7 +85,7 @@ describe('useQqLibrary refresh', () => {
         expect(final).toMatchObject({
             status: 'authenticated',
             user: NAMELESS_USER,
-            collections: [collection(7, '我喜欢')],
+            collections: [],
             freshness: 'fresh',
             lastUpdatedAt: 1_770_000_000_000,
         });
@@ -112,7 +112,7 @@ describe('useQqLibrary refresh', () => {
         }]);
     });
 
-    it('walks every playlist page until the provider reports no more local rows', async () => {
+    it('walks every playlist page and filters the provider-owned favorites collection', async () => {
         const loadPlaylistPage = vi.fn()
             .mockResolvedValueOnce({ items: [collection(7, '我喜欢')], hasMore: true, nextOffset: 50 })
             .mockResolvedValueOnce({ items: [collection(8, '收藏')], hasMore: false, nextOffset: 51 });
@@ -122,7 +122,7 @@ describe('useQqLibrary refresh', () => {
 
         expect(loadPlaylistPage.mock.calls).toEqual([['', 50, 0], ['', 50, 50]]);
         expect(patchesFrom(deps.updateAccount).at(-1)?.collections)
-            .toEqual([collection(7, '我喜欢'), collection(8, '收藏')]);
+            .toEqual([collection(8, '收藏')]);
     });
 
     it('stops paging when the provider stops advancing its offset', async () => {
@@ -168,7 +168,7 @@ describe('useQqLibrary refresh', () => {
         await refreshQqLibraryAccount(deps);
 
         expect(deps.loadLikedSongIds).toHaveBeenCalledWith('');
-        expect(deps.saveSnapshot).toHaveBeenCalledWith(NAMELESS_USER, [collection(7, '我喜欢')], ['liked-mid']);
+        expect(deps.saveSnapshot).toHaveBeenCalledWith(NAMELESS_USER, [], ['liked-mid']);
         expect(patchesFrom(deps.updateAccount).at(-1)?.likedSongIds).toEqual(['liked-mid']);
     });
 

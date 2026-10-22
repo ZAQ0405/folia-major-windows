@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence, useTransform } from 'framer-motion';
-import { Settings, Settings2, X, Disc, SlidersHorizontal, ListMusic, User as UserIcon, Home as HomeIcon, FileAudio, FileText, Radio, Cloud, Star, Command, ChevronLeft, MirrorRectangular } from 'lucide-react';
+import { Settings, Settings2, X, Disc, SlidersHorizontal, ListMusic, User as UserIcon, Home as HomeIcon, FileAudio, FileText, Radio, Cloud, Star, Command, ChevronLeft, ChevronUp, ChevronDown, MirrorRectangular } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Album, Artist, SongResult, Theme, PlayerState, ReplayGainMode, ThemeMode, VisualizerMode } from '../types';
 import type { ProviderUser } from '../types/onlineMusic';
@@ -234,6 +234,7 @@ const UnifiedPanel: React.FC<UnifiedPanelProps> = ({
     } = account;
     const coverAreaRef = React.useRef<HTMLDivElement>(null);
     const [isCoverActionsVisible, setIsCoverActionsVisible] = React.useState(false);
+    const [isCompact, setIsCompact] = React.useState(false);
     const [showGuideLine, setShowGuideLine] = React.useState(false);
     const [isDragging, setIsDragging] = React.useState(false);
     const guideHideTimeoutRef = React.useRef<number | null>(null);
@@ -581,6 +582,10 @@ const UnifiedPanel: React.FC<UnifiedPanelProps> = ({
     }, [currentTab, currentSong?.id]);
 
     React.useEffect(() => {
+        if (!isOpen) setIsCompact(false);
+    }, [isOpen]);
+
+    React.useEffect(() => {
         if (supportsHover || !isCoverActionsVisible) {
             return undefined;
         }
@@ -614,7 +619,8 @@ const UnifiedPanel: React.FC<UnifiedPanelProps> = ({
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
                             data-testid="unified-panel-surface"
-                            className={`folia-unified-panel-surface pointer-events-auto w-80 ${glassBg} backdrop-blur-3xl rounded-3xl shadow-2xl flex flex-col mb-16 md:mb-2 overflow-y-auto hide-scrollbar`}
+                            data-panel-tab={currentTab}
+                            className={`folia-unified-panel-surface pointer-events-auto w-80 ${isCompact ? 'folia-unified-panel-surface--compact' : ''} ${glassBg} backdrop-blur-3xl rounded-3xl shadow-2xl flex flex-col mb-16 md:mb-2 overflow-y-auto hide-scrollbar`}
                             style={{ color: theme.primaryColor, maxHeight: panelMaxHeight }}
                         >
                             <div className="p-5 flex flex-col">
@@ -645,7 +651,7 @@ const UnifiedPanel: React.FC<UnifiedPanelProps> = ({
 
                                     {/* 左上角：打开设置 */}
                                     {onOpenSettings && (
-                                        <div className={`absolute left-3 top-3 transition-all duration-200 ${
+                                        <div className={`folia-unified-panel-cover-action folia-unified-panel-cover-action--left absolute left-3 top-3 transition-all duration-200 ${
                                             supportsHover
                                                 ? 'pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 -translate-x-3 -translate-y-3 group-hover:translate-x-0 group-hover:translate-y-0'
                                                 : `${isCoverActionsVisible ? 'pointer-events-auto opacity-100 translate-x-0 translate-y-0' : 'pointer-events-none opacity-0 -translate-x-3 -translate-y-3'}`
@@ -665,7 +671,7 @@ const UnifiedPanel: React.FC<UnifiedPanelProps> = ({
                                     )}
 
                                     {/* 右上角：播放页透明。不算高频，所以只占封面的空位，不占面板结构 */}
-                                    <div className={`absolute right-3 top-3 transition-all duration-200 ${
+                                    <div className={`folia-unified-panel-cover-action absolute right-3 top-3 transition-all duration-200 ${
                                         supportsHover
                                             ? 'pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 translate-x-3 -translate-y-3 group-hover:translate-x-0 group-hover:translate-y-0'
                                             : `${isCoverActionsVisible ? 'pointer-events-auto opacity-100 translate-x-0 translate-y-0' : 'pointer-events-none opacity-0 translate-x-3 -translate-y-3'}`
@@ -689,7 +695,7 @@ const UnifiedPanel: React.FC<UnifiedPanelProps> = ({
                                         </button>
                                     </div>
 
-                                    <div className={`absolute left-3 bottom-3 transition-all duration-200 ${
+                                    <div className={`folia-unified-panel-cover-action folia-unified-panel-cover-action--left folia-unified-panel-cover-action--bottom absolute left-3 bottom-3 transition-all duration-200 ${
                                         supportsHover
                                             ? 'pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 -translate-x-3 translate-y-3 group-hover:translate-x-0 group-hover:translate-y-0'
                                             : `${isCoverActionsVisible ? 'pointer-events-auto opacity-100 translate-x-0 translate-y-0' : 'pointer-events-none opacity-0 -translate-x-3 translate-y-3'}`
@@ -710,7 +716,7 @@ const UnifiedPanel: React.FC<UnifiedPanelProps> = ({
                                     {showAddToPlaylistAction && (
                                         <div
                                             title={addToPlaylistDisabledReason || t('localMusic.addToPlaylist')}
-                                            className={`absolute right-3 bottom-3 transition-all duration-200 ${
+                                            className={`folia-unified-panel-cover-action folia-unified-panel-cover-action--bottom absolute right-3 bottom-3 transition-all duration-200 ${
                                             supportsHover
                                                 ? 'pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 translate-x-3 translate-y-3 group-hover:translate-x-0 group-hover:translate-y-0'
                                                 : `${isCoverActionsVisible ? 'pointer-events-auto opacity-100 translate-x-0 translate-y-0' : 'pointer-events-none opacity-0 translate-x-3 translate-y-3'}`
@@ -736,20 +742,34 @@ const UnifiedPanel: React.FC<UnifiedPanelProps> = ({
                                 </div>
 
                                 {/* Tab Switcher */}
-                                <div className={`flex ${tabSwitcherBg} p-1 rounded-xl mb-4`}>
+                                <div className={`folia-unified-panel-tabs flex ${tabSwitcherBg} p-1 rounded-xl mb-4`}>
                                     {tabs.map((tab) => (
                                         <button
                                             key={tab.id}
-                                            onClick={() => onTabChange(tab.id)}
+                                            onClick={() => {
+                                                onTabChange(tab.id);
+                                                if (isCompact) setIsCompact(false);
+                                            }}
                                             aria-pressed={currentTab === tab.id}
-                                            className={`flex-1 py-2 flex items-center justify-center transition-all rounded-lg
+                                            aria-label={tab.label}
+                                            className={`folia-unified-panel-tab flex-1 py-2 flex items-center justify-center transition-all rounded-lg
                                                 ${currentTab === tab.id ? `${activeTabBg} shadow-sm` : 'opacity-40 hover:opacity-100'}`}
                                             title={tab.label}
                                             style={{ color: 'var(--text-primary)' }}
                                         >
                                             <tab.icon size={16} />
+                                            <span className="folia-unified-panel-tab-label">{tab.label}</span>
                                         </button>
                                     ))}
+                                    <button
+                                        type="button"
+                                        className="folia-unified-panel-collapse-toggle"
+                                        onClick={() => setIsCompact(value => !value)}
+                                        aria-label={isCompact ? t('ui.panelExpand') : t('ui.panelCollapse')}
+                                        title={isCompact ? t('ui.panelExpand') : t('ui.panelCollapse')}
+                                    >
+                                        {isCompact ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                                    </button>
                                 </div>
 
                                 {/* Tab Content */}

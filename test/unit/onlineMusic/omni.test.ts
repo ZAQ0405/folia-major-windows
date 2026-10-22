@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { saveProviderAccountSnapshot } from '@/services/onlineMusic/providerAccountCache';
-import { omni } from '@/services/onlineMusic/omni';
+import { omni, shouldPreferBundledLxSource } from '@/services/onlineMusic/omni';
 import { registerOnlineMusicProvider, unregisterOnlineMusicProvider } from '@/services/onlineMusic/providerRegistry';
 import { useOnlineProviderAccountStore } from '@/stores/useOnlineProviderAccountStore';
 import type { UnifiedSong } from '@/types';
@@ -57,6 +57,13 @@ afterEach(() => {
 });
 
 describe('omni routing', () => {
+    it('prefers the APK-bundled LX source transport on Android without changing desktop mode policy', () => {
+        expect(shouldPreferBundledLxSource(true, 'provider')).toBe(true);
+        expect(shouldPreferBundledLxSource(true, 'source')).toBe(true);
+        expect(shouldPreferBundledLxSource(false, 'provider')).toBe(false);
+        expect(shouldPreferBundledLxSource(false, 'source')).toBe(true);
+    });
+
     it('probes a real provider operation and reports channel health', async () => {
         const search = vi.fn(async () => ({ items: [], hasMore: false, nextOffset: 1 }));
         registerOnlineMusicProvider(provider(healthProviderId, { searchSongs: search }));

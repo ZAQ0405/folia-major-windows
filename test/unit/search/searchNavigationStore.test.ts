@@ -6,6 +6,8 @@ import { omni } from '@/services/onlineMusic/omni';
 import type { LocalLibraryAssignment, LocalLibraryEntity } from '@/types/localLibrary';
 
 vi.mock('@/services/netease', () => ({
+    getNeteaseTransportAvailability: () => ({ configured: true }),
+    isSongMarkedUnavailable: () => false,
     neteaseApi: {
         cloudSearch: vi.fn(),
         normalizeSongResult: vi.fn((raw: unknown) => raw),

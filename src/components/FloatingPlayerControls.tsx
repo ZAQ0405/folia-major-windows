@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AnimatePresence, motion } from 'framer-motion';
-import { Play, Pause, ChevronDown, ChevronUp } from 'lucide-react';
+import { AnimatePresence, motion, useTransform } from 'framer-motion';
+import { Play, Pause, ChevronUp } from 'lucide-react';
 import { MotionValue } from 'framer-motion';
 import ProgressBar from './ProgressBar';
 import { PlayerState, LyricData, Theme } from '../types';
@@ -9,6 +9,7 @@ import LyricsTimelineModal from './modal/LyricsTimelineModal';
 import TrackTitleNavigator from './floating-player/TrackTitleNavigator';
 import PlayerControlSlotButton from './floating-player/PlayerControlSlotButton';
 import PlayerBottomBarPositioner from './floating-player/PlayerBottomBarPositioner';
+import AndroidHomePlayerDock from '../platform/android/components/AndroidHomePlayerDock';
 import { usePlayerBottomBarBottomPx } from '../hooks/usePlayerBottomBarBottomPx';
 import { playerBottomBarLiveOffset } from '../stores/motionSignals';
 import { usePlayerBottomBarLayoutStore } from '../stores/usePlayerBottomBarLayoutStore';
@@ -71,6 +72,9 @@ interface FloatingPlayerControlsProps {
     theme?: Theme;
     isDaylight: boolean;
     isHidden?: boolean;
+    autoHideEnabled?: boolean;
+    onAutoHidePointerEnter?: () => void;
+    onAutoHidePointerLeave?: () => void;
     hideControlBar?: boolean;
     controlsDisabled?: boolean;
     trackNavigation?: TrackNavigation | null;
@@ -106,6 +110,9 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
     theme,
     isDaylight,
     isHidden = false,
+    autoHideEnabled = false,
+    onAutoHidePointerEnter,
+    onAutoHidePointerLeave,
     hideControlBar = false,
     controlsDisabled = false,
     trackNavigation = null,
@@ -128,11 +135,40 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
 
     const [isHovered, setIsHovered] = useState(false);
     const [isAndroidCompactExpanded, setIsAndroidCompactExpanded] = useState(false);
+    const [isAndroidKeyboardOpen, setIsAndroidKeyboardOpen] = useState(false);
     const [isTimelineOpen, setIsTimelineOpen] = useState(false);
     const expandTimeoutRef = useRef<number | null>(null);
     const collapseTimeoutRef = useRef<number | null>(null);
 
     const bottomBarBottomPx = usePlayerBottomBarBottomPx();
+    // On Android the home dock sits lower than the desktop floating bar. This
+    // keeps its taller, expanded state below short provider panels while still
+    // respecting the user's configured lift and the system navigation inset.
+    const androidHomeDockBottomPx = useTransform(
+        bottomBarBottomPx,
+        value => Math.max(4, value - 28),
+    );
+
+    useEffect(() => {
+        if (!isAndroidCapacitor) return;
+        const updateKeyboardState = () => {
+            const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+            const keyboardConsumesViewport = window.screen.height - viewportHeight > 120;
+            setIsAndroidKeyboardOpen(keyboardConsumesViewport);
+        };
+
+        updateKeyboardState();
+        window.visualViewport?.addEventListener('resize', updateKeyboardState);
+        window.addEventListener('resize', updateKeyboardState);
+        return () => {
+            window.visualViewport?.removeEventListener('resize', updateKeyboardState);
+            window.removeEventListener('resize', updateKeyboardState);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (isAndroidKeyboardOpen) setIsAndroidCompactExpanded(false);
+    }, [isAndroidKeyboardOpen]);
     const isPositioning = usePlayerBottomBarLayoutStore(state => state.isPositioning);
     const commitPositioning = usePlayerBottomBarLayoutStore(state => state.commitPositioning);
     const cancelPositioning = usePlayerBottomBarLayoutStore(state => state.cancelPositioning);
@@ -319,7 +355,13 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
         }
     };
 
-    if (hideControlBar) {
+    // The expanded Lattice card owns its own seek and transport controls. Use
+    // the active view prop instead of a document-wide CSS :has() check: inactive
+    // views may remain mounted and must not suppress the home dock after return.
+    // When the Android IME owns most of a short landscape viewport, keep the
+    // focused search/input unobstructed. Playback continues and the dock returns
+    // as soon as the keyboard closes.
+    if (hideControlBar || isAndroidKeyboardOpen || (isAndroidCapacitor && currentView === 'lattice')) {
         return null;
     }
 
@@ -336,8 +378,17 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
                 className={`folia-floating-player-controls absolute z-60 w-full flex justify-center pointer-events-none
                     ${isAndroidCompactHome ? 'right-3 folia-player-home-anchor' : 'left-1/2 -translate-x-1/2'}
                     ${currentView === 'home' ? 'max-w-[calc(100vw-120px)] md:max-w-lg' : 'max-w-lg px-4'}`}
-                style={{ bottom: bottomBarBottomPx }}
+                style={{ bottom: isAndroidCompactHome ? androidHomeDockBottomPx : bottomBarBottomPx }}
             >
+            {autoHideEnabled && (
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-auto absolute bottom-[-16px] left-1/2 h-14 w-[min(80vw,320px)] -translate-x-1/2"
+                    onPointerEnter={onAutoHidePointerEnter}
+                    onPointerLeave={onAutoHidePointerLeave}
+                    onPointerMove={onAutoHidePointerEnter}
+                />
+            )}
             <motion.div
                 className="w-full flex justify-center transition-all duration-300 pointer-events-none"
                 initial={false}
@@ -372,33 +423,36 @@ const FloatingPlayerControls: React.FC<FloatingPlayerControlsProps> = ({
                         onPointerMove={handlePositionDragMove}
                         onPointerUp={handlePositionDragEnd}
                         onPointerCancel={handlePositionDragEnd}
+                        onPointerEnter={autoHideEnabled ? onAutoHidePointerEnter : undefined}
+                        onPointerLeave={autoHideEnabled ? onAutoHidePointerLeave : undefined}
                         style={{ touchAction: isPositioning ? 'none' : undefined }}
                         className={`folia-floating-player-card backdrop-blur-xl shadow-2xl overflow-hidden rounded-full relative transition-colors duration-300
                             ${isPositioning ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
                             ${showExpanded ? `p-3 ${glassBgExpanded} w-full` : `px-4 py-2 ${glassBgCollapsed} w-[80%] md:w-[60%]`}`}
                         data-expanded={showExpanded ? 'true' : 'false'}
                     >
-                        {isAndroidCapacitor && showExpanded && currentView === 'home' && !isPositioning && (
-                            <button
-                                type="button"
-                                aria-label="收起播放条"
-                                title="收起播放条"
-                                onClick={(event) => {
-                                    event.stopPropagation();
-                                    setIsAndroidCompactExpanded(false);
-                                }}
-                                className="folia-player-collapse-toggle absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full"
-                            >
-                                <ChevronDown size={16} />
-                            </button>
-                        )}
                         <motion.div
                             layout
                             transition={{ layout: CONTROL_LAYOUT_SPRING }}
                             // 定位模式下 seek 和所有按钮一起失效：这时胶囊是个被拖的物体，不是控件。
                             className={`w-full ${isPositioning ? 'pointer-events-none select-none' : ''}`}
                         >
-                            {showExpanded ? (
+                            {isAndroidCapacitor && currentView === 'home' && showExpanded ? (
+                                <AndroidHomePlayerDock
+                                    title={currentSong?.name || noTrackText}
+                                    playerState={playerState}
+                                    currentTime={currentTime}
+                                    duration={duration}
+                                    canTogglePlay={canTogglePlay}
+                                    disabled={controlsDisabled || isPositioning}
+                                    primaryColor={primaryColor}
+                                    secondaryColor={secondaryColor}
+                                    trackColor={trackColor}
+                                    onSeek={onSeek}
+                                    onTogglePlay={onTogglePlay}
+                                    onCollapse={() => setIsAndroidCompactExpanded(false)}
+                                />
+                            ) : showExpanded ? (
                                 <ExpandedView
                                     currentSong={currentSong}
                                     playerState={playerState}
@@ -593,7 +647,8 @@ const ExpandedView: React.FC<ExpandedViewProps> = ({
                     primaryColor={primaryColor}
                     secondaryColor={secondaryColor}
                     trackColor={trackColor}
-                    disabled={controlsDisabled}
+                    disabled={controlsDisabled || (isAndroidCapacitor && duration <= 0)}
+                    unknownDurationText={isAndroidCapacitor ? '--:--' : undefined}
                 />
             </div>
         </div>
@@ -630,6 +685,8 @@ const CollapsedView: React.FC<CollapsedViewProps> = ({
     trackColor,
     controlsDisabled = false,
 }) => {
+    const { t } = useTranslation();
+
     return (
         <div className="folia-player-collapsed-view flex h-8 w-full items-center justify-center px-4">
             <div className="folia-player-collapsed-meta flex min-w-0 items-center gap-2.5">
@@ -653,8 +710,8 @@ const CollapsedView: React.FC<CollapsedViewProps> = ({
                 </div>
                 <button
                     type="button"
-                    aria-label="展开播放条"
-                    title="展开播放条"
+                    aria-label={t('expandPlayerBar')}
+                    title={t('expandPlayerBar')}
                     onClick={(event) => {
                         event.stopPropagation();
                         onToggleCompact();
@@ -672,7 +729,8 @@ const CollapsedView: React.FC<CollapsedViewProps> = ({
                     primaryColor={primaryColor}
                     secondaryColor={secondaryColor}
                     trackColor={trackColor}
-                    disabled={controlsDisabled}
+                    disabled={controlsDisabled || (isAndroidCapacitor && duration <= 0)}
+                    unknownDurationText={isAndroidCapacitor ? '--:--' : undefined}
                 />
             </div>
         </div>

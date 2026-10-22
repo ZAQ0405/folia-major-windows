@@ -149,10 +149,10 @@ const LocalTab: React.FC<LocalTabProps> = ({
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex min-h-96 flex-col space-y-6 pt-4 px-2"
+            className="folia-panel-local-root flex min-h-96 flex-col space-y-6 pt-4 px-2"
         >
             {/* File Info */}
-            <div className="space-y-3">
+            <div className="folia-panel-local-file-info space-y-3">
                 <h3 className="text-sm font-semibold opacity-50 uppercase tracking-wider flex items-center gap-2">
                     <FileAudio size={14} /> {t('localMusic.fileInfo')}
                 </h3>
@@ -189,7 +189,7 @@ const LocalTab: React.FC<LocalTabProps> = ({
             />
 
             {/* Lyrics Management */}
-            <div className="space-y-3">
+            <div className="folia-panel-local-lyrics space-y-3">
                 <div className="flex items-center justify-between">
                     <h3 className="text-sm font-semibold opacity-50 uppercase tracking-wider flex items-center gap-2">
                         <FileText size={14} /> {t('localMusic.lyrics')}

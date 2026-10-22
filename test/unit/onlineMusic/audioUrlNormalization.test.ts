@@ -33,6 +33,26 @@ describe('online audio URL normalization', () => {
             .toBe('https://m10.music.126.net/song.mp3');
     });
 
+    it('upgrades tested Baidu CDN media URLs to HTTPS for Android WebView playback', () => {
+        expect(toSafePlaybackUrl('http://v3-32-yp-qqmusic.a.bdycdn.cn/song.mp3?token=opaque', false))
+            .toBe('https://v3-32-yp-qqmusic.a.bdycdn.cn/song.mp3?token=opaque');
+    });
+
+    it('upgrades tested QQ Music media URLs to HTTPS for Android WebView playback', () => {
+        expect(toSafePlaybackUrl('http://ws.stream.qqmusic.qq.com/song.mp3?token=opaque', false))
+            .toBe('https://ws.stream.qqmusic.qq.com/song.mp3?token=opaque');
+    });
+
+    it('upgrades tested Kuwo media URLs to HTTPS for Android WebView playback', () => {
+        expect(toSafePlaybackUrl('http://car-er.kuwo.cn/song.mp3?token=opaque', false))
+            .toBe('https://car-er.kuwo.cn/song.mp3?token=opaque');
+    });
+
+    it('upgrades non-fs KuGou media subdomains used by mobile resolvers', () => {
+        expect(toSafePlaybackUrl('http://fsdg360.hw.kugou.com/song.mp3?token=opaque', false))
+            .toBe('https://fsdg360.hw.kugou.com/song.mp3?token=opaque');
+    });
+
     it('keeps only the first KuGou candidate while preserving Electron HTTP', () => {
         expect(toSafePlaybackUrl(
             'http://fs.youthandroid2.kugou.com/primary.mp3,http://fs.youthandroid2.kugou.com/backup.mp3',

@@ -38,7 +38,7 @@ const ReplayGainControl: React.FC<ReplayGainControlProps> = ({
     const inactiveBackground = isDaylight ? 'bg-black/5 text-zinc-500 hover:bg-black/10' : 'bg-white/5 text-zinc-400 hover:bg-white/10';
 
     return (
-        <div className="space-y-2">
+        <div className="folia-panel-replaygain-control space-y-2">
             <div className="flex items-center justify-between">
                 <h3 className="text-[12px] font-bold opacity-40 uppercase tracking-widest">
                     {t('localMusic.replayGainTitle')}

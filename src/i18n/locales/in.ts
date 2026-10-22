@@ -598,6 +598,8 @@ export default {
     "panelHint": "Klik judul untuk membuka panel samping",
     "play": "Putar",
     "pause": "Jeda",
+    "expandPlayerBar": "Perluas kontrol pemutar",
+    "collapsePlayerBar": "Ciutkan kontrol pemutar",
     "close": "Tutup",
     "volume": "Volume",
     "openEqualizer": "Buka equalizer audio",
@@ -1435,15 +1437,15 @@ export default {
     "hidePlayerTranslationSubtitleDesc": "Tidak memengaruhi mode visualizer yang merender subtitle mandiri.",
     "hidePlayerRightPanelButton": "Sembunyikan tombol sisi kanan pemutar",
     "transparentPlayerBackground": "Latar belakang pemutar transparan",
-    "transparentPlayerBackgroundDesc": "Hanya berlaku di halaman pemutar. Saat diaktifkan, Folia beralih ke mode jendela transparan untuk sumber browser OBS atau overlay chroma key.",
+    "transparentPlayerBackgroundDesc": "Hanya berlaku di halaman pemutar. Di desktop, jendela Folia otomatis selalu di atas saat diaktifkan. Klik tombol kunci pada titlebar untuk menggunakan jendela di belakang Folia sementara Folia tetap di atas.",
     "enablePlayerPageNativeBlur": "Aktifkan Blur Asli Halaman Pemutar",
     "enablePlayerPageNativeBlurDesc": "Saat diaktifkan, latar belakang tema, gambar, Monet, dan lainnya disembunyikan dan diganti dengan blur asli sistem. Hanya berlaku dalam mode non-transparan di desktop; efek asli menggunakan lebih banyak sumber daya dan mungkin lambat saat memindahkan jendela.",
     "nativeBlurConfirmTitle": "Efek kaca sistem",
     "nativeBlurConfirmDesc": "Ini mengubah jendela menjadi latar belakang tembus pandang menggunakan efek kaca sistem. Latar belakang Folia tidak akan ditampilkan.",
     "nativeBlurConfirmAction": "Saya mengerti",
     "nativeBlurBackgroundNotice": "Blur glassmorphism asli diaktifkan; pengaturan latar belakang animasi lirik saat ini ditimpa.",
-    "autoHidePlayerChrome": "Sembunyikan otomatis kontrol pemutar",
-    "autoHidePlayerChromeDesc": "Saat diaktifkan, bilah progres pemutar dan tombol sisi kanan akan otomatis tersembunyi saat mouse meninggalkan jendela lebih dari 3 detik.",
+    "autoHidePlayerChrome": "Sembunyikan kontrol pemutaran otomatis",
+    "autoHidePlayerChromeDesc": "Saat aktif, kontrol pemutaran memudar di halaman pemutar dan kolase antrean. Arahkan kursor ke posisi semula untuk menampilkannya kembali.",
     "stageTrackPill": "Kartu lagu",
     "stageTrackPillDesc": "Kartu now playing di kiri bawah pemutar dan antrean putar: sembunyi otomatis setelah beberapa saat, atau selalu tampil / tersembunyi.",
     "stageTrackPillMode_auto": "Berwaktu",
@@ -1562,6 +1564,8 @@ export default {
     "jizuraRandomDesc": "Acak ulang lyric MV JIZURA untuk lagu saat ini",
     "jizuraSaveRandom": "Tetapkan lagu",
     "jizuraSaveRandomDesc": "Simpan rencana acak JIZURA saat ini untuk lagu ini",
+    "jizuraUnfixSong": "Lepas penetapan",
+    "jizuraUnfixSongDesc": "Hapus rencana JIZURA tetap lagu ini dan kembali ke pilihan acak",
     "jizuraCustomizeSong": "Kustomisasi lagu",
     "jizuraCustomizeSongDesc": "Buka kustomisasi lyric MV JIZURA untuk lagu saat ini",
     "foliaRandomPerSong": "Acak animasi lirik Folia per lagu",
@@ -2140,6 +2144,11 @@ export default {
     "playbackModeOfficialDesc": "Gunakan antarmuka pemutaran resmi dari penyedia lagu sambil tetap memakai data akun yang sudah login.",
     "playbackModeSource": "Saluran sumber",
     "playbackModeSourceDesc": "Gunakan inti pemutaran LX dan sumber JavaScript yang aktif tanpa memanggil antarmuka pemutaran resmi.",
+    "providerPlaybackModes": "Saluran pemutaran per platform",
+    "providerPlaybackModesDesc": "Pilih pemutaran resmi atau sumber secara terpisah untuk tiap platform. Platform tanpa pengaturan khusus mengikuti mode global di atas. Login hanya memengaruhi data akun.",
+    "providerPlaybackModeInherit": "Ikuti global",
+    "providerPlaybackModeOfficial": "Resmi",
+    "providerPlaybackModeSource": "Sumber",
     "jsMusicSources": "Sumber musik JavaScript",
     "jsMusicSourcesDesc": "Impor sumber JavaScript yang kompatibel dengan LX Music. Kode sumber berjalan di Worker terisolasi dan hanya digunakan untuk mencari URL pemutaran; impor hanya file yang Anda percaya. Dalam mode saluran sumber, sumber dicoba sesuai urutan daftar tanpa beralih diam-diam ke pemutaran resmi.",
     "jsMusicSourceImport": "Impor sumber JS",
@@ -2367,6 +2376,25 @@ export default {
       "latticeArtworkEfficiency": {
         "title": "Pemuatan Sampul Lattice Lebih Ringan",
         "description": "Lattice kini memuat ukuran sampul sesuai tiap poster dan menyiapkan gambar yang lebih besar saat lagu dibuka, sehingga dekode gambar berlebih berkurang tanpa mengorbankan kejernihan transisi."
+      }
+    },
+    "v0_7_9": {
+      "intro": "Versi 0.7.9 menambahkan rute pemutaran per penyedia, playlist Favorit lokal tanpa ketergantungan akun, mode Folia dan JIZURA yang terpisah, serta kontrol pemutar yang hanya muncul saat diarahkan.",
+      "providerPlaybackModes": {
+        "title": "Pilih Rute Pemutaran untuk Tiap Penyedia",
+        "description": "Pilih pemutaran resmi atau sumber audio secara terpisah untuk tiap penyedia musik. Login terutama digunakan untuk membaca akun dan playlist penyedia, bukan untuk mengganti rute pemutaran."
+      },
+      "localFavoritePlaylist": {
+        "title": "Favorit Anda Tetap Lokal",
+        "description": "Memilih Favorit selalu membuka playlist lokal, baik Anda login maupun tidak. Playlist dari penyedia tetap dapat dibaca secara terpisah setelah akun dihubungkan."
+      },
+      "independentLyricVisualizers": {
+        "title": "Atur Folia dan JIZURA Secara Terpisah",
+        "description": "Animasi lirik bawaan Folia dan MV lirik JIZURA berjalan sebagai mode visual terpisah. JIZURA mendukung gaya acak, penyesuaian per lagu, dan penyimpanan hasil acak favorit."
+      },
+      "hoverOnlyPlayerControls": {
+        "title": "Kontrol Pemutar Muncul Saat Diarahkan",
+        "description": "Saat sembunyikan otomatis diaktifkan, bilah pemutar tetap tidak terlihat sampai penunjuk masuk ke area pemicunya. Kontrol panel samping dan UI lain tetap terlihat."
       }
     }
   },

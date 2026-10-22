@@ -33,7 +33,6 @@ const MEMORY_MONITOR_SHORTCUT_LABEL = 'Alt+Shift+M';
 export const useAppOverlaysModel = (deps: AppOverlaysDeps): AppOverlaysModel => {
     const { t } = useTranslation();
     const currentView = useAppViewStore(state => state.view);
-    const isPlayerChromeHidden = useAppChromeStore(state => state.isPlayerChromeHidden);
     const isDevDebugOverlayVisible = useAppChromeStore(state => state.isDevDebugOverlayVisible);
     const isMemoryMonitorVisible = useAppChromeStore(state => state.isMemoryMonitorVisible);
     const isSearchOpen = useSearchNavigationStore(state => state.isSearchOpen);
@@ -95,7 +94,6 @@ export const useAppOverlaysModel = (deps: AppOverlaysDeps): AppOverlaysModel => 
         audioSrc,
         lyrics: displayLyrics,
         activePlaybackContext,
-        isPlayerChromeHidden,
         playQueue,
         isFmMode,
         coverUrl: displayCoverUrl,
@@ -128,7 +126,6 @@ export const useAppOverlaysModel = (deps: AppOverlaysDeps): AppOverlaysModel => 
         audioSrc,
         displayLyrics,
         activePlaybackContext,
-        isPlayerChromeHidden,
         playQueue,
         isFmMode,
         displayCoverUrl,

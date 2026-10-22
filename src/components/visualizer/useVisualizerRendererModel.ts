@@ -48,6 +48,7 @@ type VisualizerRendererModelDeps = {
     isPlayerPageTransparent: boolean;
     onLyricLineSeek: (index: number) => void;
     onBack: () => void;
+    onTogglePlayback: () => void;
 };
 
 export const useVisualizerRendererModel = ({
@@ -60,6 +61,7 @@ export const useVisualizerRendererModel = ({
     isPlayerPageTransparent,
     onLyricLineSeek,
     onBack,
+    onTogglePlayback,
 }: VisualizerRendererModelDeps) => {
     const currentView = useAppViewStore(state => state.view);
     const isPanelOpen = useAppViewStore(state => state.isPanelOpen);
@@ -215,6 +217,7 @@ export const useVisualizerRendererModel = ({
         // Only these two read a click on a lyric line; the rest have no line hit-testing at all.
         onLyricLineSeek: ['monet', 'pendolo'].includes(visualizerMode) ? onLyricLineSeek : undefined,
         onBack,
+        onTogglePlayback: currentView === 'player' && !isSettingsModalOpen ? onTogglePlayback : undefined,
         isPanelOpen,
         alwaysShowBackButton: alwaysShowPlayerBackButton || isPanelOpen,
         onPlayerPanelGuideHotspotChange,

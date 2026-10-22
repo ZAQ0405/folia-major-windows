@@ -136,3 +136,48 @@ export const getBlockReflow = (
     if (expandedSlot < 0 || expandedSlot >= SLOTS_PER_BLOCK) return null;
     return ORIENTED_REFLOWS[getBlockOrientation(blockColumn, blockRow)][expandedSlot];
 };
+
+/**
+ * Chooses the least-disruptive mirrored exact cover for this specific source layout. The active
+ * poster's displacement is weighted heavily so it expands near the place the user tapped; ties
+ * and the remaining score minimize movement/resize work for its neighbours.
+ */
+export const getPreferredBlockReflow = (
+    blockColumn: number,
+    blockRow: number,
+    expandedSlot: number,
+): BlockSlot[] | null => {
+    if (expandedSlot < 0 || expandedSlot >= SLOTS_PER_BLOCK) return null;
+
+    const orientation = getBlockOrientation(blockColumn, blockRow);
+    const templateIndex = Math.floor(orientation / REFLECTIONS.length);
+    const firstReflection = orientation % REFLECTIONS.length;
+    const source = getBlockTemplate(blockColumn, blockRow);
+    let best: BlockSlot[] | null = null;
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    // Start with the original orientation to keep deterministic tie-breaking stable.
+    for (let offset = 0; offset < REFLECTIONS.length; offset += 1) {
+        const reflection = (firstReflection + offset) % REFLECTIONS.length;
+        const candidate = ORIENTED_REFLOWS[templateIndex * REFLECTIONS.length + reflection][expandedSlot];
+        let score = 0;
+
+        for (let slotIndex = 0; slotIndex < SLOTS_PER_BLOCK; slotIndex += 1) {
+            const from = source[slotIndex];
+            const to = candidate[slotIndex];
+            const dx = to.x - from.x;
+            const dy = to.y - from.y;
+            const dCols = to.cols - from.cols;
+            const dRows = to.rows - from.rows;
+            const movement = dx * dx + dy * dy + 0.5 * (dCols * dCols + dRows * dRows);
+            score += slotIndex === expandedSlot ? movement * 16 : movement;
+        }
+
+        if (score < bestScore) {
+            best = candidate;
+            bestScore = score;
+        }
+    }
+
+    return best;
+};

@@ -1,7 +1,7 @@
-import type { SongResult } from '../types';
-import type { VideoExportPreset } from '../types/videoExport';
+import type { SongResult } from '../../../types';
+import type { VideoExportPreset } from '../../../types/videoExport';
 
-// src/services/electronVideoExport.ts
+// src/platform/electron/services/electronVideoExport.ts
 // Low-level Electron/Chromium recording helpers used by the player export hook.
 const EXPORT_FRAME_RATE = 60;
 const EXPORT_AUDIO_BITS_PER_SECOND = 320_000;

@@ -12,6 +12,8 @@ interface ThemedDialogProps {
     children: React.ReactNode;
     footer?: React.ReactNode;
     maxWidthClass?: string;
+    /** Keep the dialog header (including its close button) visible while long content scrolls. */
+    fitViewport?: boolean;
     /**
      * Blocks the two close paths this dialog owns - the X and the backdrop - while the caller is
      * mid-way through work a close would leave half-applied. Also dims the X so the wait shows:
@@ -32,6 +34,7 @@ const ThemedDialog: React.FC<ThemedDialogProps> = ({
     children,
     footer,
     maxWidthClass = 'max-w-md',
+    fitViewport = false,
     closeDisabled = false,
     closeDisabledTitle,
 }) => {
@@ -60,7 +63,7 @@ const ThemedDialog: React.FC<ThemedDialogProps> = ({
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     data-folia-keyboard-window="true"
-                    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
+                    className={`fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-md ${fitViewport ? 'p-2 sm:p-4' : 'p-4'}`}
                     onMouseDown={handleOverlayMouseDown}
                     onClick={handleBackdropClick}
                 >
@@ -70,38 +73,53 @@ const ThemedDialog: React.FC<ThemedDialogProps> = ({
                         exit={{ scale: 0.94, opacity: 0 }}
                         transition={{ type: 'spring', stiffness: 280, damping: 24 }}
                         onClick={(event) => event.stopPropagation()}
-                        className={`relative w-full ${maxWidthClass} rounded-3xl border ${bgClass} p-6 shadow-2xl backdrop-blur-sm`}
+                        className={`relative w-full ${maxWidthClass} rounded-3xl border ${bgClass} shadow-2xl backdrop-blur-sm ${fitViewport ? 'flex max-h-[calc(100dvh-1rem)] min-h-0 flex-col overflow-hidden p-0' : 'p-6'}`}
                     >
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            disabled={closeDisabled}
-                            title={closeDisabled ? closeDisabledTitle : undefined}
-                            className={`absolute right-4 top-4 rounded-full p-2 transition-colors ${closeDisabled ? 'opacity-20' : `opacity-50 hover:opacity-100 ${closeBtnHover}`} ${textPrimary}`}
-                        >
-                            <X size={18} />
-                        </button>
-
-                        <div className="mb-5 pr-10">
+                        <div className={`${fitViewport ? 'relative shrink-0 border-b border-white/10 px-4 py-3' : 'mb-5 pr-10'}`}>
                             <div className="flex items-center justify-between gap-3">
-                                <h2 className={`min-w-0 text-xl font-bold ${textPrimary}`}>{title}</h2>
+                                <h2 className={`min-w-0 text-xl font-bold ${textPrimary} ${fitViewport ? 'pr-10 text-lg' : ''}`}>{title}</h2>
                                 {headerActions && (
                                     <div className="shrink-0">{headerActions}</div>
                                 )}
                             </div>
+                            {fitViewport && (
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    disabled={closeDisabled}
+                                    title={closeDisabled ? closeDisabledTitle : undefined}
+                                    aria-label={title ? `关闭${title}` : '关闭'}
+                                    className={`absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-2 transition-colors ${closeDisabled ? 'opacity-20' : `opacity-70 hover:opacity-100 ${closeBtnHover}`} ${textPrimary}`}
+                                >
+                                    <X size={18} />
+                                </button>
+                            )}
                             {description && (
                                 // pre-line so a description can break where its meaning does rather
                                 // than wherever the width happens to run out.
-                                <p className={`mt-2 whitespace-pre-line text-sm ${textSecondary}`}>{description}</p>
+                                <p className={`mt-2 whitespace-pre-line text-sm ${textSecondary} ${fitViewport ? 'text-xs' : ''}`}>{description}</p>
                             )}
                         </div>
 
-                        <div>{children}</div>
+                        <div className={fitViewport ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 [scrollbar-width:thin]' : ''}>{children}</div>
 
                         {footer && (
-                            <div className="mt-5 flex items-center justify-end gap-3">
+                            <div className={`flex shrink-0 items-center justify-end gap-3 ${fitViewport ? 'border-t border-white/10 px-4 py-3' : 'mt-5'}`}>
                                 {footer}
                             </div>
+                        )}
+
+                        {!fitViewport && (
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                disabled={closeDisabled}
+                                title={closeDisabled ? closeDisabledTitle : undefined}
+                                aria-label={title ? `关闭${title}` : '关闭'}
+                                className={`absolute right-4 top-4 rounded-full p-2 transition-colors ${closeDisabled ? 'opacity-20' : `opacity-50 hover:opacity-100 ${closeBtnHover}`} ${textPrimary}`}
+                            >
+                                <X size={18} />
+                            </button>
                         )}
                     </motion.div>
                 </motion.div>
