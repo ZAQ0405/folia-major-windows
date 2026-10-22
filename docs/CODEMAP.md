@@ -16,13 +16,13 @@
 | components | 512+ |
 | test/dev | 256+ |
 | services | 128+ |
+| utils | 128+ |
 | backend/electron | 64+ |
 | hooks | 64+ |
-| utils | 64+ |
 | stores | 32+ |
+| src (其他) | 16+ |
 | types | 16+ |
 | 其他 | 16+ |
-| src (其他) | 8+ |
 | i18n | 4+ |
 | workers | 2+ |
 
@@ -44,6 +44,7 @@
 | 32+ | `src/stores/useStatusMessageStore.ts` |
 | 32+ | `src/utils/lyrics/parserCore.ts` |
 | 32+ | `src/utils/lyrics/renderHints.ts` |
+| 32+ | `src/utils/runtimePlatform.ts` |
 
 ## 动态注册点
 
